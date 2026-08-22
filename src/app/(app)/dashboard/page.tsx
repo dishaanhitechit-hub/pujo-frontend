@@ -189,7 +189,7 @@ function DashboardContent() {
                       <td className="px-5 py-3">
                         {p.receiptNo ? (
                           <a
-                            href={`${apiConfig.baseUrl}${apiConfig.backendPages.receipt(p.receiptNo)}`}
+                            href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id)}?from=dashboard`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-brand-orange hover:underline font-medium"

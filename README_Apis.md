@@ -316,15 +316,15 @@ Frontend reads `nextUrl` from response and **redirects the browser** to it.
 **Request Body:**
 ```json
 {
-  "donor_name": "Suresh Mondal",
-  "donor_phone": "9700000001",
-  "donor_address": "12 Lake Road, Kolkata",
-  "donor_notes": "Annual member",
+  "donorName": "Suresh Mondal",
+  "donorPhone": "9700000001",
+  "donorAddress": "12 Lake Road, Kolkata",
+  "donorNotes": "Annual member",
   "amount": "500.00",
   "method": "upi"
 }
 ```
-> `donor_name`, `amount`, `method` are required.
+> `donorName`, `amount`, `method` are required.
 > `method` must be `"upi"` or `"cash"`.
 > `donor_phone`, `donor_address`, `donor_notes` are optional.
 
