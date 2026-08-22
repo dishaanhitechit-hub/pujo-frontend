@@ -7,6 +7,10 @@ export interface ListDonorsQuery {
   perPage?: number
   search?: string
   donorType?: string
+  dateFrom?: string   // YYYY-MM-DD
+  dateTo?: string     // YYYY-MM-DD
+  minAmount?: string  // numeric string, e.g. "100" or "100.50"
+  maxAmount?: string
 }
 
 export async function listDonors(query: ListDonorsQuery = {}): Promise<PaginatedDonors> {

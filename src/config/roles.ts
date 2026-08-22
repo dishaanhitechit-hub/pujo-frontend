@@ -29,10 +29,8 @@ type Permission =
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   admin: [
-    'payment.initiate',
     'payment.confirm',
     'payment.view_receipt',
-    'collector.view_own',
     'dashboard.view',
     'users.manage',
     'permissions.manage',
