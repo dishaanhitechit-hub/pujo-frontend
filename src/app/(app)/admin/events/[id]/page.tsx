@@ -769,8 +769,9 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
-      <div className="bg-muted/40 rounded-lg p-4 text-xs text-muted-foreground">
-        Define the puja day schedule. Each day has a key (e.g. <code>mahashtami</code>), label, optional date, and rituals (comma-separated). This replaces the entire schedule on save.
+      <div className="bg-muted/40 rounded-lg p-4 flex flex-col gap-1">
+        <p className="text-xs font-semibold text-foreground">Event Schedule</p>
+        <p className="text-xs text-muted-foreground">Add the important days, sessions, activities, or programme items for this event. Each entry has a key (internal identifier), title, optional date, and activities (comma-separated). This replaces the entire schedule on save.</p>
       </div>
 
       {fields.length === 0 && (
@@ -797,12 +798,12 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <Label className="text-xs">Key <span className="text-destructive">*</span></Label>
-                  <Input placeholder="e.g. mahashtami" aria-invalid={!!dayErrors?.key} {...register(`days.${idx}.key`)} />
+                  <Input placeholder="e.g. opening-ceremony" aria-invalid={!!dayErrors?.key} {...register(`days.${idx}.key`)} />
                   {dayErrors?.key && <p className="text-xs text-destructive">{dayErrors.key.message}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label className="text-xs">Label <span className="text-destructive">*</span></Label>
-                  <Input placeholder="e.g. Maha Ashtami" aria-invalid={!!dayErrors?.label} {...register(`days.${idx}.label`)} />
+                  <Input placeholder="e.g. Mahashtami, Opening Ceremony, Cultural Night" aria-invalid={!!dayErrors?.label} {...register(`days.${idx}.label`)} />
                   {dayErrors?.label && <p className="text-xs text-destructive">{dayErrors.label.message}</p>}
                 </div>
               </div>
@@ -824,8 +825,8 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs">Rituals (comma-separated)</Label>
-                <Input placeholder="e.g. Pushpanjali, Kumari Puja, Sandhi Puja" {...register(`days.${idx}.rituals`)} />
+                <Label className="text-xs">Activities (comma-separated)</Label>
+                <Input placeholder="e.g. Pushpanjali, Sandhi Puja, Dance Performance, Music Programme" {...register(`days.${idx}.rituals`)} />
               </div>
             </div>
           )

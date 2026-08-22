@@ -120,7 +120,7 @@ export default async function EventDetailPage({ params }: Props) {
       {event.days.length > 0 && (
         <section className="py-20 bg-white">
           <div className="mx-auto max-w-4xl px-4 sm:px-6">
-            <SectionHeading label="Schedule" title="Puja Days" className="mb-12" />
+            <SectionHeading label="Schedule" title="Event Programme" className="mb-12" />
 
             <div className="flex flex-col gap-8">
               {event.days.map(({ key, label, date, description, rituals }, idx) => (
