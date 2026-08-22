@@ -8,13 +8,13 @@ export const PAYMENT_METHODS = [
 
 export const PAYMENT_STATUS_LABELS = {
   pending: 'Pending',
-  confirmed: 'Confirmed',
+  completed: 'Completed',
   expired: 'Expired',
 } as const
 
 export const PAYMENT_STATUS_COLORS = {
   pending: 'warning',
-  confirmed: 'success',
+  completed: 'success',
   expired: 'destructive',
 } as const
 

@@ -90,7 +90,7 @@ export function PaymentDetailDialog({ payment, open, onOpenChange }: PaymentDeta
           <Section title="Payment Details">
             <Field label="Payment ID" value={`#${payment.id}`} />
             <Field label="Amount" value={fmtAmount(payment.amount)} />
-            <Field label="Method" value={payment.method.toUpperCase()} />
+            <Field label="Mode" value={payment.method.toUpperCase()} />
             <Field label="Receipt No." value={payment.receiptNo ?? null} />
             {payment.utrNumber && <Field label="UTR Number" value={payment.utrNumber} />}
             {payment.chequeNumber && <Field label="Cheque No." value={payment.chequeNumber} />}

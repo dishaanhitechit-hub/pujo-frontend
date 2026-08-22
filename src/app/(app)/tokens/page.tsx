@@ -10,11 +10,12 @@ import type { PaginatedTokens, ApiError } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { TokenStatusBadge } from '@/components/shared/StatusBadge'
+import { FilterChip } from '@/components/shared/FilterChip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ChevronLeft, ChevronRight, Loader2, ExternalLink, Printer } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, ExternalLink, Printer, Search, X } from 'lucide-react'
 import { apiConfig } from '@/config/api'
 import { useAuth } from '@/lib/auth/auth-provider'
 
@@ -41,11 +42,13 @@ function TokensContent() {
 
   const [data, setData] = useState<PaginatedTokens | null>(null)
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [tokenStatus, setTokenStatus] = useState<'active' | 'void' | ''>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [generatingBulk, setGeneratingBulk] = useState(false)
-  // Stale-response guard: each page change gets a unique ID.
   const reqRef = useRef(0)
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const { register: regSingle, handleSubmit: handleSingle, reset: resetSingle, formState: { errors: errSingle, isSubmitting: isSingle } } = useForm<SingleForm>({
     resolver: zodResolver(singleSchema),
@@ -54,26 +57,27 @@ function TokensContent() {
 
   const [bulkCount, setBulkCount] = useState(10)
 
-  function loadTokens(targetPage: number) {
+  function loadTokens(targetPage: number, q?: string, s?: string) {
     const req = ++reqRef.current
     setLoading(true)
     setError(null)
-    listTokens({ page: targetPage })
-      .then((result) => {
-        if (req !== reqRef.current) return
-        setData(result)
-      })
-      .catch((err: ApiError) => {
-        if (req !== reqRef.current) return
-        setError(err.message ?? 'Failed to load tokens.')
-      })
-      .finally(() => {
-        if (req !== reqRef.current) return
-        setLoading(false)
-      })
+    listTokens({ page: targetPage, search: (q ?? search) || undefined, status: (s ?? tokenStatus) || undefined })
+      .then((result) => { if (req === reqRef.current) setData(result) })
+      .catch((err: ApiError) => { if (req === reqRef.current) setError(err.message ?? 'Failed to load tokens.') })
+      .finally(() => { if (req === reqRef.current) setLoading(false) })
   }
 
-  useEffect(() => { loadTokens(page) }, [page])
+  useEffect(() => { loadTokens(page) }, [page, search, tokenStatus])
+
+  function handleSearchChange(val: string) {
+    setSearch(val)
+    clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => { setPage(1); loadTokens(1, val, tokenStatus) }, 350)
+  }
+
+  function setStatusFilter(s: typeof tokenStatus) {
+    setTokenStatus(s); setPage(1); loadTokens(1, search, s)
+  }
 
   async function onSingleSubmit(formData: SingleForm) {
     try {
@@ -164,7 +168,33 @@ function TokensContent() {
 
       {/* Token list */}
       <div className="rounded-xl border border-border bg-card">
-        <div className="p-5 border-b border-border"><h2 className="font-semibold text-sm">All Tokens</h2></div>
+        <div className="p-5 border-b border-border flex flex-wrap items-center gap-3">
+          <h2 className="font-semibold text-sm mr-auto">All Tokens</h2>
+          <div className="relative min-w-[180px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+            <Input value={search} onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Token no. or participant…" className="pl-8 h-8 text-sm" />
+            {search && (
+              <button onClick={() => handleSearchChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            {(['', 'active', 'void'] as const).map((s) => (
+              <button key={s} onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${tokenStatus === s ? 'bg-brand-navy text-white' : 'bg-muted text-muted-foreground hover:bg-brand-navy/10 hover:text-brand-navy'}`}>
+                {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+        {(search || tokenStatus) && (
+          <div className="px-5 py-2 flex flex-wrap gap-2 border-b border-border bg-muted/10">
+            {search && <FilterChip label={`Search: ${search}`} onRemove={() => handleSearchChange('')} />}
+            {tokenStatus && <FilterChip label={`Status: ${tokenStatus}`} onRemove={() => setStatusFilter('')} />}
+          </div>
+        )}
         {error ? (
           <div className="p-6 text-sm text-destructive">{error}</div>
         ) : loading ? (

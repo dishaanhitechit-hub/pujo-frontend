@@ -6,10 +6,15 @@ export interface DashboardPaymentsQuery {
   page?: number
   perPage?: number
   method?: 'cash' | 'upi' | 'cheque'
-  status?: 'pending' | 'confirmed' | 'expired' | 'cancelled'
+  status?: 'pending' | 'completed' | 'expired' | 'cancelled'
   collectorId?: number
   date?: string
   donorType?: string
+  search?: string
+  dateFrom?: string
+  dateTo?: string
+  minAmount?: string
+  maxAmount?: string
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {

@@ -49,7 +49,7 @@ function DonorDetailContent({ params }: { params: Promise<{ id: string }> }) {
         <div><p className="text-muted-foreground text-xs mb-1">Address</p><p className="font-medium">{donor.address ?? '—'}</p></div>
         <div><p className="text-muted-foreground text-xs mb-1">Donor Type</p><p className="font-medium">{donor.donorType ?? '—'}</p></div>
         <div><p className="text-muted-foreground text-xs mb-1">Total Donated</p><p className="font-semibold text-lg">{fmt(donor.totalDonated)}</p></div>
-        <div><p className="text-muted-foreground text-xs mb-1">Confirmed Payments</p><p className="font-semibold text-lg">{donor.confirmedCount}</p></div>
+        <div><p className="text-muted-foreground text-xs mb-1">Completed Payments</p><p className="font-semibold text-lg">{donor.confirmedCount}</p></div>
         <div><p className="text-muted-foreground text-xs mb-1">Last Donation</p><p className="font-medium">{donor.lastDonatedAt ? new Date(donor.lastDonatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}</p></div>
         {donor.notes && <div className="col-span-3"><p className="text-muted-foreground text-xs mb-1">Notes</p><p className="font-medium">{donor.notes}</p></div>}
       </div>
@@ -65,7 +65,7 @@ function DonorDetailContent({ params }: { params: Promise<{ id: string }> }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/20">
-                  {['Receipt', 'Amount', 'Method', 'Collector', 'Status', 'Date'].map((h) => (
+                  {['Receipt', 'Amount', 'Mode', 'Collector', 'Status', 'Date'].map((h) => (
                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>

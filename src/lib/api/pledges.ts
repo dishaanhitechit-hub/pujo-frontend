@@ -7,6 +7,11 @@ export interface ListPledgesQuery {
   perPage?: number
   status?: 'open' | 'complete' | 'cancelled'
   collectorId?: number
+  search?: string
+  dateFrom?: string
+  dateTo?: string
+  minAmount?: string
+  maxAmount?: string
 }
 
 export async function createPledge(input: CreatePledgeInput): Promise<Pledge> {

@@ -1,6 +1,6 @@
 export type Role = 'admin' | 'executive' | 'committee' | 'general'
 export type PaymentMethod = 'upi' | 'cash' | 'cheque'
-export type PaymentStatus = 'pending' | 'confirmed' | 'expired' | 'cancelled'
+export type PaymentStatus = 'pending' | 'completed' | 'expired' | 'cancelled'
 export type PledgeStatus = 'open' | 'complete' | 'cancelled'
 export type TokenType = 'single' | 'dual' | 'bulk'
 export type TokenStatus = 'active' | 'void'
@@ -149,6 +149,7 @@ export interface PaginatedTokens {
   tokens: Token[]
   total: number
   page: number
+  perPage: number
   pages: number
 }
 

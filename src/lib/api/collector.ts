@@ -6,8 +6,14 @@ export interface CollectorPaymentsQuery {
   page?: number
   perPage?: number
   method?: 'cash' | 'upi' | 'cheque'
+  status?: 'pending' | 'completed' | 'expired' | 'cancelled'
   date?: string
   donorType?: string
+  search?: string
+  dateFrom?: string
+  dateTo?: string
+  minAmount?: string
+  maxAmount?: string
 }
 
 export async function getCollectorSummary(): Promise<CollectorSummary> {

@@ -96,7 +96,7 @@ function DashboardContent() {
             <StatCard label="UPI Total" value={fmt(summary.upiTotal)} icon={Smartphone} />
             <StatCard label="Cash Total" value={fmt(summary.cashTotal)} icon={Banknote} />
             <StatCard label="Cheque Total" value={fmt(summary.chequeTotal)} icon={FileText} />
-            <StatCard label="Confirmed" value={summary.confirmedCount} icon={CheckCircle2} variant="success" />
+            <StatCard label="Completed" value={summary.confirmedCount} icon={CheckCircle2} variant="success" />
             <StatCard label="Pending" value={summary.pendingCount} icon={Clock} variant="warning" />
             <StatCard label="Total Donors" value={summary.totalDonors} icon={Users} />
           </div>
@@ -164,7 +164,7 @@ function DashboardContent() {
                   <tr className="border-b border-border">
                     <th className="pb-2 text-left text-muted-foreground font-semibold">Collector</th>
                     <th className="pb-2 text-right text-muted-foreground font-semibold">Total</th>
-                    <th className="pb-2 text-right text-muted-foreground font-semibold hidden sm:table-cell">Confirmed</th>
+                    <th className="pb-2 text-right text-muted-foreground font-semibold hidden sm:table-cell">Completed</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -206,7 +206,7 @@ function DashboardContent() {
                     <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Donor</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Collector</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Method</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Mode</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Receipt</th>
                   </tr>

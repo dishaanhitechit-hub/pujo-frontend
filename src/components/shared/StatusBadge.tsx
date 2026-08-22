@@ -3,7 +3,7 @@ import type { PaymentStatus, PledgeStatus, TokenStatus } from '@/types'
 
 const paymentStatusConfig: Record<PaymentStatus, { label: string; classes: string }> = {
   pending: { label: 'Pending', classes: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-  confirmed: { label: 'Confirmed', classes: 'bg-green-50 text-green-700 border-green-200' },
+  completed: { label: 'Completed', classes: 'bg-green-50 text-green-700 border-green-200' },
   expired: { label: 'Expired', classes: 'bg-red-50 text-red-700 border-red-200' },
   cancelled: { label: 'Cancelled', classes: 'bg-slate-50 text-slate-500 border-slate-200' },
 }

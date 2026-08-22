@@ -61,7 +61,7 @@ function DonorsContent() {
 
   return (
     <div className="p-6 lg:p-8">
-      <PageHeader title="Donors" subtitle="All donor records with confirmed payment statistics." className="mb-8" />
+      <PageHeader title="Donors" subtitle="All donor records with completed payment statistics." className="mb-8" />
 
       <div className="flex flex-wrap gap-3 mb-5 items-center">
         <form onSubmit={handleSearch} className="flex gap-2">
@@ -107,7 +107,7 @@ function DonorsContent() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/20">
-                  {['Donor', 'Type', 'Total Donated', 'Confirmed', 'Last Donation', ''].map((h) => (
+                  {['Donor', 'Type', 'Total Donated', 'Completed', 'Last Donation', ''].map((h) => (
                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>

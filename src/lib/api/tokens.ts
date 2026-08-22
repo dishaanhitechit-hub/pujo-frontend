@@ -12,7 +12,7 @@ export async function bulkGenerateTokens(input: BulkTokenInput): Promise<BulkTok
   return res.data.data
 }
 
-export async function listTokens(query: { page?: number; batchId?: string } = {}): Promise<PaginatedTokens> {
+export async function listTokens(query: { page?: number; perPage?: number; batchId?: string; search?: string; status?: string } = {}): Promise<PaginatedTokens> {
   const res = await apiClient.get<ApiResponse<PaginatedTokens>>(apiConfig.endpoints.token.list, { params: query })
   return res.data.data
 }
