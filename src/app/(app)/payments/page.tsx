@@ -2,10 +2,9 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getDashboardPayments } from '@/lib/api/dashboard'
-import { listActiveEvents } from '@/lib/api/events'
+import { getDashboardPayments, getDashboardEvents } from '@/lib/api/dashboard'
 import { getUsers } from '@/lib/api/users'
-import type { PaginatedPayments, Payment, User, EventSummary, ApiError } from '@/types'
+import type { PaginatedPayments, Payment, User, EventStats, ApiError } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -71,7 +70,7 @@ function PaymentsContent() {
   const [error, setError] = useState<string | null>(null)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
   const [collectors, setCollectors] = useState<User[]>([])
-  const [events, setEvents] = useState<EventSummary[]>([])
+  const [events, setEvents] = useState<EventStats[]>([])
 
   const reqRef = useRef(0)
 
@@ -81,13 +80,15 @@ function PaymentsContent() {
       search: debouncedSearch, method, status, eventId, donorType, collectorId, dateFrom, dateTo,
       minAmount, maxAmount, page: String(page), ...overrides,
     }
-    Object.entries(vals).forEach(([k, v]) => { if (v && v !== '1' || k === 'page') p.set(k, v) })
+    Object.entries(vals).forEach(([k, v]) => { if (v) p.set(k, v) })
     router.replace(`?${p.toString()}`, { scroll: false })
   }, [debouncedSearch, method, status, eventId, donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount, page, router])
 
   useEffect(() => {
     getUsers().then(setCollectors).catch(() => {})
-    listActiveEvents().then(setEvents).catch(() => {})
+    // Use getDashboardEvents (all events including archived) — not listActiveEvents —
+    // so historical events remain filterable in the payment ledger.
+    getDashboardEvents().then((data) => setEvents(data ?? [])).catch(() => {})
   }, [])
 
   const searchSyncedRef = useRef(false)
@@ -142,7 +143,7 @@ function PaymentsContent() {
 
   const advancedActiveCount = [eventId, donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount].filter(Boolean).length
   const collectorName = collectors.find(c => String(c.id) === collectorId)?.name
-  const eventName = events.find(e => String(e.id) === eventId)?.name
+  const eventName = events.find(s => String(s.event.id) === eventId)?.event.name
 
   return (
     <div className="p-6 lg:p-8">
@@ -207,7 +208,12 @@ function PaymentsContent() {
               <select value={draftEventId} onChange={(e) => setDraftEventId(e.target.value)}
                 className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
                 <option value="">All Events</option>
-                {events.map((e) => <option key={e.id} value={String(e.id)}>{e.name}</option>)}
+                {events.map((s) => (
+                  <option key={s.event.id} value={String(s.event.id)}>
+                    {s.event.name}{s.event.year ? ` (${s.event.year})` : ''}
+                    {s.event.status === 'archived' ? ' — archived' : ''}
+                  </option>
+                ))}
               </select>
             </FilterField>
           )}

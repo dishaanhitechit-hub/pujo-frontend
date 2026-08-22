@@ -38,6 +38,22 @@ export interface Event extends EventSummary {
   days?: EventDay[]
 }
 
+export interface EventStats {
+  event: { id: number; name: string; year: number | null; status: EventStatus }
+  grandTotal: string
+  paymentCount: number
+  totalPledged: string
+  pledgeOutstanding: string
+}
+
+export interface PaginatedEvents {
+  events: Event[]
+  page: number
+  perPage: number
+  total: number
+  pages: number
+}
+
 export interface User {
   id: number
   name: string
@@ -96,6 +112,7 @@ export interface Payment {
 export interface CollectorSummary {
   cashTotal: string
   upiTotal: string
+  chequeTotal: string
   grandTotal: string
   confirmedCount: number
   pendingCount: number
@@ -105,6 +122,7 @@ export interface CollectorBreakdown {
   collector: Collector
   cashTotal: string
   upiTotal: string
+  chequeTotal: string
   grandTotal: string
   confirmedCount: number
 }

@@ -2,9 +2,8 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getCollectorSummary, getCollectorPayments } from '@/lib/api/collector'
-import { listActiveEvents } from '@/lib/api/events'
-import type { CollectorSummary, PaginatedPayments, Payment, EventSummary, ApiError } from '@/types'
+import { getCollectorSummary, getCollectorPayments, getCollectorEvents, type ReportingEvent } from '@/lib/api/collector'
+import type { CollectorSummary, PaginatedPayments, Payment, ApiError } from '@/types'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -15,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
-  IndianRupee, Banknote, Smartphone, CheckCircle2,
+  IndianRupee, Banknote, Smartphone, CheckCircle2, FileText,
   ChevronLeft, ChevronRight, Search, X,
 } from 'lucide-react'
 import { apiConfig } from '@/config/api'
@@ -72,7 +71,7 @@ function MyCollectionsContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
-  const [events, setEvents] = useState<EventSummary[]>([])
+  const [events, setEvents] = useState<ReportingEvent[]>([])
   const reqRef = useRef(0)
 
   const pushUrl = useCallback((overrides: Record<string, string> = {}) => {
@@ -93,7 +92,8 @@ function MyCollectionsContent() {
   }, [debouncedSearch])
 
   useEffect(() => {
-    listActiveEvents().then(setEvents).catch(() => {})
+    // Use all events (including historical) so collectors can filter their own records by past events.
+    getCollectorEvents().then((data) => setEvents(data ?? [])).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -101,7 +101,7 @@ function MyCollectionsContent() {
     setLoading(true)
     setError(null)
     Promise.all([
-      getCollectorSummary(),
+      getCollectorSummary(eventId ? Number(eventId) : undefined),
       getCollectorPayments({
         page, perPage: 20,
         method: method || undefined,
@@ -139,7 +139,7 @@ function MyCollectionsContent() {
   }
 
   const advancedActiveCount = [eventId, donorType, dateFrom, dateTo, minAmount, maxAmount].filter(Boolean).length
-  const eventName = events.find(e => String(e.id) === eventId)?.name
+  const eventName = events.find(e => String(e.id) === eventId)?.name ?? undefined
 
   return (
     <div className="p-6 lg:p-8">
@@ -150,10 +150,13 @@ function MyCollectionsContent() {
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
         </div>
       ) : summary ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Grand Total" value={formatCurrency(summary.grandTotal)} icon={IndianRupee} variant="primary" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
+          <div className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
+            <StatCard label="Grand Total" value={formatCurrency(summary.grandTotal)} icon={IndianRupee} variant="primary" />
+          </div>
           <StatCard label="UPI Collections" value={formatCurrency(summary.upiTotal)} icon={Smartphone} />
           <StatCard label="Cash Collections" value={formatCurrency(summary.cashTotal)} icon={Banknote} />
+          <StatCard label="Cheque Collections" value={formatCurrency(summary.chequeTotal)} icon={FileText} />
           <StatCard label="Completed Payments" value={summary.confirmedCount} icon={CheckCircle2} variant="success" />
         </div>
       ) : null}
@@ -212,7 +215,11 @@ function MyCollectionsContent() {
               <select value={draftEventId} onChange={(e) => setDraftEventId(e.target.value)}
                 className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
                 <option value="">All Events</option>
-                {events.map((e) => <option key={e.id} value={String(e.id)}>{e.name}</option>)}
+                {events.map((e) => (
+                  <option key={e.id} value={String(e.id)}>
+                    {e.name}{e.year ? ` (${e.year})` : ''}{e.status === 'archived' ? ' — archived' : ''}
+                  </option>
+                ))}
               </select>
             </FilterField>
           )}

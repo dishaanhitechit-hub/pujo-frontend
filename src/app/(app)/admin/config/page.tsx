@@ -24,7 +24,7 @@ type FormData = z.infer<typeof schema>
 
 export default function AdminConfigPage() {
   return (
-    <RoleGuard permission="admin.config">
+    <RoleGuard permission="users.manage">
       <ConfigContent />
     </RoleGuard>
   )

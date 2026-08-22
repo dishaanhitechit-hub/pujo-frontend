@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import type { PaymentStatus, PledgeStatus, TokenStatus } from '@/types'
+import type { PaymentStatus, PledgeStatus, TokenStatus, EventStatus } from '@/types'
 
 const paymentStatusConfig: Record<PaymentStatus, { label: string; classes: string }> = {
   pending: { label: 'Pending', classes: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
@@ -54,6 +54,26 @@ interface TokenStatusBadgeProps {
 
 export function TokenStatusBadge({ status, className }: TokenStatusBadgeProps) {
   const config = tokenStatusConfig[status] ?? { label: status ?? 'Unknown', classes: 'bg-slate-50 text-slate-500 border-slate-200' }
+  return (
+    <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold', config.classes, className)}>
+      {config.label}
+    </span>
+  )
+}
+
+const eventStatusConfig: Record<EventStatus, { label: string; classes: string }> = {
+  draft:     { label: 'Draft',     classes: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+  published: { label: 'Published', classes: 'bg-green-50 text-green-700 border-green-200' },
+  archived:  { label: 'Archived',  classes: 'bg-slate-50 text-slate-500 border-slate-200' },
+}
+
+interface EventStatusBadgeProps {
+  status: EventStatus
+  className?: string
+}
+
+export function EventStatusBadge({ status, className }: EventStatusBadgeProps) {
+  const config = eventStatusConfig[status] ?? { label: status ?? 'Unknown', classes: 'bg-slate-50 text-slate-500 border-slate-200' }
   return (
     <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold', config.classes, className)}>
       {config.label}

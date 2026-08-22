@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { getDashboardSummary, getDashboardCollectors, getDashboardPayments } from '@/lib/api/dashboard'
-import { listActiveEvents } from '@/lib/api/events'
+import { getDashboardSummary, getDashboardCollectors, getDashboardPayments, getDashboardEvents } from '@/lib/api/dashboard'
 import type { DashboardPaymentsQuery } from '@/lib/api/dashboard'
-import type { DashboardSummary, CollectorBreakdown, PaginatedPayments, Payment, EventSummary } from '@/types'
+import type { DashboardSummary, CollectorBreakdown, PaginatedPayments, Payment, EventStats, ApiError } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { EventStatusBadge } from '@/components/shared/StatusBadge'
 import { PaymentDetailDialog } from '@/components/shared/PaymentDetailDialog'
 import { FilterChip } from '@/components/shared/FilterChip'
 import { FilterModal, FilterButton, FilterField } from '@/components/shared/FilterModal'
@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   IndianRupee, Smartphone, Banknote, CheckCircle2, Clock, Users,
-  ChevronLeft, ChevronRight, FileText, TrendingUp, Search, X, Loader2, ExternalLink,
+  ChevronLeft, ChevronRight, FileText, TrendingUp, Search, X, Loader2, ExternalLink, Calendar,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
@@ -26,7 +26,6 @@ import {
 import { apiConfig } from '@/config/api'
 import { DONOR_TYPES } from '@/constants'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import type { ApiError } from '@/types'
 
 function fmt(val: string | number) {
   return `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`
@@ -45,16 +44,18 @@ function DashboardContent() {
   const [collectors, setCollectors] = useState<CollectorBreakdown[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [events, setEvents] = useState<EventSummary[]>([])
+  const [eventStats, setEventStats] = useState<EventStats[]>([])
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
 
+  // Use getDashboardEvents() for ALL roles — it uses dashboard.view permission
+  // and returns all events (including archived) for historical reporting.
   useEffect(() => {
-    listActiveEvents().then(setEvents).catch(() => {})
+    getDashboardEvents().then((data) => setEventStats(data ?? [])).catch(() => {})
   }, [])
 
-  // Re-fetch summary and collectors whenever the event scope changes
   useEffect(() => {
     setLoading(true)
+    setError(null)
     Promise.all([
       getDashboardSummary(selectedEventId ?? undefined),
       getDashboardCollectors(selectedEventId ?? undefined),
@@ -72,34 +73,50 @@ function DashboardContent() {
     )
   }
 
+  const selectedEvent = selectedEventId ? eventStats.find(s => s.event.id === selectedEventId)?.event : null
+  const eventLabel = selectedEvent?.name ?? (selectedEventId ? `Event #${selectedEventId}` : null)
+
   const chartData = collectors.slice(0, 10).map((c) => ({
     name: c.collector.name.split(' ')[0],
     UPI: Number(c.upiTotal),
     Cash: Number(c.cashTotal),
+    Cheque: Number(c.chequeTotal),
   }))
 
   return (
     <div className="p-6 lg:p-8 flex flex-col gap-8">
-      <PageHeader title="Dashboard" subtitle="Overall collection overview across all collectors." />
+      <PageHeader
+        title="Dashboard"
+        subtitle={eventLabel ? `Showing data for ${eventLabel}` : 'Overall collection overview across all events.'}
+      />
 
-      {/* Event scope chips */}
-      {events.length > 0 && (
-        <div className="flex flex-wrap gap-2 -mt-4">
+      {/* Event scope chips — uses full event list (including historical/archived) */}
+      {eventStats.length > 0 && (
+        <div className="flex flex-wrap gap-2 -mt-4 overflow-x-auto pb-1">
           <button
             onClick={() => setSelectedEventId(null)}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${selectedEventId === null ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${selectedEventId === null ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}
           >
             All Events
           </button>
-          {events.map((e) => (
+          {eventStats.map((s) => (
             <button
-              key={e.id}
-              onClick={() => setSelectedEventId(selectedEventId === e.id ? null : e.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${selectedEventId === e.id ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}
+              key={s.event.id}
+              onClick={() => setSelectedEventId(selectedEventId === s.event.id ? null : s.event.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${selectedEventId === s.event.id ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}
             >
-              {e.name}
+              {s.event.name}{s.event.year ? ` ${s.event.year}` : ''}
+              {s.event.status === 'archived' && <span className="ml-1 opacity-60">·archived</span>}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Context banner — shown when a specific event is selected */}
+      {eventLabel && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-orange/10 border border-brand-orange/20 text-sm text-brand-orange font-medium -mt-4">
+          <Calendar className="size-4 shrink-0" />
+          Showing: {eventLabel}
         </div>
       )}
 
@@ -123,7 +140,7 @@ function DashboardContent() {
           </div>
           {(Number(summary.totalPledged) > 0 || summary.openPledgeCount > 0) && (
             <div className="rounded-xl border border-border bg-card p-5">
-              <h2 className="font-semibold text-sm mb-4 flex items-center gap-2"><TrendingUp className="size-4" /> Pledge Summary</h2>
+              <h2 className="font-semibold text-sm mb-4 flex items-center gap-2"><TrendingUp className="size-4" /> Pledge Summary{eventLabel ? ` · ${eventLabel}` : ''}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground text-xs">Total Pledged</p>
@@ -147,30 +164,40 @@ function DashboardContent() {
         </>
       )}
 
-      {/* Charts */}
+      {/* Charts / event comparison */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="font-semibold text-sm mb-4">Collections by Collector</h2>
-          {loading ? (
-            <Skeleton className="h-56 w-full" />
-          ) : chartData.length === 0 ? (
-            <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData} margin={{ left: -10 }}>
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
-                <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="UPI" fill="oklch(0.638 0.211 35.2)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Cash" fill="oklch(0.55 0.11 138)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+        {/* Left column: event comparison table (All Events) or collector bar chart (specific event) */}
+        {selectedEventId === null ? (
+          <EventComparisonTable eventStats={eventStats} loading={loading} />
+        ) : (
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h2 className="font-semibold text-sm mb-4">Collections by Mode{eventLabel ? ` · ${eventLabel}` : ''}</h2>
+            {loading ? (
+              <Skeleton className="h-56 w-full" />
+            ) : chartData.length === 0 ? (
+              <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={chartData} margin={{ left: -10 }}>
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
+                  <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="UPI" fill="oklch(0.638 0.211 35.2)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Cash" fill="oklch(0.55 0.11 138)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Cheque" fill="oklch(0.55 0.14 260)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        )}
 
+        {/* Right column: collector breakdown table */}
         <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="font-semibold text-sm mb-4 flex items-center gap-2"><Users className="size-4" /> Collector Breakdown</h2>
+          <h2 className="font-semibold text-sm mb-4 flex items-center gap-2">
+            <Users className="size-4" />
+            Collections by Collector{eventLabel ? ` · ${eventLabel}` : ''}
+          </h2>
           {loading ? (
             <div className="flex flex-col gap-2">
               {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12" />)}
@@ -184,7 +211,7 @@ function DashboardContent() {
                   <tr className="border-b border-border">
                     <th className="pb-2 text-left text-muted-foreground font-semibold">Collector</th>
                     <th className="pb-2 text-right text-muted-foreground font-semibold">Total</th>
-                    <th className="pb-2 text-right text-muted-foreground font-semibold hidden sm:table-cell">Completed</th>
+                    <th className="pb-2 text-right text-muted-foreground font-semibold hidden sm:table-cell">Count</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -205,44 +232,89 @@ function DashboardContent() {
         </div>
       </div>
 
-      {/* Recent payment history — has its own filter/search state */}
-      <DashboardPaymentsSection collectors={collectors} selectedEventId={selectedEventId} />
+      {/* Recent payment history — event selection passed from top-level, no second event selector */}
+      <DashboardPaymentsSection collectors={collectors} selectedEventId={selectedEventId} eventLabel={eventLabel} />
+    </div>
+  )
+}
+
+// ── Event comparison table for "All Events" view ───────────────────────────
+
+function EventComparisonTable({ eventStats, loading }: { eventStats: EventStats[]; loading: boolean }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <h2 className="font-semibold text-sm mb-4 flex items-center gap-2">
+        <Calendar className="size-4" />
+        All Events — Overview
+      </h2>
+      {loading ? (
+        <div className="flex flex-col gap-2">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-10" />)}
+        </div>
+      ) : eventStats.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">No events yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="pb-2 text-left text-muted-foreground font-semibold">Event</th>
+                <th className="pb-2 text-right text-muted-foreground font-semibold">Total</th>
+                <th className="pb-2 text-right text-muted-foreground font-semibold hidden sm:table-cell">Payments</th>
+                <th className="pb-2 text-right text-muted-foreground font-semibold hidden md:table-cell">Pledged</th>
+              </tr>
+            </thead>
+            <tbody>
+              {eventStats.map((s) => (
+                <tr key={s.event.id} className="border-b border-border/50 last:border-0">
+                  <td className="py-2.5 pr-3">
+                    <p className="font-medium leading-snug">{s.event.name}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {s.event.year && <span className="text-muted-foreground">{s.event.year}</span>}
+                      <EventStatusBadge status={s.event.status as 'draft' | 'published' | 'archived'} />
+                    </div>
+                  </td>
+                  <td className="py-2.5 text-right font-semibold">{fmt(s.grandTotal)}</td>
+                  <td className="py-2.5 text-right text-muted-foreground hidden sm:table-cell">{s.paymentCount}</td>
+                  <td className="py-2.5 text-right text-muted-foreground hidden md:table-cell">{fmt(s.totalPledged)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
 
 // ── Dashboard payments section ─────────────────────────────────────────────
-// Separate component so its filter state does not cause summary/chart re-fetches.
 
 interface DashboardPaymentsSectionProps {
   collectors: CollectorBreakdown[]
   selectedEventId?: number | null
+  eventLabel?: string | null
 }
 
-function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaymentsSectionProps) {
+function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: DashboardPaymentsSectionProps) {
   const [payments, setPayments] = useState<PaginatedPayments | null>(null)
   const [page, setPage] = useState(1)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
   const [loading, setLoading] = useState(true)
   const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [events, setEvents] = useState<EventSummary[]>([])
 
-  // search = raw input; debouncedSearch gates the API
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 350)
 
   const [method, setMethod] = useState<'upi' | 'cash' | 'cheque' | ''>('')
   const [status, setStatus] = useState<'pending' | 'completed' | 'expired' | 'cancelled' | ''>('')
 
-  // Advanced filter state (modal draft pattern)
+  // Advanced filter state (no event filter — the top-level chip handles event selection)
   const [collectorId, setCollectorId] = useState('')
-  const [eventId, setEventId] = useState('')
   const [donorType, setDonorType] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [draftCollectorId, setDraftCollectorId] = useState('')
-  const [draftEventId, setDraftEventId] = useState('')
   const [draftDonorType, setDraftDonorType] = useState('')
   const [draftDateFrom, setDraftDateFrom] = useState('')
   const [draftDateTo, setDraftDateTo] = useState('')
@@ -251,17 +323,9 @@ function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaym
   const reqRef = useRef(0)
   const hasDataRef = useRef(false)
 
+  // Reset page when top-level event changes
   useEffect(() => {
-    listActiveEvents().then(setEvents).catch(() => {})
-  }, [])
-
-  // When the page-level event scope changes, clear any payment-section event filter
-  useEffect(() => {
-    if (selectedEventId != null) {
-      setEventId('')
-      setDraftEventId('')
-      setPage(1)
-    }
+    setPage(1)
   }, [selectedEventId])
 
   const searchSyncedRef = useRef(false)
@@ -276,8 +340,6 @@ function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaym
     setIsFetching(true)
     setError(null)
 
-    const effectiveEventId = selectedEventId ?? (eventId ? Number(eventId) : undefined)
-
     const query: DashboardPaymentsQuery = {
       page,
       perPage: 10,
@@ -285,7 +347,7 @@ function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaym
       method: method || undefined,
       status: status || undefined,
       collectorId: collectorId ? Number(collectorId) : undefined,
-      eventId: effectiveEventId,
+      eventId: selectedEventId ?? undefined,
       donorType: donorType || undefined,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
@@ -300,11 +362,10 @@ function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaym
           setIsFetching(false)
         }
       })
-  }, [page, debouncedSearch, method, status, collectorId, eventId, donorType, dateFrom, dateTo, selectedEventId])
+  }, [page, debouncedSearch, method, status, collectorId, donorType, dateFrom, dateTo, selectedEventId])
 
   function applyAdvanced() {
     setCollectorId(draftCollectorId)
-    setEventId(draftEventId)
     setDonorType(draftDonorType)
     setDateFrom(draftDateFrom)
     setDateTo(draftDateTo)
@@ -313,32 +374,29 @@ function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaym
   }
 
   function resetAdvanced() {
-    setDraftCollectorId(''); setDraftEventId(''); setDraftDonorType(''); setDraftDateFrom(''); setDraftDateTo('')
-    setCollectorId(''); setEventId(''); setDonorType(''); setDateFrom(''); setDateTo('')
+    setDraftCollectorId(''); setDraftDonorType(''); setDraftDateFrom(''); setDraftDateTo('')
+    setCollectorId(''); setDonorType(''); setDateFrom(''); setDateTo('')
     setPage(1)
   }
 
-  const advancedActiveCount = [collectorId, selectedEventId == null ? eventId : '', donorType, dateFrom, dateTo].filter(Boolean).length
+  const advancedActiveCount = [collectorId, donorType, dateFrom, dateTo].filter(Boolean).length
   const collectorName = collectors.find(c => String(c.collector.id) === collectorId)?.collector.name
-  const eventName = events.find(e => String(e.id) === eventId)?.name
 
   return (
     <div className="rounded-xl border border-border bg-card">
-      {/* Section header */}
       <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border">
         <div className="flex items-center gap-2">
-          <h2 className="font-semibold text-sm">Recent Payment History</h2>
+          <h2 className="font-semibold text-sm">
+            Recent Payment History{eventLabel ? ` · ${eventLabel}` : ''}
+          </h2>
           {isFetching && !loading && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
         </div>
-        <Link
-          href="/payments"
-          className="text-xs text-brand-orange hover:underline font-medium flex items-center gap-1"
-        >
+        <Link href="/payments" className="text-xs text-brand-orange hover:underline font-medium flex items-center gap-1">
           View All <ExternalLink className="size-3" />
         </Link>
       </div>
 
-      {/* Compact filter row */}
+      {/* Compact filter row — no event selector here; event is set by top-level chips */}
       <div className="px-5 py-3 border-b border-border flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[160px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
@@ -367,7 +425,7 @@ function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaym
 
         <div className="flex items-center gap-1">
           <span className="text-xs text-muted-foreground">Status:</span>
-          {(['', 'pending', 'completed', 'expired'] as const).map((s) => (
+          {(['', 'pending', 'completed', 'cancelled', 'expired'] as const).map((s) => (
             <button key={s} onClick={() => { setStatus(s); setPage(1) }}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${status === s ? 'bg-brand-navy text-white' : 'bg-muted text-muted-foreground hover:bg-brand-navy/10 hover:text-brand-navy'}`}>
               {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
@@ -377,7 +435,7 @@ function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaym
 
         <FilterButton
           onClick={() => {
-            setDraftCollectorId(collectorId); setDraftEventId(eventId); setDraftDonorType(donorType)
+            setDraftCollectorId(collectorId); setDraftDonorType(donorType)
             setDraftDateFrom(dateFrom); setDraftDateTo(dateTo)
             setSheetOpen(true)
           }}
@@ -392,16 +450,6 @@ function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaym
           onApply={applyAdvanced}
           onReset={resetAdvanced}
         >
-          {events.length > 0 && selectedEventId == null && (
-            <FilterField label="Event" wide>
-              <select value={draftEventId} onChange={(e) => setDraftEventId(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="">All Events</option>
-                {events.map((e) => <option key={e.id} value={String(e.id)}>{e.name}</option>)}
-              </select>
-            </FilterField>
-          )}
-
           {collectors.length > 0 && (
             <FilterField label="Collector" wide>
               <select value={draftCollectorId} onChange={(e) => setDraftCollectorId(e.target.value)}
@@ -432,9 +480,8 @@ function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaym
       </div>
 
       {/* Active filter chips */}
-      {(eventId || collectorId || donorType || dateFrom || dateTo) && (
+      {(collectorId || donorType || dateFrom || dateTo) && (
         <div className="px-5 py-2 flex flex-wrap gap-2 border-b border-border bg-muted/10">
-          {eventId && <FilterChip label={`Event: ${eventName ?? eventId}`} onRemove={() => { setEventId(''); setDraftEventId(''); setPage(1) }} />}
           {collectorId && <FilterChip label={`Collector: ${collectorName ?? collectorId}`} onRemove={() => { setCollectorId(''); setDraftCollectorId(''); setPage(1) }} />}
           {donorType && <FilterChip label={`Type: ${donorType}`} onRemove={() => { setDonorType(''); setDraftDonorType(''); setPage(1) }} />}
           {dateFrom && <FilterChip label={`From: ${dateFrom}`} onRemove={() => { setDateFrom(''); setDraftDateFrom(''); setPage(1) }} />}
@@ -458,7 +505,9 @@ function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaym
               <thead>
                 <tr className="border-b border-border bg-muted/20">
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Donor</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Event</th>
+                  {selectedEventId === null && (
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Event</th>
+                  )}
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Collector</th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount</th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Mode</th>
@@ -478,7 +527,9 @@ function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaym
                       </button>
                       {p.donor.phone && <p className="text-xs text-muted-foreground">{p.donor.phone}</p>}
                     </td>
-                    <td className="px-5 py-3 text-xs text-muted-foreground">{p.event?.name ?? <span className="text-muted-foreground/40">—</span>}</td>
+                    {selectedEventId === null && (
+                      <td className="px-5 py-3 text-xs text-muted-foreground">{p.event?.name ?? <span className="text-muted-foreground/40">—</span>}</td>
+                    )}
                     <td className="px-5 py-3 text-muted-foreground">{p.collector.name}</td>
                     <td className="px-5 py-3 font-semibold">{fmt(p.amount)}</td>
                     <td className="px-5 py-3">

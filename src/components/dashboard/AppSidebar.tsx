@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import {
   LayoutDashboard, IndianRupee, ClipboardList, CreditCard,
   Users, Settings, User, LogOut, Menu, X, ChevronRight,
-  Handshake, UserSearch, Ticket, SlidersHorizontal,
+  Handshake, UserSearch, Ticket, SlidersHorizontal, Calendar,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { getDashboardNav } from '@/config/navigation'
@@ -30,6 +30,7 @@ const ICON_MAP = {
   UserSearch,
   Ticket,
   SlidersHorizontal,
+  Calendar,
 } as const
 
 type IconName = keyof typeof ICON_MAP

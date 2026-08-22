@@ -27,11 +27,13 @@ export const apiConfig = {
     collector: {
       summary: '/api/collector/summary',
       payments: '/api/collector/payments',
+      events: '/api/collector/events',
     },
     dashboard: {
       summary: '/api/dashboard/summary',
       collectors: '/api/dashboard/collectors',
       payments: '/api/dashboard/payments',
+      events: '/api/dashboard/events',
     },
     pledge: {
       list: '/api/pledge/',
@@ -45,12 +47,18 @@ export const apiConfig = {
       get: (id: number) => `/api/donor/${id}`,
     },
     events: {
-      list:   '/api/events/',
-      active: '/api/events/active',
-      create: '/api/events/',
-      get:    (id: number) => `/api/events/${id}`,
-      update: (id: number) => `/api/events/${id}`,
-      days:   (id: number) => `/api/events/${id}/days`,
+      list:    '/api/events/',
+      active:  '/api/events/active',
+      create:  '/api/events/',
+      get:     (id: number) => `/api/events/${id}`,
+      update:  (id: number) => `/api/events/${id}`,
+      days:    (id: number) => `/api/events/${id}/days`,
+      cover:   (id: number) => `/api/events/${id}/cover`,
+      gallery: (id: number) => `/api/events/${id}/gallery`,
+      summary: (id: number) => `/api/events/${id}/summary`,
+    },
+    media: {
+      delete: (id: number) => `/api/media/${id}`,
     },
     public: {
       siteConfig:    '/api/public/site-config',

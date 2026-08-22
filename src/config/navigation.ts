@@ -51,6 +51,10 @@ export function getDashboardNav(role: Role): DashboardNavItem[] {
     items.push({ label: 'Tokens', href: '/tokens', iconName: 'Ticket' })
   }
 
+  if (can(role, 'event.manage')) {
+    items.push({ label: 'Events', href: '/admin/events', iconName: 'Calendar' })
+  }
+
   if (can(role, 'users.manage')) {
     items.push({ label: 'Users', href: '/admin/users', iconName: 'Users' })
     items.push({ label: 'Token Config', href: '/admin/token-config', iconName: 'SlidersHorizontal' })

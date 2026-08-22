@@ -1,6 +1,6 @@
 import apiClient from './client'
 import { apiConfig } from '@/config/api'
-import type { ApiResponse, DashboardSummary, CollectorBreakdown, PaginatedPayments } from '@/types'
+import type { ApiResponse, DashboardSummary, CollectorBreakdown, PaginatedPayments, EventStats } from '@/types'
 
 export interface DashboardPaymentsQuery {
   page?: number
@@ -30,6 +30,11 @@ export async function getDashboardCollectors(eventId?: number): Promise<Collecto
     params: eventId ? { eventId } : undefined,
   })
   return res.data.data
+}
+
+export async function getDashboardEvents(): Promise<EventStats[]> {
+  const res = await apiClient.get<ApiResponse<EventStats[]>>(apiConfig.endpoints.dashboard.events)
+  return res.data.data ?? []
 }
 
 export async function getDashboardPayments(query: DashboardPaymentsQuery = {}): Promise<PaginatedPayments> {

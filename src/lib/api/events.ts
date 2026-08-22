@@ -1,6 +1,16 @@
 import apiClient from './client'
 import { apiConfig } from '@/config/api'
-import type { ApiResponse, Event, EventDay, EventSummary } from '@/types'
+import type { ApiResponse, Event, EventDay, EventSummary, PaginatedEvents, DashboardSummary } from '@/types'
+
+export interface EventListQuery {
+  search?: string
+  status?: 'draft' | 'published' | 'archived'
+  collectionEnabled?: boolean
+  isFeatured?: boolean
+  year?: number
+  page?: number
+  perPage?: number
+}
 
 export interface CreateEventInput {
   name: string
@@ -25,8 +35,15 @@ export interface SetEventDaysInput {
   sortOrder?: number
 }
 
-export async function listEvents(): Promise<Event[]> {
-  const res = await apiClient.get<ApiResponse<Event[]>>(apiConfig.endpoints.events.list)
+export async function listEvents(query: EventListQuery = {}): Promise<PaginatedEvents> {
+  const res = await apiClient.get<ApiResponse<PaginatedEvents>>(apiConfig.endpoints.events.list, {
+    params: query,
+  })
+  return res.data.data
+}
+
+export async function getEventSummary(id: number): Promise<DashboardSummary> {
+  const res = await apiClient.get<ApiResponse<DashboardSummary>>(apiConfig.endpoints.events.summary(id))
   return res.data.data
 }
 
@@ -53,4 +70,26 @@ export async function updateEvent(id: number, input: UpdateEventInput): Promise<
 export async function setEventDays(id: number, days: SetEventDaysInput[]): Promise<Event> {
   const res = await apiClient.post<ApiResponse<Event>>(apiConfig.endpoints.events.days(id), days)
   return res.data.data
+}
+
+export async function uploadEventCover(id: number, file: File, altText?: string): Promise<void> {
+  const form = new FormData()
+  form.append('file', file)
+  if (altText) form.append('altText', altText)
+  await apiClient.post(apiConfig.endpoints.events.cover(id), form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+export async function uploadEventGallery(id: number, file: File, altText?: string): Promise<void> {
+  const form = new FormData()
+  form.append('file', file)
+  if (altText) form.append('altText', altText)
+  await apiClient.post(apiConfig.endpoints.events.gallery(id), form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+export async function deleteEventMedia(mediaId: number): Promise<void> {
+  await apiClient.delete(apiConfig.endpoints.media.delete(mediaId))
 }

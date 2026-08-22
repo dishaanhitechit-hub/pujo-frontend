@@ -269,14 +269,12 @@ function DonorsContent() {
               >
                 Clear
               </Button>
-              <SheetClose asChild>
-                <Button
-                  className="flex-1 h-9 text-sm bg-brand-orange hover:bg-brand-orange/90 text-white"
-                  onClick={applyDraft}
-                >
-                  Apply
-                </Button>
-              </SheetClose>
+              <Button
+                className="flex-1 h-9 text-sm bg-brand-orange hover:bg-brand-orange/90 text-white"
+                onClick={applyDraft}
+              >
+                Apply
+              </Button>
             </div>
           </SheetContent>
         </Sheet>

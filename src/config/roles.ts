@@ -22,10 +22,11 @@ type Permission =
   | 'dashboard.view'
   | 'users.manage'
   | 'permissions.manage'
-  | 'admin.config'
   | 'token.generate'
   | 'token.bulk'
   | 'token.view'
+  | 'event.manage'
+  | 'content.manage'
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   admin: [
@@ -34,10 +35,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'dashboard.view',
     'users.manage',
     'permissions.manage',
-    'admin.config',
     'token.generate',
     'token.bulk',
     'token.view',
+    'event.manage',
+    'content.manage',
   ],
   executive: [
     'payment.initiate',
@@ -59,6 +61,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'payment.initiate',
     'payment.confirm',
     'payment.view_receipt',
+    'collector.view_own',
     'token.generate',
   ],
 }

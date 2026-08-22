@@ -17,8 +17,10 @@ export interface CollectorPaymentsQuery {
   maxAmount?: string
 }
 
-export async function getCollectorSummary(): Promise<CollectorSummary> {
-  const res = await apiClient.get<ApiResponse<CollectorSummary>>(apiConfig.endpoints.collector.summary)
+export async function getCollectorSummary(eventId?: number): Promise<CollectorSummary> {
+  const res = await apiClient.get<ApiResponse<CollectorSummary>>(apiConfig.endpoints.collector.summary, {
+    params: eventId ? { eventId } : undefined,
+  })
   return res.data.data
 }
 
@@ -27,4 +29,16 @@ export async function getCollectorPayments(query: CollectorPaymentsQuery = {}): 
     params: query,
   })
   return res.data.data
+}
+
+export interface ReportingEvent {
+  id: number
+  name: string
+  year: number | null
+  status: string
+}
+
+export async function getCollectorEvents(): Promise<ReportingEvent[]> {
+  const res = await apiClient.get<ApiResponse<ReportingEvent[]>>(apiConfig.endpoints.collector.events)
+  return res.data.data ?? []
 }

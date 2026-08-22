@@ -5,9 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import Link from 'next/link'
 import { listPledges } from '@/lib/api/pledges'
-import { listActiveEvents } from '@/lib/api/events'
+import { getDashboardEvents } from '@/lib/api/dashboard'
+import { getCollectorEvents } from '@/lib/api/collector'
 import { getUsers } from '@/lib/api/users'
-import type { PaginatedPledges, User, EventSummary, ApiError } from '@/types'
+import type { PaginatedPledges, User, ApiError } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { can } from '@/lib/auth/permissions'
@@ -66,7 +67,9 @@ function PledgesContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [collectors, setCollectors] = useState<User[]>([])
-  const [events, setEvents] = useState<EventSummary[]>([])
+  // Admin/executive: EventStats[] (includes per-event totals); general collector: ReportingEvent[]
+  // Both have a common shape needed: event id + name + year + status
+  const [events, setEvents] = useState<{ id: number; name: string; year: number | null; status: string }[]>([])
   const reqRef = useRef(0)
 
   const pushUrl = useCallback((overrides: Record<string, string> = {}) => {
@@ -87,8 +90,16 @@ function PledgesContent() {
   }, [debouncedSearch])
 
   useEffect(() => {
-    if (canViewAll) getUsers().then(setCollectors).catch(() => {})
-    listActiveEvents().then(setEvents).catch(() => {})
+    if (canViewAll) {
+      getUsers().then(setCollectors).catch(() => {})
+      // Admin/executive: use getDashboardEvents (requires dashboard.view) for all events + stats.
+      getDashboardEvents()
+        .then((data) => setEvents((data ?? []).map(s => s.event)))
+        .catch(() => {})
+    } else {
+      // General collector: use getCollectorEvents (requires collector.view_own) for minimal list.
+      getCollectorEvents().then((data) => setEvents(data ?? [])).catch(() => {})
+    }
   }, [canViewAll])
 
   useEffect(() => {
@@ -191,7 +202,11 @@ function PledgesContent() {
               <select value={draftEventId} onChange={(e) => setDraftEventId(e.target.value)}
                 className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
                 <option value="">All Events</option>
-                {events.map((e) => <option key={e.id} value={String(e.id)}>{e.name}</option>)}
+                {events.map((e) => (
+                  <option key={e.id} value={String(e.id)}>
+                    {e.name}{e.year ? ` (${e.year})` : ''}{e.status === 'archived' ? ' — archived' : ''}
+                  </option>
+                ))}
               </select>
             </FilterField>
           )}

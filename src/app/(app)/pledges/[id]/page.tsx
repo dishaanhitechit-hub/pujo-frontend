@@ -103,7 +103,7 @@ function PledgeDetailContent({ params }: { params: Promise<{ id: string }> }) {
 
   const { pledge, payments } = detail
   const canManage = user?.role === 'admin'
-  const canPay = pledge.status === 'open' && user?.role !== 'admin'
+  const canPay = pledge.status === 'open' && pledge.collector.id === user?.id
 
   return (
     <div className="p-6 lg:p-8 max-w-3xl flex flex-col gap-6">
