@@ -134,7 +134,7 @@ function MyCollectionsContent() {
                     <td className="px-4 py-3">
                       {p.receiptNo ? (
                         <a
-                          href={`${apiConfig.baseUrl}${apiConfig.backendPages.receipt(p.receiptNo)}`}
+                          href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id)}?from=my-collections`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-brand-orange hover:underline font-medium"
