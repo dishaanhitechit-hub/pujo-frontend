@@ -9,8 +9,9 @@ import { PageHeader } from '@/components/dashboard/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import { DONOR_TYPES } from '@/constants'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 function fmt(v: string | number) {
   return `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
@@ -27,18 +28,26 @@ export default function DonorsPage() {
 function DonorsContent() {
   const [data, setData] = useState<PaginatedDonors | null>(null)
   const [page, setPage] = useState(1)
+  // search = raw input; debouncedSearch gates the API
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 350)
   const [donorType, setDonorType] = useState('')
-  const [searchInput, setSearchInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const reqRef = useRef(0)
+
+  // Reset to page 1 when search changes (skip initial mount)
+  const searchSyncedRef = useRef(false)
+  useEffect(() => {
+    if (!searchSyncedRef.current) { searchSyncedRef.current = true; return }
+    setPage(1)
+  }, [debouncedSearch])
 
   useEffect(() => {
     const req = ++reqRef.current
     setLoading(true)
     setError(null)
-    listDonors({ page, search: search || undefined, donorType: donorType || undefined, perPage: 20 })
+    listDonors({ page, search: debouncedSearch || undefined, donorType: donorType || undefined, perPage: 20 })
       .then((result) => {
         if (req !== reqRef.current) return
         setData(result)
@@ -51,36 +60,30 @@ function DonorsContent() {
         if (req !== reqRef.current) return
         setLoading(false)
       })
-  }, [page, search, donorType])
-
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
-    setSearch(searchInput)
-    setPage(1)
-  }
+  }, [page, debouncedSearch, donorType])
 
   return (
     <div className="p-6 lg:p-8">
       <PageHeader title="Donors" subtitle="All donor records with completed payment statistics." className="mb-8" />
 
       <div className="flex flex-wrap gap-3 mb-5 items-center">
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-            <Input
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search name or phone…"
-              className="pl-8 h-8 w-52 text-sm"
-            />
-          </div>
-          <Button type="submit" size="sm" variant="outline">Search</Button>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name or phone…"
+            className="pl-8 h-8 w-52 text-sm"
+          />
           {search && (
-            <Button type="button" size="sm" variant="ghost" onClick={() => { setSearch(''); setSearchInput(''); setPage(1) }}>
-              Clear
-            </Button>
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-3.5" />
+            </button>
           )}
-        </form>
+        </div>
         <select
           value={donorType}
           onChange={(e) => { setDonorType(e.target.value); setPage(1) }}

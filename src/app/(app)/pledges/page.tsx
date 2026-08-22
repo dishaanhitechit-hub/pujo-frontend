@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import Link from 'next/link'
 import { listPledges } from '@/lib/api/pledges'
 import { getUsers } from '@/lib/api/users'
@@ -39,7 +40,9 @@ function PledgesContent() {
 
   const canViewAll = user ? can(user.role, 'dashboard.view') : false
 
+  // search = raw input; debouncedSearch gates the API
   const [search, setSearch] = useState(params.get('search') ?? '')
+  const debouncedSearch = useDebouncedValue(search, 350)
   const [status, setStatus] = useState<'open' | 'complete' | 'cancelled' | ''>(
     (params.get('status') as 'open' | 'complete' | 'cancelled' | '') ?? ''
   )
@@ -62,16 +65,24 @@ function PledgesContent() {
   const [error, setError] = useState<string | null>(null)
   const [collectors, setCollectors] = useState<User[]>([])
   const reqRef = useRef(0)
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const pushUrl = useCallback((overrides: Record<string, string> = {}) => {
     const p = new URLSearchParams()
     const vals: Record<string, string> = {
-      search, status, collectorId, dateFrom, dateTo, minAmount, maxAmount, page: String(page), ...overrides,
+      search: debouncedSearch, status, collectorId, dateFrom, dateTo, minAmount, maxAmount, page: String(page), ...overrides,
     }
     Object.entries(vals).forEach(([k, v]) => { if (v) p.set(k, v) })
     router.replace(`?${p.toString()}`, { scroll: false })
-  }, [search, status, collectorId, dateFrom, dateTo, minAmount, maxAmount, page, router])
+  }, [debouncedSearch, status, collectorId, dateFrom, dateTo, minAmount, maxAmount, page, router])
+
+  // When debounced search settles: reset page and sync URL (skip initial mount)
+  const searchSyncedRef = useRef(false)
+  useEffect(() => {
+    if (!searchSyncedRef.current) { searchSyncedRef.current = true; return }
+    setPage(1)
+    pushUrl({ search: debouncedSearch, page: '1' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch])
 
   useEffect(() => {
     if (canViewAll) getUsers().then(setCollectors).catch(() => {})
@@ -85,7 +96,7 @@ function PledgesContent() {
       page, perPage: 20,
       status: status || undefined,
       collectorId: collectorId ? Number(collectorId) : undefined,
-      search: search || undefined,
+      search: debouncedSearch || undefined,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
       minAmount: minAmount || undefined,
@@ -94,12 +105,10 @@ function PledgesContent() {
       .then((result) => { if (req === reqRef.current) setData(result) })
       .catch((err: ApiError) => { if (req === reqRef.current) setError(err.message ?? 'Failed to load pledges.') })
       .finally(() => { if (req === reqRef.current) setLoading(false) })
-  }, [page, status, collectorId, search, dateFrom, dateTo, minAmount, maxAmount])
+  }, [page, status, collectorId, debouncedSearch, dateFrom, dateTo, minAmount, maxAmount])
 
   function handleSearchChange(val: string) {
     setSearch(val)
-    clearTimeout(searchTimer.current)
-    searchTimer.current = setTimeout(() => { setPage(1); pushUrl({ search: val, page: '1' }) }, 350)
   }
 
   function setStatusFilter(s: typeof status) { setStatus(s); setPage(1); pushUrl({ status: s, page: '1' }) }

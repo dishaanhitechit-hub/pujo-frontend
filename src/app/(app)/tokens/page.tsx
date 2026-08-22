@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label'
 import { ChevronLeft, ChevronRight, Loader2, ExternalLink, Printer, Search, X } from 'lucide-react'
 import { apiConfig } from '@/config/api'
 import { useAuth } from '@/lib/auth/auth-provider'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 const singleSchema = z.object({
   type: z.enum(['single', 'dual']),
@@ -26,7 +27,6 @@ const singleSchema = z.object({
 })
 
 type SingleForm = z.infer<typeof singleSchema>
-type BulkForm = { count: number }
 
 export default function TokensPage() {
   return (
@@ -42,13 +42,16 @@ function TokensContent() {
 
   const [data, setData] = useState<PaginatedTokens | null>(null)
   const [page, setPage] = useState(1)
+  // search = raw input; debouncedSearch gates the API
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 350)
   const [tokenStatus, setTokenStatus] = useState<'active' | 'void' | ''>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [generatingBulk, setGeneratingBulk] = useState(false)
+  // Increment to force a refresh without changing other filter state (e.g. after token generation)
+  const [refreshKey, setRefreshKey] = useState(0)
   const reqRef = useRef(0)
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const { register: regSingle, handleSubmit: handleSingle, reset: resetSingle, formState: { errors: errSingle, isSubmitting: isSingle } } = useForm<SingleForm>({
     resolver: zodResolver(singleSchema),
@@ -57,26 +60,31 @@ function TokensContent() {
 
   const [bulkCount, setBulkCount] = useState(10)
 
-  function loadTokens(targetPage: number, q?: string, s?: string) {
+  // Reset to page 1 when search changes (skip initial mount)
+  const searchSyncedRef = useRef(false)
+  useEffect(() => {
+    if (!searchSyncedRef.current) { searchSyncedRef.current = true; return }
+    setPage(1)
+  }, [debouncedSearch])
+
+  // Single data fetch effect — debouncedSearch, not raw search, drives the API
+  useEffect(() => {
     const req = ++reqRef.current
     setLoading(true)
     setError(null)
-    listTokens({ page: targetPage, search: (q ?? search) || undefined, status: (s ?? tokenStatus) || undefined })
+    listTokens({ page, search: debouncedSearch || undefined, status: tokenStatus || undefined })
       .then((result) => { if (req === reqRef.current) setData(result) })
       .catch((err: ApiError) => { if (req === reqRef.current) setError(err.message ?? 'Failed to load tokens.') })
       .finally(() => { if (req === reqRef.current) setLoading(false) })
-  }
-
-  useEffect(() => { loadTokens(page) }, [page, search, tokenStatus])
+  }, [page, debouncedSearch, tokenStatus, refreshKey])
 
   function handleSearchChange(val: string) {
     setSearch(val)
-    clearTimeout(searchTimer.current)
-    searchTimer.current = setTimeout(() => { setPage(1); loadTokens(1, val, tokenStatus) }, 350)
   }
 
   function setStatusFilter(s: typeof tokenStatus) {
-    setTokenStatus(s); setPage(1); loadTokens(1, search, s)
+    setTokenStatus(s)
+    setPage(1)
   }
 
   async function onSingleSubmit(formData: SingleForm) {
@@ -85,7 +93,7 @@ function TokensContent() {
       toast.success(`Token ${token.tokenNo} generated.`)
       resetSingle()
       window.open(`${apiConfig.baseUrl}${token.printUrl}`, '_blank')
-      loadTokens(page)
+      setRefreshKey(k => k + 1)
     } catch (err) {
       const apiErr = err as ApiError
       toast.error(apiErr?.message ?? 'Failed to generate token.')
@@ -100,7 +108,7 @@ function TokensContent() {
       const result = await bulkGenerateTokens({ count: bulkCount })
       toast.success(`${result.count} bulk tokens generated.`)
       window.open(`${apiConfig.baseUrl}${result.printUrl}`, '_blank')
-      loadTokens(page)
+      setRefreshKey(k => k + 1)
     } catch (err) {
       const apiErr = err as ApiError
       toast.error(apiErr?.message ?? 'Failed to generate bulk tokens.')

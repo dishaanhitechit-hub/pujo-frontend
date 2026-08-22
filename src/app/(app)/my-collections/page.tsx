@@ -20,6 +20,7 @@ import {
 import { apiConfig } from '@/config/api'
 import { DONOR_TYPES } from '@/constants'
 import { RoleGuard } from '@/lib/auth/role-guard'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 function formatCurrency(val: string | number) {
   return `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
@@ -39,7 +40,10 @@ function MyCollectionsContent() {
   const router = useRouter()
   const params = useSearchParams()
 
+  // search = raw input; debouncedSearch gates the API
   const [search, setSearch] = useState(params.get('search') ?? '')
+  const debouncedSearch = useDebouncedValue(search, 350)
+
   const [method, setMethod] = useState<'upi' | 'cash' | 'cheque' | ''>(
     (params.get('method') as 'upi' | 'cash' | 'cheque' | '') ?? ''
   )
@@ -67,16 +71,24 @@ function MyCollectionsContent() {
   const [error, setError] = useState<string | null>(null)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
   const reqRef = useRef(0)
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const pushUrl = useCallback((overrides: Record<string, string> = {}) => {
     const p = new URLSearchParams()
     const vals: Record<string, string> = {
-      search, method, status, donorType, dateFrom, dateTo, minAmount, maxAmount, page: String(page), ...overrides,
+      search: debouncedSearch, method, status, donorType, dateFrom, dateTo, minAmount, maxAmount, page: String(page), ...overrides,
     }
     Object.entries(vals).forEach(([k, v]) => { if (v) p.set(k, v) })
     router.replace(`?${p.toString()}`, { scroll: false })
-  }, [search, method, status, donorType, dateFrom, dateTo, minAmount, maxAmount, page, router])
+  }, [debouncedSearch, method, status, donorType, dateFrom, dateTo, minAmount, maxAmount, page, router])
+
+  // When debounced search settles: reset page and sync URL (skip initial mount)
+  const searchSyncedRef = useRef(false)
+  useEffect(() => {
+    if (!searchSyncedRef.current) { searchSyncedRef.current = true; return }
+    setPage(1)
+    pushUrl({ search: debouncedSearch, page: '1' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch])
 
   useEffect(() => {
     const req = ++reqRef.current
@@ -93,18 +105,16 @@ function MyCollectionsContent() {
         dateTo: dateTo || undefined,
         minAmount: minAmount || undefined,
         maxAmount: maxAmount || undefined,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
       }),
     ])
       .then(([s, p]) => { if (req === reqRef.current) { setSummary(s); setPayments(p) } })
       .catch((err: ApiError) => { if (req === reqRef.current) setError(err.message ?? 'Failed to load data.') })
       .finally(() => { if (req === reqRef.current) setLoading(false) })
-  }, [page, method, status, donorType, dateFrom, dateTo, minAmount, maxAmount, search])
+  }, [page, method, status, donorType, dateFrom, dateTo, minAmount, maxAmount, debouncedSearch])
 
   function handleSearchChange(val: string) {
     setSearch(val)
-    clearTimeout(searchTimer.current)
-    searchTimer.current = setTimeout(() => { setPage(1); pushUrl({ search: val, page: '1' }) }, 350)
   }
 
   function setMethodFilter(m: typeof method) { setMethod(m); setPage(1); pushUrl({ method: m, page: '1' }) }
@@ -158,7 +168,7 @@ function MyCollectionsContent() {
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs text-muted-foreground">Method:</span>
+          <span className="text-xs text-muted-foreground">Mode:</span>
           {(['', 'upi', 'cash', 'cheque'] as const).map((m) => (
             <button key={m} onClick={() => setMethodFilter(m)}
               className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${method === m ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}>

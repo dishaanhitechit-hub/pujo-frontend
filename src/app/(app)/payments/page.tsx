@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import { apiConfig } from '@/config/api'
 import { DONOR_TYPES } from '@/constants'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 function fmt(v: string | number) {
   return `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
@@ -36,8 +37,10 @@ function PaymentsContent() {
   const router = useRouter()
   const params = useSearchParams()
 
-  // Primary filter state — initialised from URL
+  // search = raw input value (immediate); debouncedSearch gates the API call
   const [search, setSearch] = useState(params.get('search') ?? '')
+  const debouncedSearch = useDebouncedValue(search, 350)
+
   const [method, setMethod] = useState<'upi' | 'cash' | 'cheque' | ''>(
     (params.get('method') as 'upi' | 'cash' | 'cheque' | '') ?? ''
   )
@@ -46,7 +49,6 @@ function PaymentsContent() {
   )
   const [page, setPage] = useState(Number(params.get('page') ?? 1))
 
-  // Advanced filter state (Sheet)
   const [donorType, setDonorType] = useState(params.get('donorType') ?? '')
   const [collectorId, setCollectorId] = useState(params.get('collectorId') ?? '')
   const [dateFrom, setDateFrom] = useState(params.get('dateFrom') ?? '')
@@ -54,7 +56,6 @@ function PaymentsContent() {
   const [minAmount, setMinAmount] = useState(params.get('minAmount') ?? '')
   const [maxAmount, setMaxAmount] = useState(params.get('maxAmount') ?? '')
 
-  // Draft state inside Sheet (committed on Apply)
   const [draftDonorType, setDraftDonorType] = useState(donorType)
   const [draftCollectorId, setDraftCollectorId] = useState(collectorId)
   const [draftDateFrom, setDraftDateFrom] = useState(dateFrom)
@@ -70,25 +71,34 @@ function PaymentsContent() {
   const [collectors, setCollectors] = useState<User[]>([])
 
   const reqRef = useRef(0)
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  // Sync filters → URL
+  // pushUrl reads debouncedSearch so the URL always reflects what the API actually queried
   const pushUrl = useCallback((overrides: Record<string, string> = {}) => {
     const p = new URLSearchParams()
     const vals: Record<string, string> = {
-      search, method, status, donorType, collectorId, dateFrom, dateTo,
+      search: debouncedSearch, method, status, donorType, collectorId, dateFrom, dateTo,
       minAmount, maxAmount, page: String(page), ...overrides,
     }
     Object.entries(vals).forEach(([k, v]) => { if (v && v !== '1' || k === 'page') p.set(k, v) })
     router.replace(`?${p.toString()}`, { scroll: false })
-  }, [search, method, status, donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount, page, router])
+  }, [debouncedSearch, method, status, donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount, page, router])
 
-  // Load collectors for dropdown
   useEffect(() => {
     getUsers().then(setCollectors).catch(() => {})
   }, [])
 
-  // Fetch payments when any filter changes
+  // When the debounced search value settles, reset to page 1 and sync the URL.
+  // Skips the initial mount so we don't override URL params on first render.
+  const searchSyncedRef = useRef(false)
+  useEffect(() => {
+    if (!searchSyncedRef.current) { searchSyncedRef.current = true; return }
+    setPage(1)
+    pushUrl({ search: debouncedSearch, page: '1' })
+    // pushUrl is stable within this render cycle; eslint dep omitted intentionally
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch])
+
+  // Fetch payments. debouncedSearch (not raw search) drives the API call.
   useEffect(() => {
     const req = ++reqRef.current
     setLoading(true)
@@ -103,17 +113,16 @@ function PaymentsContent() {
       dateTo: dateTo || undefined,
       minAmount: minAmount || undefined,
       maxAmount: maxAmount || undefined,
-      search: search || undefined,
+      search: debouncedSearch || undefined,
     })
       .then((result) => { if (req === reqRef.current) setData(result) })
       .catch((err: ApiError) => { if (req === reqRef.current) setError(err.message ?? 'Failed to load payments.') })
       .finally(() => { if (req === reqRef.current) setLoading(false) })
-  }, [page, method, status, donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount, search])
+  }, [page, method, status, donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount, debouncedSearch])
 
   function handleSearchChange(val: string) {
     setSearch(val)
-    clearTimeout(searchTimer.current)
-    searchTimer.current = setTimeout(() => { setPage(1); pushUrl({ search: val, page: '1' }) }, 350)
+    // No debounce timer here — useDebouncedValue handles it
   }
 
   function setMethodFilter(m: typeof method) {
@@ -144,7 +153,6 @@ function PaymentsContent() {
     setDraftDonorType(''); setDraftCollectorId('')
     setDraftDateFrom(''); setDraftDateTo('')
     setDraftMinAmount(''); setDraftMaxAmount('')
-    // Also clear committed values immediately
     setDonorType(''); setCollectorId('')
     setDateFrom(''); setDateTo('')
     setMinAmount(''); setMaxAmount('')
@@ -177,7 +185,7 @@ function PaymentsContent() {
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs text-muted-foreground">Method:</span>
+          <span className="text-xs text-muted-foreground">Mode:</span>
           {(['', 'upi', 'cash', 'cheque'] as const).map((m) => (
             <button key={m} onClick={() => setMethodFilter(m)}
               className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${method === m ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}>
