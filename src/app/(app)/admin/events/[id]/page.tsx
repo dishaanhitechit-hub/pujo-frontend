@@ -65,6 +65,7 @@ type InfoFormData = z.infer<typeof infoSchema>
 
 const daySchema = z.object({
   days: z.array(z.object({
+    backendId:   z.number().optional(), // tracks whether the item exists in the backend
     key:         z.string().min(1, 'Key is required').max(50),
     label:       z.string().min(1, 'Label is required').max(100),
     date:        z.string().optional(),
@@ -731,11 +732,13 @@ interface ScheduleTabProps {
 
 function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
   const [saving, setSaving] = useState(false)
+  const [pendingRemove, setPendingRemove] = useState<{ idx: number; label: string } | null>(null)
 
   const { register, handleSubmit, control, formState: { errors } } = useForm<DayFormData>({
     resolver: zodResolver(daySchema),
     defaultValues: {
       days: (ev.days ?? []).map((d) => ({
+        backendId:   d.id,
         key:         d.key,
         label:       d.label,
         date:        d.date ?? '',
@@ -747,6 +750,17 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'days' })
+
+  function handleRemoveClick(idx: number) {
+    const field = fields[idx]
+    if (field.backendId) {
+      // persisted — require confirmation
+      setPendingRemove({ idx, label: field.label || 'this schedule item' })
+    } else {
+      // new (unsaved) — remove immediately
+      remove(idx)
+    }
+  }
 
   async function onSubmit(data: DayFormData) {
     setSaving(true)
@@ -768,88 +782,105 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
-      <div className="bg-muted/40 rounded-lg p-4 flex flex-col gap-1">
-        <p className="text-xs font-semibold text-foreground">Event Schedule</p>
-        <p className="text-xs text-muted-foreground">Add the important days, sessions, activities, or programme items for this event. Each entry has a key (internal identifier), title, optional date, and activities (comma-separated). This replaces the entire schedule on save.</p>
-      </div>
-
-      {fields.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-muted-foreground text-sm">
-          No days added yet. Add days below.
+    <>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
+        <div className="bg-muted/40 rounded-lg p-4 flex flex-col gap-1">
+          <p className="text-xs font-semibold text-foreground">Event Schedule</p>
+          <p className="text-xs text-muted-foreground">Add the important days, sessions, activities, or programme items for this event. Each entry has a key (internal identifier), title, optional date, and activities (comma-separated). This replaces the entire schedule on save.</p>
         </div>
-      )}
 
-      <div className="flex flex-col gap-4">
-        {fields.map((field, idx) => {
-          const dayErrors = errors.days?.[idx]
-          return (
-            <div key={field.id} className="rounded-xl border border-border bg-card p-4 flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <GripVertical className="size-4 shrink-0" />
-                  <span className="text-xs font-semibold uppercase tracking-wide">Day {idx + 1}</span>
+        {fields.length === 0 && (
+          <div className="rounded-xl border border-dashed border-border p-8 text-center text-muted-foreground text-sm">
+            No days added yet. Add days below.
+          </div>
+        )}
+
+        <div className="flex flex-col gap-4">
+          {fields.map((field, idx) => {
+            const dayErrors = errors.days?.[idx]
+            return (
+              <div key={field.id} className="rounded-xl border border-border bg-card p-4 flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <GripVertical className="size-4 shrink-0" />
+                    <span className="text-xs font-semibold uppercase tracking-wide">Day {idx + 1}</span>
+                  </div>
+                  <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-destructive" onClick={() => handleRemoveClick(idx)}>
+                    <Trash2 className="size-4" />
+                  </Button>
                 </div>
-                <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-destructive" onClick={() => remove(idx)}>
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs">Key <span className="text-destructive">*</span></Label>
+                    <Input placeholder="e.g. opening-ceremony" aria-invalid={!!dayErrors?.key} {...register(`days.${idx}.key`)} />
+                    {dayErrors?.key && <p className="text-xs text-destructive">{dayErrors.key.message}</p>}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs">Label <span className="text-destructive">*</span></Label>
+                    <Input placeholder="e.g. Mahashtami, Opening Ceremony, Cultural Night" aria-invalid={!!dayErrors?.label} {...register(`days.${idx}.label`)} />
+                    {dayErrors?.label && <p className="text-xs text-destructive">{dayErrors.label.message}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs">Date</Label>
+                    <Input type="date" {...register(`days.${idx}.date`)} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs">Sort Order</Label>
+                    <Input type="number" min="0" {...register(`days.${idx}.sortOrder`)} />
+                  </div>
+                </div>
+
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs">Key <span className="text-destructive">*</span></Label>
-                  <Input placeholder="e.g. opening-ceremony" aria-invalid={!!dayErrors?.key} {...register(`days.${idx}.key`)} />
-                  {dayErrors?.key && <p className="text-xs text-destructive">{dayErrors.key.message}</p>}
+                  <Label className="text-xs">Description</Label>
+                  <Input placeholder="Optional short description" {...register(`days.${idx}.description`)} />
                 </div>
+
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs">Label <span className="text-destructive">*</span></Label>
-                  <Input placeholder="e.g. Mahashtami, Opening Ceremony, Cultural Night" aria-invalid={!!dayErrors?.label} {...register(`days.${idx}.label`)} />
-                  {dayErrors?.label && <p className="text-xs text-destructive">{dayErrors.label.message}</p>}
+                  <Label className="text-xs">Activities (comma-separated)</Label>
+                  <Input placeholder="e.g. Pushpanjali, Sandhi Puja, Dance Performance, Music Programme" {...register(`days.${idx}.rituals`)} />
                 </div>
               </div>
+            )
+          })}
+        </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs">Date</Label>
-                  <Input type="date" {...register(`days.${idx}.date`)} />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs">Sort Order</Label>
-                  <Input type="number" min="0" {...register(`days.${idx}.sortOrder`)} />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs">Description</Label>
-                <Input placeholder="Optional short description" {...register(`days.${idx}.description`)} />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs">Activities (comma-separated)</Label>
-                <Input placeholder="e.g. Pushpanjali, Sandhi Puja, Dance Performance, Music Programme" {...register(`days.${idx}.rituals`)} />
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      <Button type="button" variant="outline" className="self-start"
-        onClick={() => append({ key: '', label: '', date: '', description: '', rituals: '', sortOrder: String(fields.length) })}>
-        <Plus className="size-4 mr-2" />Add Day
-      </Button>
-
-      <div className="flex items-center gap-3">
-        <Button type="submit" disabled={saving}
-          className="bg-brand-orange hover:bg-brand-orange/90 text-white h-10 font-semibold px-8">
-          {saving && <Loader2 className="size-4 animate-spin mr-2" />}
-          <Save className="size-4 mr-2" />
-          {saving ? 'Saving…' : 'Save Schedule'}
+        <Button type="button" variant="outline" className="self-start"
+          onClick={() => append({ backendId: undefined, key: '', label: '', date: '', description: '', rituals: '', sortOrder: String(fields.length) })}>
+          <Plus className="size-4 mr-2" />Add Day
         </Button>
-        <Button type="button" variant="outline" className="h-10" onClick={onCancel} disabled={saving}>
-          Cancel
-        </Button>
-      </div>
-    </form>
+
+        <div className="flex items-center gap-3">
+          <Button type="submit" disabled={saving}
+            className="bg-brand-orange hover:bg-brand-orange/90 text-white h-10 font-semibold px-8">
+            {saving && <Loader2 className="size-4 animate-spin mr-2" />}
+            <Save className="size-4 mr-2" />
+            {saving ? 'Saving…' : 'Save Schedule'}
+          </Button>
+          <Button type="button" variant="outline" className="h-10" onClick={onCancel} disabled={saving}>
+            Cancel
+          </Button>
+        </div>
+      </form>
+
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        onOpenChange={(o) => { if (!o) setPendingRemove(null) }}
+        title="Delete schedule item?"
+        description={pendingRemove ? `${pendingRemove.label} will be removed from this event's schedule.` : ''}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => {
+          if (pendingRemove !== null) {
+            remove(pendingRemove.idx)
+            setPendingRemove(null)
+          }
+        }}
+      />
+    </>
   )
 }
 
