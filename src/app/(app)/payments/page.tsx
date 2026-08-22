@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Filter } from 'lucide-react'
 import { apiConfig } from '@/config/api'
+import { DONOR_TYPES } from '@/constants'
 
 function fmt(v: string | number) {
   return `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
@@ -28,17 +29,24 @@ function PaymentsContent() {
   const [page, setPage] = useState(1)
   const [method, setMethod] = useState<'upi' | 'cash' | ''>('')
   const [status, setStatus] = useState<'pending' | 'confirmed' | 'expired' | ''>('')
+  const [donorType, setDonorType] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true) // intentional: reset loading state before each fetch
-    getDashboardPayments({ page, method: method || undefined, status: status || undefined, perPage: 20 })
+    getDashboardPayments({
+      page,
+      method: method || undefined,
+      status: status || undefined,
+      donorType: donorType || undefined,
+      perPage: 20,
+    })
       .then(setData)
       .catch((err: ApiError) => setError(err.message ?? 'Failed to load payments.'))
       .finally(() => setLoading(false))
-  }, [page, method, status])
+  }, [page, method, status, donorType])
 
   return (
     <div className="p-6 lg:p-8">
@@ -59,6 +67,15 @@ function PaymentsContent() {
             {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
+        <span className="text-xs font-medium text-muted-foreground ml-3">Type:</span>
+        <select
+          value={donorType}
+          onChange={(e) => { setDonorType(e.target.value); setPage(1) }}
+          className="h-7 rounded-full border border-border bg-muted px-3 text-xs font-semibold text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">All Types</option>
+          {DONOR_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
       </div>
 
       {error ? (
@@ -77,7 +94,7 @@ function PaymentsContent() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/20">
-                  {['Donor', 'Collector', 'Amount', 'Method', 'Status', 'Date', 'Receipt'].map((h) => (
+                  {['Donor', 'Type', 'Collector', 'Amount', 'Method', 'Status', 'Date', 'Receipt'].map((h) => (
                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -86,6 +103,7 @@ function PaymentsContent() {
                 {data.payments.map((p) => (
                   <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                     <td className="px-5 py-3 font-medium">{p.donor.name}</td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground">{p.donor.donorType ?? <span className="text-muted-foreground/40">Not specified</span>}</td>
                     <td className="px-5 py-3 text-muted-foreground">{p.collector.name}</td>
                     <td className="px-5 py-3 font-semibold">{fmt(p.amount)}</td>
                     <td className="px-5 py-3"><span className="text-xs font-bold uppercase">{p.method}</span></td>
@@ -95,7 +113,7 @@ function PaymentsContent() {
                     </td>
                     <td className="px-5 py-3">
                       {p.receiptNo ? (
-                        <a href={`${apiConfig.baseUrl}${apiConfig.backendPages.receipt(p.receiptNo)}`} target="_blank" rel="noopener noreferrer"
+                        <a href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id)}?from=dashboard`} target="_blank" rel="noopener noreferrer"
                           className="text-xs text-brand-orange hover:underline font-medium">{p.receiptNo}</a>
                       ) : <span className="text-muted-foreground/50">—</span>}
                     </td>

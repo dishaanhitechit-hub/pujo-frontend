@@ -7,6 +7,7 @@ export interface CollectorPaymentsQuery {
   perPage?: number
   method?: 'cash' | 'upi'
   date?: string
+  donorType?: string
 }
 
 export async function getCollectorSummary(): Promise<CollectorSummary> {

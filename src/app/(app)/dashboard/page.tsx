@@ -179,6 +179,7 @@ function DashboardContent() {
                       <td className="px-5 py-3">
                         <p className="font-medium">{p.donor.name}</p>
                         {p.donor.phone && <p className="text-xs text-muted-foreground">{p.donor.phone}</p>}
+                        <p className="text-xs text-muted-foreground/60">{p.donor.donorType ?? 'Not specified'}</p>
                       </td>
                       <td className="px-5 py-3 text-muted-foreground">{p.collector.name}</td>
                       <td className="px-5 py-3 font-semibold">{fmt(p.amount)}</td>

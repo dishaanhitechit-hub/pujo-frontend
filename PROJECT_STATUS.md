@@ -334,6 +334,52 @@ Comprehensive audit and fix of authentication, routing, permissions, loading sta
 
 ---
 
+---
+
+## Phase 17 — donorType: End-to-End Donor Type Feature (2026-08-22)
+
+### Summary
+`donorType` is a persistent, filterable payment attribute that flows through the entire application wherever donor/payment data is relevant.
+
+### Backend changes
+- **`app/models/donor.py`** — added `donor_type = db.Column(db.String(100))` (nullable, plain string, no enum); exposed as `donorType` in `to_dict()`, which cascades to every API that includes donor data.
+- **`app/modules/payment/service.py`** — added `donor_type` field to `InitiatePaymentSchema` (`data_key="donorType"`, optional, accepts any string); passed through to `Donor()` constructor.
+- **`app/modules/collector/service.py`** — `get_payments()` accepts `donor_type` param; applies `JOIN donors … WHERE donors.donor_type = ?` filter before pagination.
+- **`app/modules/collector/routes.py`** — reads `?donorType` query param and passes to service.
+- **`app/modules/dashboard/service.py`** — `get_all_payments()` accepts `donor_type` param; same JOIN filter.
+- **`app/modules/dashboard/routes.py`** — reads `?donorType` query param and passes to service.
+- **`migrations/versions/3f8a2b1c9d0e_add_donor_type_to_donors.py`** — adds `donor_type VARCHAR(100) NULL` to `donors` table. Run `flask db upgrade` on the server.
+
+### API contract
+
+**`POST /api/payment/initiate`** — accepts optional `donorType` in request body (plain string, any value).
+
+**`GET /api/collector/payments`** — new optional filter: `?donorType=<string>`. Applied at DB level before pagination. All existing filters (`method`, `date`) still work.
+
+**`GET /api/dashboard/payments`** — new optional filter: `?donorType=<string>`. Applied at DB level before pagination. All existing filters (`method`, `status`, `collectorId`, `date`) still work.
+
+**All payment/donor API responses** — `donorType` included in every `donor` object (null for legacy records without a value).
+
+### Frontend changes
+- **`src/constants/index.ts`** — `DONOR_TYPES` array (9 values, canonical order) — single source of truth shared across collect form and filter dropdowns.
+- **`src/app/(app)/collect/page.tsx`** — Donor Type select (Radix UI, `Controller`, default `House-to-House`) immediately before Notes; imports from constants.
+- **`src/lib/api/dashboard.ts`** — `DashboardPaymentsQuery.donorType?: string`
+- **`src/lib/api/collector.ts`** — `CollectorPaymentsQuery.donorType?: string`
+- **`src/types/index.ts`** — `Donor.donorType: string | null`; `PaymentInitiateInput.donorType: string`
+- **`src/app/(app)/payments/page.tsx`** — Type column added after Donor; `donorType` filter dropdown in filter bar; receipt links use `?from=dashboard`.
+- **`src/app/(app)/my-collections/page.tsx`** — donorType shown as sub-line under donor name; `donorType` filter dropdown added.
+- **`src/app/(app)/dashboard/page.tsx`** — donorType shown as sub-line under donor name in recent payments widget.
+
+### Backward compatibility
+- Legacy records with no `donorType` display "Not specified" in all table views.
+- Backend schema field is `load_default=None` — existing API clients without the field continue to work.
+
+### Verified
+- `tsc --noEmit` — 0 errors
+- `npm run build` — 19 routes, 0 errors
+
+---
+
 ## Next Steps
 
 1. **Client deliverables** — collect and drop into `public/assets/`:

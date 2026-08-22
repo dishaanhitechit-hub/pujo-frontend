@@ -1,25 +1,28 @@
 'use client'
 
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, IndianRupee, User, Phone, MapPin, FileText } from 'lucide-react'
+import { Loader2, IndianRupee, User, Phone, MapPin, FileText, Tag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { apiConfig } from '@/config/api'
 import { initiatePayment } from '@/lib/api/payments'
+import { DONOR_TYPES } from '@/constants'
 import type { ApiError } from '@/types'
 
 const schema = z.object({
   donorName: z.string().min(1, 'Donor name is required'),
   donorPhone: z.string().optional(),
   donorAddress: z.string().optional(),
+  donorType: z.string().min(1, 'Donor type is required'),
   donorNotes: z.string().optional(),
   amount: z
     .string()
@@ -46,9 +49,13 @@ function CollectContent() {
     handleSubmit,
     watch,
     setValue,
+    control,
     formState: { errors },
     reset,
-  } = useForm<FormData>({ resolver: zodResolver(schema) })
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { donorType: 'House-to-House' },
+  })
 
   const selectedMethod = watch('method')
 
@@ -108,6 +115,29 @@ function CollectContent() {
               </Label>
               <Input id="donorAddress" placeholder="Optional" {...register('donorAddress')} />
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="donorType" className="flex items-center gap-1.5">
+              <Tag className="size-3.5 text-muted-foreground" /> Donor Type <span className="text-destructive">*</span>
+            </Label>
+            <Controller
+              control={control}
+              name="donorType"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger id="donorType" className="w-full" aria-invalid={!!errors.donorType}>
+                    <SelectValue placeholder="Select donor type" />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {DONOR_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.donorType && <p className="text-xs text-destructive">{errors.donorType.message}</p>}
           </div>
 
           <div className="flex flex-col gap-1.5">

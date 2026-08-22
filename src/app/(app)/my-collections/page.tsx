@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { IndianRupee, Banknote, Smartphone, CheckCircle2, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
 import { apiConfig } from '@/config/api'
+import { DONOR_TYPES } from '@/constants'
 import type { ApiError } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 
@@ -30,6 +31,7 @@ function MyCollectionsContent() {
   const [payments, setPayments] = useState<PaginatedPayments | null>(null)
   const [page, setPage] = useState(1)
   const [method, setMethod] = useState<'upi' | 'cash' | ''>('')
+  const [donorType, setDonorType] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -39,7 +41,7 @@ function MyCollectionsContent() {
     setError(null)
     Promise.all([
       getCollectorSummary(),
-      getCollectorPayments({ page, method: method || undefined, perPage: 20 }),
+      getCollectorPayments({ page, method: method || undefined, donorType: donorType || undefined, perPage: 20 }),
     ])
       .then(([s, p]) => {
         setSummary(s)
@@ -47,7 +49,7 @@ function MyCollectionsContent() {
       })
       .catch((err: ApiError) => setError(err.message ?? 'Failed to load data.'))
       .finally(() => setLoading(false))
-  }, [page, method])
+  }, [page, method, donorType])
 
   return (
     <div className="p-6 lg:p-8">
@@ -69,7 +71,7 @@ function MyCollectionsContent() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <span className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Filter className="size-3" /> Filter:</span>
+        <span className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Filter className="size-3" /> Method:</span>
         {(['', 'upi', 'cash'] as const).map((m) => (
           <button
             key={m}
@@ -83,6 +85,15 @@ function MyCollectionsContent() {
             {m === '' ? 'All' : m.toUpperCase()}
           </button>
         ))}
+        <span className="text-xs font-medium text-muted-foreground ml-3">Type:</span>
+        <select
+          value={donorType}
+          onChange={(e) => { setDonorType(e.target.value); setPage(1) }}
+          className="h-7 rounded-full border border-border bg-muted px-3 text-xs font-semibold text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">All Types</option>
+          {DONOR_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
       </div>
 
       {/* Payments table */}
@@ -120,6 +131,7 @@ function MyCollectionsContent() {
                     <td className="px-4 py-3">
                       <p className="font-medium text-foreground">{p.donor.name}</p>
                       {p.donor.phone && <p className="text-xs text-muted-foreground">{p.donor.phone}</p>}
+                      <p className="text-xs text-muted-foreground/60">{p.donor.donorType ?? 'Not specified'}</p>
                     </td>
                     <td className="px-4 py-3 font-semibold text-foreground">{formatCurrency(p.amount)}</td>
                     <td className="px-4 py-3">

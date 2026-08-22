@@ -20,3 +20,15 @@ export const PAYMENT_STATUS_COLORS = {
 
 export const DEFAULT_PAGE_SIZE = 20
 export const MAX_PAGE_SIZE = 100
+
+export const DONOR_TYPES = [
+  'House-to-House',
+  'Shop at Local Market',
+  'General Member',
+  'Executive Member',
+  'Corporate Sponsor',
+  'Running Public',
+  'Other Donation',
+  'Advertisement',
+  'Prefer Not to Disclose',
+] as const

@@ -9,6 +9,7 @@ export interface DashboardPaymentsQuery {
   status?: 'pending' | 'confirmed' | 'expired'
   collectorId?: number
   date?: string
+  donorType?: string
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {

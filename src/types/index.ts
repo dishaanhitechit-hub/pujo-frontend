@@ -20,6 +20,7 @@ export interface Donor {
   phone: string | null
   address: string | null
   notes: string | null
+  donorType: string | null
   createdAt: string
 }
 
@@ -103,6 +104,7 @@ export interface PaymentInitiateInput {
   donorPhone?: string
   donorAddress?: string
   donorNotes?: string
+  donorType: string
   amount: string
   method: PaymentMethod
 }
