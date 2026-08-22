@@ -4,6 +4,39 @@ export type PaymentStatus = 'pending' | 'completed' | 'expired' | 'cancelled'
 export type PledgeStatus = 'open' | 'complete' | 'cancelled'
 export type TokenType = 'single' | 'dual' | 'bulk'
 export type TokenStatus = 'active' | 'void'
+export type EventStatus = 'draft' | 'published' | 'archived'
+
+export interface EventDay {
+  id: number
+  key: string          // e.g. "saptami"
+  label: string        // e.g. "Maha Saptami"
+  date: string | null
+  description: string | null
+  rituals: string[]
+  sortOrder: number
+}
+
+export interface EventSummary {
+  id: number
+  name: string
+  slug: string
+  year: number | null
+  status: EventStatus
+  collectionEnabled: boolean
+  isFeatured: boolean
+  startDate: string | null
+  endDate: string | null
+}
+
+export interface Event extends EventSummary {
+  description: string | null
+  location: string | null
+  coverImagePath: string | null
+  createdBy: { id: number; name: string } | null
+  createdAt: string
+  updatedAt: string | null
+  days?: EventDay[]
+}
 
 export interface User {
   id: number
@@ -51,6 +84,7 @@ export interface Payment {
   bankName?: string | null
   chequeDate?: string | null
   pledgeId?: number | null
+  event?: { id: number; name: string } | null
   status: PaymentStatus
   whatsappSent?: boolean
   confirmedAt?: string | null
@@ -101,6 +135,7 @@ export interface Pledge {
   id: number
   donor: Donor
   collector: Collector
+  event?: { id: number; name: string } | null
   totalAmount: string
   paidAmount: string
   outstandingAmount: string
@@ -185,6 +220,86 @@ export interface AdminConfigResponse {
   allowedKeys: Record<string, string>
 }
 
+// ── Public API types (no auth, no admin fields) ─────────────────────────────
+
+export interface PublicEventDay {
+  id: number
+  key: string
+  label: string
+  date: string | null
+  description: string | null
+  rituals: string[]
+  sortOrder: number
+}
+
+export interface PublicGalleryItem {
+  id: number
+  url: string       // absolute path e.g. /media/events/3/gallery/abc.jpg
+  altText: string | null
+  sortOrder: number
+  mimeType: string
+}
+
+export interface PublicEvent {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  startDate: string | null   // YYYY-MM-DD
+  endDate: string | null     // YYYY-MM-DD
+  location: string | null
+  year: number | null
+  isFeatured: boolean
+  coverImageUrl: string | null  // /media/... path
+}
+
+export interface PublicEventDetail extends PublicEvent {
+  days: PublicEventDay[]
+  gallery: PublicGalleryItem[]
+}
+
+export interface PublicEventsList {
+  events: PublicEvent[]
+  page: number
+  perPage: number
+  total: number
+  pages: number
+}
+
+export interface PublicCommitteeMember {
+  id: number
+  name: string
+  roleTitle: string
+  phone: string | null
+  photoUrl: string | null   // /media/... path
+  sortOrder: number
+}
+
+export interface PublicAnnouncement {
+  id: number
+  title: string
+  body: string
+  event: { id: number; name: string; slug: string } | null
+  publishedAt: string | null
+}
+
+export interface PublicSiteConfig {
+  upiId: string | null
+  orgName: string | null
+  contact: {
+    phone: string | null
+    email: string | null
+    whatsapp: string | null
+  }
+  social: {
+    facebook: string | null
+    instagram: string | null
+    youtube: string | null
+  }
+}
+
+// ── Shared ────────────────────────────────────────────────────────────────────
+
 export interface ApiResponse<T> {
   success: boolean
   message: string
@@ -207,6 +322,7 @@ export interface PaymentInitiateInput {
   amount: string
   method: PaymentMethod
   pledgeId?: number | null
+  eventId: number
 }
 
 export interface PaymentInitiateResponse {
@@ -216,10 +332,12 @@ export interface PaymentInitiateResponse {
   donorName: string
   status: PaymentStatus
   pledgeId: number | null
+  eventId: number
   nextUrl: string
 }
 
 export interface CreatePledgeInput {
+  eventId: number
   donorName: string
   donorPhone?: string
   donorAddress?: string

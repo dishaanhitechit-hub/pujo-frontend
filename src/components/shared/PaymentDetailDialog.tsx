@@ -96,6 +96,7 @@ export function PaymentDetailDialog({ payment, open, onOpenChange }: PaymentDeta
             {payment.chequeNumber && <Field label="Cheque No." value={payment.chequeNumber} />}
             {payment.bankName && <Field label="Bank Name" value={payment.bankName} />}
             {payment.chequeDate && <Field label="Cheque Date" value={payment.chequeDate} />}
+            {payment.event && <Field label="Event" value={payment.event.name} />}
             {payment.pledgeId && <Field label="Pledge ID" value={`#${payment.pledgeId}`} />}
             <Field label="Collector" value={payment.collector.name} />
             <Field label="Initiated" value={fmtDate(payment.createdAt)} />

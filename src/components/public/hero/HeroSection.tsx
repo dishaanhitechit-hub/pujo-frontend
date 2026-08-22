@@ -13,16 +13,31 @@ function fmtDate(dateStr: string, opts: Intl.DateTimeFormatOptions): string {
   })
 }
 
-export function HeroSection() {
-  const first = festivalConfig.days[0]
-  const last  = festivalConfig.days[festivalConfig.days.length - 1]
-  const startDate = fmtDate(first.date, { day: 'numeric', month: 'long' })
-  const endDate   = fmtDate(last.date,  { day: 'numeric', month: 'long', year: 'numeric' })
+export interface HeroSectionProps {
+  /** Featured event name — overrides festivalConfig.name */
+  eventName?: string
+  /** Featured event year — overrides festivalConfig.year */
+  year?: number | null
+  /** YYYY-MM-DD start date — overrides first day from festivalConfig */
+  startDate?: string | null
+  /** YYYY-MM-DD end date — overrides last day from festivalConfig */
+  endDate?: string | null
+}
+
+export function HeroSection({ eventName, year, startDate, endDate }: HeroSectionProps = {}) {
+  const displayName = eventName ?? festivalConfig.name
+  const displayYear = year ?? festivalConfig.year
+
+  const firstDateStr = startDate ?? festivalConfig.days[0].date
+  const lastDateStr  = endDate   ?? festivalConfig.days[festivalConfig.days.length - 1].date
+
+  const displayStart = fmtDate(firstDateStr, { day: 'numeric', month: 'long' })
+  const displayEnd   = fmtDate(lastDateStr,  { day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
     <section
       className="relative h-screen min-h-[600px] overflow-hidden"
-      aria-label={`${siteConfig.nameEn} — ${festivalConfig.name} ${festivalConfig.year}`}
+      aria-label={`${siteConfig.nameEn} — ${displayName} ${displayYear}`}
     >
       {/* Rupnarayan River, Deulti — near Kolaghat. CC0 public domain. */}
       <Image
@@ -34,7 +49,7 @@ export function HeroSection() {
         sizes="100vw"
       />
 
-      {/* Cinematic overlay — deeper on the left where the glass panel sits */}
+      {/* Cinematic overlay */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -61,8 +76,7 @@ export function HeroSection() {
                 '0 8px 48px oklch(0.06 0.055 252 / 0.55), inset 0 1px 0 oklch(1 0 0 / 0.07)',
             }}
           >
-
-            {/* Club logo + location provenance */}
+            {/* Club logo + location */}
             <div className="flex items-center gap-3 mb-7">
               <Image
                 src="/assets/branding/club-logo.jpeg"
@@ -105,10 +119,10 @@ export function HeroSection() {
                 className="font-heading font-bold text-white leading-tight mb-1.5"
                 style={{ fontSize: 'clamp(1.2rem, 2.4vw, 1.6rem)' }}
               >
-                {festivalConfig.name} {festivalConfig.year}
+                {displayName} {displayYear}
               </p>
               <p className="text-[12px] text-white/42 tracking-wide">
-                {startDate} – {endDate}
+                {displayStart} – {displayEnd}
               </p>
             </div>
 
@@ -128,7 +142,6 @@ export function HeroSection() {
           </div>
         </div>
       </div>
-
     </section>
   )
 }

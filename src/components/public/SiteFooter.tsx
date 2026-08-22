@@ -2,9 +2,20 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { siteConfig } from '@/config/site'
 import { publicNav } from '@/config/navigation'
+import { getSiteConfig } from '@/lib/api/public'
 import { MapPin, Phone, Mail, ExternalLink } from 'lucide-react'
+import type { ReactNode } from 'react'
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const apiCfg = await getSiteConfig()
+
+  // Merge API values with local siteConfig fallbacks
+  const phone    = apiCfg?.contact.phone    ?? siteConfig.contact.phone
+  const email    = apiCfg?.contact.email    ?? siteConfig.contact.email
+  const facebook  = apiCfg?.social.facebook  ?? siteConfig.social.facebook
+  const instagram = apiCfg?.social.instagram ?? siteConfig.social.instagram
+  const youtube   = apiCfg?.social.youtube   ?? siteConfig.social.youtube
+
   return (
     <footer className="bg-brand-navy text-white/80">
       {/* Wave divider */}
@@ -32,17 +43,11 @@ export function SiteFooter() {
               </div>
             </div>
             <p className="text-sm leading-relaxed">{siteConfig.description}</p>
-            {(siteConfig.social.facebook || siteConfig.social.instagram || siteConfig.social.youtube) && (
+            {(facebook || instagram || youtube) && (
               <div className="flex gap-3">
-                {siteConfig.social.facebook && (
-                  <SocialLink href={siteConfig.social.facebook} label="Facebook"><ExternalLink className="size-4" /></SocialLink>
-                )}
-                {siteConfig.social.instagram && (
-                  <SocialLink href={siteConfig.social.instagram} label="Instagram"><ExternalLink className="size-4" /></SocialLink>
-                )}
-                {siteConfig.social.youtube && (
-                  <SocialLink href={siteConfig.social.youtube} label="YouTube"><ExternalLink className="size-4" /></SocialLink>
-                )}
+                {facebook  && <SocialLink href={facebook}  label="Facebook"><ExternalLink className="size-4" /></SocialLink>}
+                {instagram && <SocialLink href={instagram} label="Instagram"><ExternalLink className="size-4" /></SocialLink>}
+                {youtube   && <SocialLink href={youtube}   label="YouTube"><ExternalLink className="size-4" /></SocialLink>}
               </div>
             )}
           </div>
@@ -53,10 +58,7 @@ export function SiteFooter() {
             <ul className="flex flex-col gap-2">
               {publicNav.map((item) => (
                 <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className="text-sm hover:text-brand-orange transition-colors"
-                  >
+                  <Link href={item.href} className="text-sm hover:text-brand-orange transition-colors">
                     {item.label}
                   </Link>
                 </li>
@@ -74,23 +76,19 @@ export function SiteFooter() {
                   <span>{siteConfig.contact.address}</span>
                 </li>
               )}
-              {siteConfig.contact.phone && (
+              {phone && (
                 <li className="flex items-center gap-2 text-sm">
                   <Phone className="size-4 text-brand-orange shrink-0" />
-                  <a href={`tel:${siteConfig.contact.phone}`} className="hover:text-brand-orange transition-colors">
-                    {siteConfig.contact.phone}
-                  </a>
+                  <a href={`tel:${phone}`} className="hover:text-brand-orange transition-colors">{phone}</a>
                 </li>
               )}
-              {siteConfig.contact.email && (
+              {email && (
                 <li className="flex items-center gap-2 text-sm">
                   <Mail className="size-4 text-brand-orange shrink-0" />
-                  <a href={`mailto:${siteConfig.contact.email}`} className="hover:text-brand-orange transition-colors">
-                    {siteConfig.contact.email}
-                  </a>
+                  <a href={`mailto:${email}`} className="hover:text-brand-orange transition-colors">{email}</a>
                 </li>
               )}
-              {!siteConfig.contact.phone && !siteConfig.contact.email && (
+              {!phone && !email && (
                 <li className="text-sm text-white/40 italic">Contact details coming soon.</li>
               )}
             </ul>
@@ -108,7 +106,7 @@ export function SiteFooter() {
   )
 }
 
-function SocialLink({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
+function SocialLink({ href, label, children }: { href: string; label: string; children: ReactNode }) {
   return (
     <a
       href={href}

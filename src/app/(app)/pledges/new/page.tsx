@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, User, Phone, MapPin, FileText, Tag, IndianRupee } from 'lucide-react'
+import { AlertCircle, CalendarDays, Loader2, User, Phone, MapPin, FileText, Tag, IndianRupee } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,11 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { createPledge } from '@/lib/api/pledges'
+import { listActiveEvents } from '@/lib/api/events'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { DONOR_TYPES } from '@/constants'
-import type { ApiError } from '@/types'
+import type { ApiError, EventSummary } from '@/types'
 
 const schema = z.object({
+  eventId: z.number({ message: 'Select an event' }).int().positive('Select an event'),
   donorName: z.string().min(1, 'Donor name is required'),
   donorPhone: z.string().optional(),
   donorAddress: z.string().optional(),
@@ -46,13 +48,27 @@ function NewPledgeContent() {
   const { user } = useAuth()
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
+  const [events, setEvents] = useState<EventSummary[]>([])
+  const [eventsLoading, setEventsLoading] = useState(true)
+  const reqRef = useRef(0)
 
   // Backend blocks admin from POST /api/pledge/ — redirect rather than letting it fail.
   useEffect(() => {
     if (user?.role === 'admin') router.replace('/forbidden')
   }, [user, router])
 
+  useEffect(() => {
+    const seq = ++reqRef.current
+    setEventsLoading(true)
+    listActiveEvents()
+      .then((list) => { if (seq === reqRef.current) setEvents(list) })
+      .catch(() => { if (seq === reqRef.current) setEvents([]) })
+      .finally(() => { if (seq === reqRef.current) setEventsLoading(false) })
+  }, [])
+
   if (!user || user.role === 'admin') return null
+
+  const noActiveEvents = !eventsLoading && events.length === 0
 
   const { register, handleSubmit, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -76,7 +92,45 @@ function NewPledgeContent() {
     <div className="p-6 lg:p-8 max-w-2xl">
       <PageHeader title="New Pledge" subtitle="Record a donor's multi-installment commitment." className="mb-8" />
 
+      {noActiveEvents && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <p className="text-sm">No active events are currently accepting pledges. An admin must publish an event with collection enabled before pledges can be created.</p>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
+        <fieldset className="border border-border rounded-xl p-5 flex flex-col gap-5">
+          <legend className="text-sm font-semibold text-foreground px-1">Event</legend>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="eventId" className="flex items-center gap-1.5">
+              <CalendarDays className="size-3.5 text-muted-foreground" /> Event <span className="text-destructive">*</span>
+            </Label>
+            <Controller
+              control={control}
+              name="eventId"
+              render={({ field }) => (
+                <Select
+                  onValueChange={(v) => field.onChange(parseInt(v, 10))}
+                  value={field.value ? String(field.value) : ''}
+                  disabled={eventsLoading || noActiveEvents}
+                >
+                  <SelectTrigger id="eventId" className="w-full" aria-invalid={!!errors.eventId}>
+                    <SelectValue placeholder={eventsLoading ? 'Loading events…' : 'Select event'} />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {events.map((e) => (
+                      <SelectItem key={e.id} value={String(e.id)}>{e.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.eventId && <p className="text-xs text-destructive">{errors.eventId.message}</p>}
+          </div>
+        </fieldset>
+
         <fieldset className="border border-border rounded-xl p-5 flex flex-col gap-5">
           <legend className="text-sm font-semibold text-foreground px-1">Donor Information</legend>
 
@@ -141,7 +195,11 @@ function NewPledgeContent() {
           </div>
         </fieldset>
 
-        <Button type="submit" disabled={submitting} className="w-full sm:w-auto bg-brand-orange hover:bg-brand-orange/90 text-white h-11 font-semibold px-8 self-start">
+        <Button
+          type="submit"
+          disabled={submitting || noActiveEvents || eventsLoading}
+          className="w-full sm:w-auto bg-brand-orange hover:bg-brand-orange/90 text-white h-11 font-semibold px-8 self-start"
+        >
           {submitting && <Loader2 className="size-4 animate-spin mr-2" />}
           {submitting ? 'Creating…' : 'Create Pledge'}
         </Button>

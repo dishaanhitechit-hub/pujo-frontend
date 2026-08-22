@@ -8,6 +8,7 @@ export interface DashboardPaymentsQuery {
   method?: 'cash' | 'upi' | 'cheque'
   status?: 'pending' | 'completed' | 'expired' | 'cancelled'
   collectorId?: number
+  eventId?: number
   date?: string
   donorType?: string
   search?: string
@@ -17,13 +18,17 @@ export interface DashboardPaymentsQuery {
   maxAmount?: string
 }
 
-export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const res = await apiClient.get<ApiResponse<DashboardSummary>>(apiConfig.endpoints.dashboard.summary)
+export async function getDashboardSummary(eventId?: number): Promise<DashboardSummary> {
+  const res = await apiClient.get<ApiResponse<DashboardSummary>>(apiConfig.endpoints.dashboard.summary, {
+    params: eventId ? { eventId } : undefined,
+  })
   return res.data.data
 }
 
-export async function getDashboardCollectors(): Promise<CollectorBreakdown[]> {
-  const res = await apiClient.get<ApiResponse<CollectorBreakdown[]>>(apiConfig.endpoints.dashboard.collectors)
+export async function getDashboardCollectors(eventId?: number): Promise<CollectorBreakdown[]> {
+  const res = await apiClient.get<ApiResponse<CollectorBreakdown[]>>(apiConfig.endpoints.dashboard.collectors, {
+    params: eventId ? { eventId } : undefined,
+  })
   return res.data.data
 }
 

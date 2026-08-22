@@ -7,6 +7,7 @@ export interface CollectorPaymentsQuery {
   perPage?: number
   method?: 'cash' | 'upi' | 'cheque'
   status?: 'pending' | 'completed' | 'expired' | 'cancelled'
+  eventId?: number
   date?: string
   donorType?: string
   search?: string

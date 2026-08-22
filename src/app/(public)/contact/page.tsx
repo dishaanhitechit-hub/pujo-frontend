@@ -2,11 +2,32 @@ import type { Metadata } from 'next'
 import { SectionHeading } from '@/components/public/SectionHeading'
 import { siteConfig } from '@/config/site'
 import { festivalConfig } from '@/config/festival'
+import { getFeaturedEvent, getSiteConfig } from '@/lib/api/public'
 import { MapPin, Phone, Mail, MessageCircle, Clock } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 export const metadata: Metadata = { title: 'Contact' }
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const [apiConfig, featured] = await Promise.all([getSiteConfig(), getFeaturedEvent()])
+
+  // Merge API values with local fallbacks
+  const phone    = apiConfig?.contact.phone    ?? siteConfig.contact.phone
+  const email    = apiConfig?.contact.email    ?? siteConfig.contact.email
+  const whatsapp = apiConfig?.contact.whatsapp ?? siteConfig.contact.whatsapp
+
+  // Derive festival dates from featured event or fall back to festivalConfig
+  const firstDate = featured?.days[0]?.date ?? featured?.startDate ?? festivalConfig.days[0].date
+  const lastDate  = featured?.days[featured.days.length - 1]?.date ?? featured?.endDate ?? festivalConfig.days[festivalConfig.days.length - 1].date
+
+  const startStr = new Date(firstDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
+    month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata',
+  })
+  const endStr = new Date(lastDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
+    month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata',
+  })
+
   return (
     <>
       <div className="pt-32 pb-16 bg-gradient-to-br from-brand-navy to-[oklch(0.28_0.1_264.5)] text-center px-4">
@@ -25,18 +46,14 @@ export default function ContactPage() {
             </ContactCard>
 
             <ContactCard icon={Clock} title="Visit Us During Puja">
-              <p>
-                {new Date(festivalConfig.days[0].date).toLocaleDateString('en-IN', { month: 'long', day: 'numeric' })}
-                {' – '}
-                {new Date(festivalConfig.days[festivalConfig.days.length - 1].date).toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </p>
+              <p>{startStr} – {endStr}</p>
               <p className="text-xs text-muted-foreground mt-0.5">Open to all, dawn to dusk</p>
             </ContactCard>
 
-            {siteConfig.contact.phone ? (
+            {phone ? (
               <ContactCard icon={Phone} title="Phone">
-                <a href={`tel:${siteConfig.contact.phone}`} className="hover:text-brand-orange transition-colors">
-                  {siteConfig.contact.phone}
+                <a href={`tel:${phone}`} className="hover:text-brand-orange transition-colors">
+                  {phone}
                 </a>
               </ContactCard>
             ) : (
@@ -45,10 +62,10 @@ export default function ContactPage() {
               </ContactCard>
             )}
 
-            {siteConfig.contact.email ? (
+            {email ? (
               <ContactCard icon={Mail} title="Email">
-                <a href={`mailto:${siteConfig.contact.email}`} className="hover:text-brand-orange transition-colors">
-                  {siteConfig.contact.email}
+                <a href={`mailto:${email}`} className="hover:text-brand-orange transition-colors">
+                  {email}
                 </a>
               </ContactCard>
             ) : (
@@ -57,30 +74,29 @@ export default function ContactPage() {
               </ContactCard>
             )}
 
-            {siteConfig.contact.whatsapp && (
+            {whatsapp && (
               <ContactCard icon={MessageCircle} title="WhatsApp">
                 <a
-                  href={`https://wa.me/${siteConfig.contact.whatsapp}`}
+                  href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-brand-orange transition-colors"
                 >
-                  +{siteConfig.contact.whatsapp}
+                  {whatsapp}
                 </a>
               </ContactCard>
             )}
           </div>
 
-          {/* Contribution section */}
           <div className="rounded-2xl bg-gradient-to-br from-brand-orange/5 to-brand-pink/5 border border-brand-orange/15 p-8 text-center">
             <h3 className="font-heading font-bold text-brand-navy text-xl mb-3">Support Our Puja</h3>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
               Want to contribute to Shatadal Durga Puja? Contact us for details about donations,
               sponsorships, or volunteering opportunities.
             </p>
-            {siteConfig.contact.whatsapp ? (
+            {whatsapp ? (
               <a
-                href={`https://wa.me/${siteConfig.contact.whatsapp}?text=I%20would%20like%20to%20support%20Shatadal%20Durga%20Puja`}
+                href={`https://wa.me/${whatsapp.replace(/\D/g, '')}?text=I%20would%20like%20to%20support%20Shatadal%20Durga%20Puja`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-xl bg-brand-orange px-6 py-3 text-white font-semibold text-sm hover:bg-brand-orange/90 transition-all"
@@ -98,7 +114,7 @@ export default function ContactPage() {
   )
 }
 
-function ContactCard({ icon: Icon, title, children }: { icon: typeof MapPin; title: string; children: React.ReactNode }) {
+function ContactCard({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
   return (
     <div className="flex items-start gap-4 p-5 rounded-xl border border-border hover:border-brand-orange/20 transition-colors bg-white">
       <div className="size-10 rounded-xl bg-brand-orange/10 flex items-center justify-center shrink-0">

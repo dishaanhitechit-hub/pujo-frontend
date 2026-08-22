@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import Link from 'next/link'
 import { listPledges } from '@/lib/api/pledges'
+import { listActiveEvents } from '@/lib/api/events'
 import { getUsers } from '@/lib/api/users'
-import type { PaginatedPledges, User, ApiError } from '@/types'
+import type { PaginatedPledges, User, EventSummary, ApiError } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { can } from '@/lib/auth/permissions'
@@ -40,7 +41,6 @@ function PledgesContent() {
 
   const canViewAll = user ? can(user.role, 'dashboard.view') : false
 
-  // search = raw input; debouncedSearch gates the API
   const [search, setSearch] = useState(params.get('search') ?? '')
   const debouncedSearch = useDebouncedValue(search, 350)
   const [status, setStatus] = useState<'open' | 'complete' | 'cancelled' | ''>(
@@ -48,12 +48,14 @@ function PledgesContent() {
   )
   const [page, setPage] = useState(Number(params.get('page') ?? 1))
   const [collectorId, setCollectorId] = useState(params.get('collectorId') ?? '')
+  const [eventId, setEventId] = useState(params.get('eventId') ?? '')
   const [dateFrom, setDateFrom] = useState(params.get('dateFrom') ?? '')
   const [dateTo, setDateTo] = useState(params.get('dateTo') ?? '')
   const [minAmount, setMinAmount] = useState(params.get('minAmount') ?? '')
   const [maxAmount, setMaxAmount] = useState(params.get('maxAmount') ?? '')
 
   const [draftCollectorId, setDraftCollectorId] = useState(collectorId)
+  const [draftEventId, setDraftEventId] = useState(eventId)
   const [draftDateFrom, setDraftDateFrom] = useState(dateFrom)
   const [draftDateTo, setDraftDateTo] = useState(dateTo)
   const [draftMinAmount, setDraftMinAmount] = useState(minAmount)
@@ -64,18 +66,18 @@ function PledgesContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [collectors, setCollectors] = useState<User[]>([])
+  const [events, setEvents] = useState<EventSummary[]>([])
   const reqRef = useRef(0)
 
   const pushUrl = useCallback((overrides: Record<string, string> = {}) => {
     const p = new URLSearchParams()
     const vals: Record<string, string> = {
-      search: debouncedSearch, status, collectorId, dateFrom, dateTo, minAmount, maxAmount, page: String(page), ...overrides,
+      search: debouncedSearch, status, collectorId, eventId, dateFrom, dateTo, minAmount, maxAmount, page: String(page), ...overrides,
     }
     Object.entries(vals).forEach(([k, v]) => { if (v) p.set(k, v) })
     router.replace(`?${p.toString()}`, { scroll: false })
-  }, [debouncedSearch, status, collectorId, dateFrom, dateTo, minAmount, maxAmount, page, router])
+  }, [debouncedSearch, status, collectorId, eventId, dateFrom, dateTo, minAmount, maxAmount, page, router])
 
-  // When debounced search settles: reset page and sync URL (skip initial mount)
   const searchSyncedRef = useRef(false)
   useEffect(() => {
     if (!searchSyncedRef.current) { searchSyncedRef.current = true; return }
@@ -86,6 +88,7 @@ function PledgesContent() {
 
   useEffect(() => {
     if (canViewAll) getUsers().then(setCollectors).catch(() => {})
+    listActiveEvents().then(setEvents).catch(() => {})
   }, [canViewAll])
 
   useEffect(() => {
@@ -96,6 +99,7 @@ function PledgesContent() {
       page, perPage: 20,
       status: status || undefined,
       collectorId: collectorId ? Number(collectorId) : undefined,
+      eventId: eventId ? Number(eventId) : undefined,
       search: debouncedSearch || undefined,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
@@ -105,31 +109,29 @@ function PledgesContent() {
       .then((result) => { if (req === reqRef.current) setData(result) })
       .catch((err: ApiError) => { if (req === reqRef.current) setError(err.message ?? 'Failed to load pledges.') })
       .finally(() => { if (req === reqRef.current) setLoading(false) })
-  }, [page, status, collectorId, debouncedSearch, dateFrom, dateTo, minAmount, maxAmount])
-
-  function handleSearchChange(val: string) {
-    setSearch(val)
-  }
+  }, [page, status, collectorId, eventId, debouncedSearch, dateFrom, dateTo, minAmount, maxAmount])
 
   function setStatusFilter(s: typeof status) { setStatus(s); setPage(1); pushUrl({ status: s, page: '1' }) }
 
   function applyAdvanced() {
-    setCollectorId(draftCollectorId); setDateFrom(draftDateFrom); setDateTo(draftDateTo)
+    setCollectorId(draftCollectorId); setEventId(draftEventId)
+    setDateFrom(draftDateFrom); setDateTo(draftDateTo)
     setMinAmount(draftMinAmount); setMaxAmount(draftMaxAmount)
     setPage(1)
-    pushUrl({ collectorId: draftCollectorId, dateFrom: draftDateFrom, dateTo: draftDateTo, minAmount: draftMinAmount, maxAmount: draftMaxAmount, page: '1' })
+    pushUrl({ collectorId: draftCollectorId, eventId: draftEventId, dateFrom: draftDateFrom, dateTo: draftDateTo, minAmount: draftMinAmount, maxAmount: draftMaxAmount, page: '1' })
     setSheetOpen(false)
   }
 
   function resetAdvanced() {
-    setDraftCollectorId(''); setDraftDateFrom(''); setDraftDateTo(''); setDraftMinAmount(''); setDraftMaxAmount('')
-    setCollectorId(''); setDateFrom(''); setDateTo(''); setMinAmount(''); setMaxAmount('')
+    setDraftCollectorId(''); setDraftEventId(''); setDraftDateFrom(''); setDraftDateTo(''); setDraftMinAmount(''); setDraftMaxAmount('')
+    setCollectorId(''); setEventId(''); setDateFrom(''); setDateTo(''); setMinAmount(''); setMaxAmount('')
     setPage(1)
-    pushUrl({ collectorId: '', dateFrom: '', dateTo: '', minAmount: '', maxAmount: '', page: '1' })
+    pushUrl({ collectorId: '', eventId: '', dateFrom: '', dateTo: '', minAmount: '', maxAmount: '', page: '1' })
   }
 
-  const advancedActiveCount = [collectorId, dateFrom, dateTo, minAmount, maxAmount].filter(Boolean).length
+  const advancedActiveCount = [collectorId, eventId, dateFrom, dateTo, minAmount, maxAmount].filter(Boolean).length
   const collectorName = collectors.find(c => String(c.id) === collectorId)?.name
+  const eventName = events.find(e => String(e.id) === eventId)?.name
 
   return (
     <div className="p-6 lg:p-8">
@@ -148,10 +150,10 @@ function PledgesContent() {
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <div className="relative flex-1 min-w-[160px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-          <Input value={search} onChange={(e) => handleSearchChange(e.target.value)}
+          <Input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search donor name or phone…" className="pl-8 h-8 text-sm" />
           {search && (
-            <button onClick={() => handleSearchChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="size-3.5" />
             </button>
           )}
@@ -169,7 +171,8 @@ function PledgesContent() {
 
         <FilterButton
           onClick={() => {
-            setDraftCollectorId(collectorId); setDraftDateFrom(dateFrom); setDraftDateTo(dateTo)
+            setDraftCollectorId(collectorId); setDraftEventId(eventId)
+            setDraftDateFrom(dateFrom); setDraftDateTo(dateTo)
             setDraftMinAmount(minAmount); setDraftMaxAmount(maxAmount)
             setSheetOpen(true)
           }}
@@ -183,6 +186,16 @@ function PledgesContent() {
           onApply={applyAdvanced}
           onReset={resetAdvanced}
         >
+          {events.length > 0 && (
+            <FilterField label="Event" wide>
+              <select value={draftEventId} onChange={(e) => setDraftEventId(e.target.value)}
+                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
+                <option value="">All Events</option>
+                {events.map((e) => <option key={e.id} value={String(e.id)}>{e.name}</option>)}
+              </select>
+            </FilterField>
+          )}
+
           {canViewAll && (
             <FilterField label="Collector" wide>
               <select value={draftCollectorId} onChange={(e) => setDraftCollectorId(e.target.value)}
@@ -210,8 +223,9 @@ function PledgesContent() {
       </div>
 
       {/* Active chips */}
-      {(collectorId || dateFrom || dateTo || minAmount || maxAmount) && (
+      {(eventId || collectorId || dateFrom || dateTo || minAmount || maxAmount) && (
         <div className="flex flex-wrap gap-2 mb-4">
+          {eventId && <FilterChip label={`Event: ${eventName ?? eventId}`} onRemove={() => { setEventId(''); setDraftEventId(''); setPage(1); pushUrl({ eventId: '', page: '1' }) }} />}
           {collectorId && <FilterChip label={`Collector: ${collectorName ?? collectorId}`} onRemove={() => { setCollectorId(''); setDraftCollectorId(''); setPage(1); pushUrl({ collectorId: '', page: '1' }) }} />}
           {dateFrom && <FilterChip label={`From: ${dateFrom}`} onRemove={() => { setDateFrom(''); setDraftDateFrom(''); setPage(1); pushUrl({ dateFrom: '', page: '1' }) }} />}
           {dateTo && <FilterChip label={`To: ${dateTo}`} onRemove={() => { setDateTo(''); setDraftDateTo(''); setPage(1); pushUrl({ dateTo: '', page: '1' }) }} />}
@@ -236,7 +250,7 @@ function PledgesContent() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/20">
-                  {['Donor', 'Collector', 'Total', 'Paid', 'Outstanding', 'Status', 'Date', ''].map((h) => (
+                  {['Donor', 'Event', 'Collector', 'Total', 'Paid', 'Outstanding', 'Status', 'Date', ''].map((h) => (
                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -248,6 +262,7 @@ function PledgesContent() {
                       <p className="font-medium">{p.donor.name}</p>
                       {p.donor.phone && <p className="text-xs text-muted-foreground">{p.donor.phone}</p>}
                     </td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground">{p.event?.name ?? <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="px-5 py-3 text-muted-foreground">{p.collector.name}</td>
                     <td className="px-5 py-3 font-semibold">{fmt(p.totalAmount)}</td>
                     <td className="px-5 py-3 text-green-700 font-medium">{fmt(p.paidAmount)}</td>

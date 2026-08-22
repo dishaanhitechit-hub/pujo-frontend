@@ -116,10 +116,11 @@ function PledgeDetailContent({ params }: { params: Promise<{ id: string }> }) {
       <div className="rounded-xl border border-border bg-card p-5 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
         <div><p className="text-muted-foreground text-xs mb-1">Donor</p><p className="font-semibold">{pledge.donor.name}</p>{pledge.donor.phone && <p className="text-xs text-muted-foreground">{pledge.donor.phone}</p>}</div>
         <div><p className="text-muted-foreground text-xs mb-1">Collector</p><p className="font-semibold">{pledge.collector.name}</p></div>
+        <div><p className="text-muted-foreground text-xs mb-1">Event</p><p className="font-semibold">{pledge.event?.name ?? <span className="text-muted-foreground/50 font-normal">No Event</span>}</p></div>
         <div><p className="text-muted-foreground text-xs mb-1">Total Pledged</p><p className="font-semibold text-lg">{fmt(pledge.totalAmount)}</p></div>
         <div><p className="text-muted-foreground text-xs mb-1">Outstanding</p><p className="font-semibold text-lg text-yellow-700">{fmt(pledge.outstandingAmount)}</p></div>
         <div><p className="text-muted-foreground text-xs mb-1">Paid</p><p className="font-semibold text-green-700">{fmt(pledge.paidAmount)}</p></div>
-        <div className="col-span-3"><p className="text-muted-foreground text-xs mb-1">Notes</p><p className="text-foreground">{pledge.notes ?? '—'}</p></div>
+        <div className="col-span-2"><p className="text-muted-foreground text-xs mb-1">Notes</p><p className="text-foreground">{pledge.notes ?? '—'}</p></div>
       </div>
 
       {/* Pay installment */}

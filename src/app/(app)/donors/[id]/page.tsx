@@ -65,7 +65,7 @@ function DonorDetailContent({ params }: { params: Promise<{ id: string }> }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/20">
-                  {['Receipt', 'Amount', 'Mode', 'Collector', 'Status', 'Date'].map((h) => (
+                  {['Receipt', 'Event', 'Amount', 'Mode', 'Collector', 'Status', 'Date'].map((h) => (
                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -79,6 +79,7 @@ function DonorDetailContent({ params }: { params: Promise<{ id: string }> }) {
                           className="text-xs text-brand-orange hover:underline font-medium">{p.receiptNo}</a>
                       ) : <span className="text-muted-foreground/50 text-xs">—</span>}
                     </td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground">{p.event?.name ?? <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="px-5 py-3 font-semibold">{fmt(p.amount)}</td>
                     <td className="px-5 py-3 text-xs font-bold uppercase">{p.method}</td>
                     <td className="px-5 py-3 text-muted-foreground">{p.collector.name}</td>

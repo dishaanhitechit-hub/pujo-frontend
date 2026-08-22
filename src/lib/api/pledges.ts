@@ -7,6 +7,7 @@ export interface ListPledgesQuery {
   perPage?: number
   status?: 'open' | 'complete' | 'cancelled'
   collectorId?: number
+  eventId?: number
   search?: string
   dateFrom?: string
   dateTo?: string

@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, IndianRupee, User, Phone, MapPin, FileText, Tag } from 'lucide-react'
+import { Loader2, IndianRupee, User, Phone, MapPin, FileText, Tag, CalendarDays, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,10 +15,12 @@ import { PageHeader } from '@/components/dashboard/PageHeader'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { apiConfig } from '@/config/api'
 import { initiatePayment } from '@/lib/api/payments'
+import { listActiveEvents } from '@/lib/api/events'
 import { DONOR_TYPES } from '@/constants'
-import type { ApiError } from '@/types'
+import type { ApiError, EventSummary } from '@/types'
 
 const schema = z.object({
+  eventId: z.number({ message: 'Select an event' }).int().positive('Select an event'),
   donorName: z.string().min(1, 'Donor name is required'),
   donorPhone: z.string().optional(),
   donorAddress: z.string().optional(),
@@ -43,6 +45,18 @@ export default function CollectPage() {
 
 function CollectContent() {
   const [submitting, setSubmitting] = useState(false)
+  const [events, setEvents] = useState<EventSummary[]>([])
+  const [eventsLoading, setEventsLoading] = useState(true)
+  const reqRef = useRef(0)
+
+  useEffect(() => {
+    const req = ++reqRef.current
+    setEventsLoading(true)
+    listActiveEvents()
+      .then((data) => { if (req === reqRef.current) setEvents(data) })
+      .catch(() => { if (req === reqRef.current) setEvents([]) })
+      .finally(() => { if (req === reqRef.current) setEventsLoading(false) })
+  }, [])
 
   const {
     register,
@@ -58,6 +72,7 @@ function CollectContent() {
   })
 
   const selectedMethod = watch('method')
+  const noActiveEvents = !eventsLoading && events.length === 0
 
   async function onSubmit(data: FormData) {
     setSubmitting(true)
@@ -65,7 +80,6 @@ function CollectContent() {
       const result = await initiatePayment(data)
       toast.success(`Payment initiated for ${result.donorName} — ₹${result.amount}`)
       reset()
-      // Redirect browser to backend-rendered payment page
       const backendUrl = `${apiConfig.baseUrl}${result.nextUrl}`
       window.location.href = backendUrl
     } catch (err) {
@@ -83,7 +97,45 @@ function CollectContent() {
         className="mb-8"
       />
 
+      {noActiveEvents && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertCircle className="size-4 mt-0.5 flex-shrink-0" />
+          <p>No events are currently accepting collections. Contact an admin to enable an event.</p>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
+        {/* Event selection */}
+        <fieldset className="border border-border rounded-xl p-5 flex flex-col gap-3">
+          <legend className="text-sm font-semibold text-foreground px-1">Collection Event</legend>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="eventId" className="flex items-center gap-1.5">
+              <CalendarDays className="size-3.5 text-muted-foreground" /> Event <span className="text-destructive">*</span>
+            </Label>
+            <Controller
+              control={control}
+              name="eventId"
+              render={({ field }) => (
+                <Select
+                  onValueChange={(v) => field.onChange(Number(v))}
+                  value={field.value ? String(field.value) : ''}
+                  disabled={eventsLoading || noActiveEvents}
+                >
+                  <SelectTrigger id="eventId" className="w-full" aria-invalid={!!errors.eventId}>
+                    <SelectValue placeholder={eventsLoading ? 'Loading events…' : 'Select event'} />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {events.map((e) => (
+                      <SelectItem key={e.id} value={String(e.id)}>{e.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.eventId && <p className="text-xs text-destructive">{errors.eventId.message}</p>}
+          </div>
+        </fieldset>
+
         {/* Donor details */}
         <fieldset className="border border-border rounded-xl p-5 flex flex-col gap-5">
           <legend className="text-sm font-semibold text-foreground px-1">Donor Information</legend>
@@ -217,8 +269,8 @@ function CollectContent() {
 
         <Button
           type="submit"
-          disabled={submitting}
-          className="w-full sm:w-auto bg-brand-orange hover:bg-brand-orange/90 text-white h-11 font-semibold px-8 self-start"
+          disabled={submitting || noActiveEvents || eventsLoading}
+          className="w-full sm:w-auto bg-brand-orange hover:bg-brand-orange/90 text-white h-11 font-semibold px-8 self-start disabled:opacity-50"
         >
           {submitting && <Loader2 className="size-4 animate-spin mr-2" />}
           {submitting ? 'Processing…' : 'Initiate Payment'}

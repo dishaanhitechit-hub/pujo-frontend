@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { getDashboardSummary, getDashboardCollectors, getDashboardPayments } from '@/lib/api/dashboard'
+import { listActiveEvents } from '@/lib/api/events'
 import type { DashboardPaymentsQuery } from '@/lib/api/dashboard'
-import type { DashboardSummary, CollectorBreakdown, PaginatedPayments, Payment } from '@/types'
+import type { DashboardSummary, CollectorBreakdown, PaginatedPayments, Payment, EventSummary } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
@@ -44,15 +45,24 @@ function DashboardContent() {
   const [collectors, setCollectors] = useState<CollectorBreakdown[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [events, setEvents] = useState<EventSummary[]>([])
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
 
-  // Summary and collectors load once; payment history has its own state below
+  useEffect(() => {
+    listActiveEvents().then(setEvents).catch(() => {})
+  }, [])
+
+  // Re-fetch summary and collectors whenever the event scope changes
   useEffect(() => {
     setLoading(true)
-    Promise.all([getDashboardSummary(), getDashboardCollectors()])
+    Promise.all([
+      getDashboardSummary(selectedEventId ?? undefined),
+      getDashboardCollectors(selectedEventId ?? undefined),
+    ])
       .then(([s, c]) => { setSummary(s); setCollectors(c) })
       .catch((err: ApiError) => setError(err.message ?? 'Failed to load dashboard.'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [selectedEventId])
 
   if (error) {
     return (
@@ -71,6 +81,27 @@ function DashboardContent() {
   return (
     <div className="p-6 lg:p-8 flex flex-col gap-8">
       <PageHeader title="Dashboard" subtitle="Overall collection overview across all collectors." />
+
+      {/* Event scope chips */}
+      {events.length > 0 && (
+        <div className="flex flex-wrap gap-2 -mt-4">
+          <button
+            onClick={() => setSelectedEventId(null)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${selectedEventId === null ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}
+          >
+            All Events
+          </button>
+          {events.map((e) => (
+            <button
+              key={e.id}
+              onClick={() => setSelectedEventId(selectedEventId === e.id ? null : e.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${selectedEventId === e.id ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}
+            >
+              {e.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Summary cards */}
       {loading ? (
@@ -175,7 +206,7 @@ function DashboardContent() {
       </div>
 
       {/* Recent payment history — has its own filter/search state */}
-      <DashboardPaymentsSection collectors={collectors} />
+      <DashboardPaymentsSection collectors={collectors} selectedEventId={selectedEventId} />
     </div>
   )
 }
@@ -185,15 +216,17 @@ function DashboardContent() {
 
 interface DashboardPaymentsSectionProps {
   collectors: CollectorBreakdown[]
+  selectedEventId?: number | null
 }
 
-function DashboardPaymentsSection({ collectors }: DashboardPaymentsSectionProps) {
+function DashboardPaymentsSection({ collectors, selectedEventId }: DashboardPaymentsSectionProps) {
   const [payments, setPayments] = useState<PaginatedPayments | null>(null)
   const [page, setPage] = useState(1)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
   const [loading, setLoading] = useState(true)
   const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [events, setEvents] = useState<EventSummary[]>([])
 
   // search = raw input; debouncedSearch gates the API
   const [search, setSearch] = useState('')
@@ -204,20 +237,33 @@ function DashboardPaymentsSection({ collectors }: DashboardPaymentsSectionProps)
 
   // Advanced filter state (modal draft pattern)
   const [collectorId, setCollectorId] = useState('')
+  const [eventId, setEventId] = useState('')
   const [donorType, setDonorType] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [draftCollectorId, setDraftCollectorId] = useState('')
+  const [draftEventId, setDraftEventId] = useState('')
   const [draftDonorType, setDraftDonorType] = useState('')
   const [draftDateFrom, setDraftDateFrom] = useState('')
   const [draftDateTo, setDraftDateTo] = useState('')
   const [sheetOpen, setSheetOpen] = useState(false)
 
   const reqRef = useRef(0)
-  // Track whether any data has loaded so we can show skeleton only on first load
   const hasDataRef = useRef(false)
 
-  // Reset to page 1 when debounced search changes (skip initial mount)
+  useEffect(() => {
+    listActiveEvents().then(setEvents).catch(() => {})
+  }, [])
+
+  // When the page-level event scope changes, clear any payment-section event filter
+  useEffect(() => {
+    if (selectedEventId != null) {
+      setEventId('')
+      setDraftEventId('')
+      setPage(1)
+    }
+  }, [selectedEventId])
+
   const searchSyncedRef = useRef(false)
   useEffect(() => {
     if (!searchSyncedRef.current) { searchSyncedRef.current = true; return }
@@ -226,10 +272,11 @@ function DashboardPaymentsSection({ collectors }: DashboardPaymentsSectionProps)
 
   useEffect(() => {
     const req = ++reqRef.current
-    // Show skeleton only on very first load; subsequent fetches use isFetching overlay
     if (!hasDataRef.current) setLoading(true)
     setIsFetching(true)
     setError(null)
+
+    const effectiveEventId = selectedEventId ?? (eventId ? Number(eventId) : undefined)
 
     const query: DashboardPaymentsQuery = {
       page,
@@ -238,6 +285,7 @@ function DashboardPaymentsSection({ collectors }: DashboardPaymentsSectionProps)
       method: method || undefined,
       status: status || undefined,
       collectorId: collectorId ? Number(collectorId) : undefined,
+      eventId: effectiveEventId,
       donorType: donorType || undefined,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
@@ -252,10 +300,11 @@ function DashboardPaymentsSection({ collectors }: DashboardPaymentsSectionProps)
           setIsFetching(false)
         }
       })
-  }, [page, debouncedSearch, method, status, collectorId, donorType, dateFrom, dateTo])
+  }, [page, debouncedSearch, method, status, collectorId, eventId, donorType, dateFrom, dateTo, selectedEventId])
 
   function applyAdvanced() {
     setCollectorId(draftCollectorId)
+    setEventId(draftEventId)
     setDonorType(draftDonorType)
     setDateFrom(draftDateFrom)
     setDateTo(draftDateTo)
@@ -264,13 +313,14 @@ function DashboardPaymentsSection({ collectors }: DashboardPaymentsSectionProps)
   }
 
   function resetAdvanced() {
-    setDraftCollectorId(''); setDraftDonorType(''); setDraftDateFrom(''); setDraftDateTo('')
-    setCollectorId(''); setDonorType(''); setDateFrom(''); setDateTo('')
+    setDraftCollectorId(''); setDraftEventId(''); setDraftDonorType(''); setDraftDateFrom(''); setDraftDateTo('')
+    setCollectorId(''); setEventId(''); setDonorType(''); setDateFrom(''); setDateTo('')
     setPage(1)
   }
 
-  const advancedActiveCount = [collectorId, donorType, dateFrom, dateTo].filter(Boolean).length
+  const advancedActiveCount = [collectorId, selectedEventId == null ? eventId : '', donorType, dateFrom, dateTo].filter(Boolean).length
   const collectorName = collectors.find(c => String(c.collector.id) === collectorId)?.collector.name
+  const eventName = events.find(e => String(e.id) === eventId)?.name
 
   return (
     <div className="rounded-xl border border-border bg-card">
@@ -327,7 +377,7 @@ function DashboardPaymentsSection({ collectors }: DashboardPaymentsSectionProps)
 
         <FilterButton
           onClick={() => {
-            setDraftCollectorId(collectorId); setDraftDonorType(donorType)
+            setDraftCollectorId(collectorId); setDraftEventId(eventId); setDraftDonorType(donorType)
             setDraftDateFrom(dateFrom); setDraftDateTo(dateTo)
             setSheetOpen(true)
           }}
@@ -342,6 +392,16 @@ function DashboardPaymentsSection({ collectors }: DashboardPaymentsSectionProps)
           onApply={applyAdvanced}
           onReset={resetAdvanced}
         >
+          {events.length > 0 && selectedEventId == null && (
+            <FilterField label="Event" wide>
+              <select value={draftEventId} onChange={(e) => setDraftEventId(e.target.value)}
+                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
+                <option value="">All Events</option>
+                {events.map((e) => <option key={e.id} value={String(e.id)}>{e.name}</option>)}
+              </select>
+            </FilterField>
+          )}
+
           {collectors.length > 0 && (
             <FilterField label="Collector" wide>
               <select value={draftCollectorId} onChange={(e) => setDraftCollectorId(e.target.value)}
@@ -372,8 +432,9 @@ function DashboardPaymentsSection({ collectors }: DashboardPaymentsSectionProps)
       </div>
 
       {/* Active filter chips */}
-      {(collectorId || donorType || dateFrom || dateTo) && (
+      {(eventId || collectorId || donorType || dateFrom || dateTo) && (
         <div className="px-5 py-2 flex flex-wrap gap-2 border-b border-border bg-muted/10">
+          {eventId && <FilterChip label={`Event: ${eventName ?? eventId}`} onRemove={() => { setEventId(''); setDraftEventId(''); setPage(1) }} />}
           {collectorId && <FilterChip label={`Collector: ${collectorName ?? collectorId}`} onRemove={() => { setCollectorId(''); setDraftCollectorId(''); setPage(1) }} />}
           {donorType && <FilterChip label={`Type: ${donorType}`} onRemove={() => { setDonorType(''); setDraftDonorType(''); setPage(1) }} />}
           {dateFrom && <FilterChip label={`From: ${dateFrom}`} onRemove={() => { setDateFrom(''); setDraftDateFrom(''); setPage(1) }} />}
@@ -397,6 +458,7 @@ function DashboardPaymentsSection({ collectors }: DashboardPaymentsSectionProps)
               <thead>
                 <tr className="border-b border-border bg-muted/20">
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Donor</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Event</th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Collector</th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount</th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Mode</th>
@@ -416,6 +478,7 @@ function DashboardPaymentsSection({ collectors }: DashboardPaymentsSectionProps)
                       </button>
                       {p.donor.phone && <p className="text-xs text-muted-foreground">{p.donor.phone}</p>}
                     </td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground">{p.event?.name ?? <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="px-5 py-3 text-muted-foreground">{p.collector.name}</td>
                     <td className="px-5 py-3 font-semibold">{fmt(p.amount)}</td>
                     <td className="px-5 py-3">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { festivalConfig } from '@/config/festival'
 
 interface TimeLeft {
@@ -12,47 +12,61 @@ interface TimeLeft {
 
 type Phase = 'countdown' | 'live' | 'ended'
 
-// Module-level constants: parsed once from the config.
-// The IST offset (+05:30) in the datetime strings ensures these are
-// correct UTC millisecond timestamps regardless of the visitor's timezone.
-const TARGET_MS = new Date(festivalConfig.countdownTarget).getTime()
-const END_MS    = new Date(festivalConfig.festivalEnd).getTime()
-
-function getPhase(now: number): Phase {
-  if (now < TARGET_MS) return 'countdown'
-  if (now <= END_MS)   return 'live'
-  return 'ended'
+export interface CountdownTimerProps {
+  /** ISO datetime with tz offset — overrides festivalConfig.countdownTarget */
+  targetISO?: string
+  /** ISO datetime with tz offset — overrides festivalConfig.festivalEnd */
+  endISO?: string
+  /** Label above the digits — overrides festivalConfig.countdownLabel */
+  label?: string
+  /** Festival name used in live/ended states — overrides festivalConfig.name */
+  festivalName?: string
 }
 
-function calcTimeLeft(now: number): TimeLeft {
-  const diff = TARGET_MS - now
+function calcTimeLeft(targetMs: number, now: number): TimeLeft {
+  const diff = targetMs - now
   if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 }
   return {
     days:    Math.floor(diff / 86_400_000),
     hours:   Math.floor((diff % 86_400_000) / 3_600_000),
-    minutes: Math.floor((diff % 3_600_000)  /    60_000),
-    seconds: Math.floor((diff %    60_000)  /     1_000),
+    minutes: Math.floor((diff %  3_600_000) /    60_000),
+    seconds: Math.floor((diff %     60_000) /     1_000),
   }
 }
 
-export function CountdownTimer() {
-  // null initial state prevents SSR/hydration mismatch —
-  // server doesn't know the user's clock, client fills in on first tick.
+export function CountdownTimer({
+  targetISO,
+  endISO,
+  label,
+  festivalName,
+}: CountdownTimerProps = {}) {
+  const targetMs = useMemo(
+    () => new Date(targetISO ?? festivalConfig.countdownTarget).getTime(),
+    [targetISO],
+  )
+  const endMs = useMemo(
+    () => new Date(endISO ?? festivalConfig.festivalEnd).getTime(),
+    [endISO],
+  )
+  const displayLabel  = label       ?? festivalConfig.countdownLabel
+  const displayName   = festivalName ?? festivalConfig.name
+
   const [phase, setPhase] = useState<Phase | null>(null)
-  const [time, setTime] = useState<TimeLeft | null>(null)
+  const [time,  setTime]  = useState<TimeLeft | null>(null)
 
   useEffect(() => {
     function tick() {
       const now = Date.now()
-      setPhase(getPhase(now))
-      setTime(calcTimeLeft(now))
+      if (now < targetMs)       setPhase('countdown')
+      else if (now <= endMs)    setPhase('live')
+      else                      setPhase('ended')
+      setTime(calcTimeLeft(targetMs, now))
     }
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
-  }, [])
+  }, [targetMs, endMs])
 
-  // SSR / first paint: render neutral skeleton to avoid hydration mismatch
   if (phase === null || time === null) {
     return (
       <div className="flex gap-3 sm:gap-4 justify-center" aria-hidden>
@@ -65,10 +79,10 @@ export function CountdownTimer() {
     return (
       <div className="text-center space-y-2">
         <p className="font-heading font-bold text-3xl text-brand-orange">
-          {festivalConfig.name} is here! 🙏
+          {displayName} is here! 🙏
         </p>
         <p className="text-white/60 text-sm">
-          Join us in {/* siteConfig would create a circular dep — use literal */ 'Kolaghat'} — the celebrations are on!
+          Join us in Kolaghat — the celebrations are on!
         </p>
       </div>
     )
@@ -79,7 +93,7 @@ export function CountdownTimer() {
       <div className="text-center space-y-3">
         <p className="font-heading font-bold text-2xl text-brand-orange">জয় মা দুর্গা 🙏</p>
         <p className="text-white/60 text-sm">
-          {festivalConfig.name} {festivalConfig.year} has concluded.
+          {displayName} has concluded.
           <br />
           See you next year!
         </p>
@@ -87,12 +101,10 @@ export function CountdownTimer() {
     )
   }
 
-  // Phase: 'countdown'
   return (
     <div role="timer" aria-live="off">
-      {/* Label driven by countdownLabel config — stays in sync with countdownTarget */}
       <p className="text-center text-white/55 text-[10px] uppercase tracking-[0.28em] font-medium mb-5">
-        {festivalConfig.countdownLabel}
+        {displayLabel}
       </p>
       <div className="flex gap-3 sm:gap-4 justify-center">
         <TimeBox value={time.days}    label="Days" />

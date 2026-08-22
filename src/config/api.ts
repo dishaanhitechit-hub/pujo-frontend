@@ -44,6 +44,22 @@ export const apiConfig = {
       list: '/api/donor/',
       get: (id: number) => `/api/donor/${id}`,
     },
+    events: {
+      list:   '/api/events/',
+      active: '/api/events/active',
+      create: '/api/events/',
+      get:    (id: number) => `/api/events/${id}`,
+      update: (id: number) => `/api/events/${id}`,
+      days:   (id: number) => `/api/events/${id}/days`,
+    },
+    public: {
+      siteConfig:    '/api/public/site-config',
+      events:        '/api/public/events',
+      eventBySlug:   (slug: string) => `/api/public/events/${slug}`,
+      featuredEvent: '/api/public/featured-event',
+      announcements: '/api/public/announcements',
+      committee:     '/api/public/committee',
+    },
     token: {
       generate: '/api/token/generate',
       bulk: '/api/token/bulk',

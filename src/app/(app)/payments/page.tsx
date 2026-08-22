@@ -3,8 +3,9 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getDashboardPayments } from '@/lib/api/dashboard'
+import { listActiveEvents } from '@/lib/api/events'
 import { getUsers } from '@/lib/api/users'
-import type { PaginatedPayments, Payment, User, ApiError } from '@/types'
+import type { PaginatedPayments, Payment, User, EventSummary, ApiError } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -37,7 +38,6 @@ function PaymentsContent() {
   const router = useRouter()
   const params = useSearchParams()
 
-  // search = raw input value (immediate); debouncedSearch gates the API call
   const [search, setSearch] = useState(params.get('search') ?? '')
   const debouncedSearch = useDebouncedValue(search, 350)
 
@@ -49,6 +49,7 @@ function PaymentsContent() {
   )
   const [page, setPage] = useState(Number(params.get('page') ?? 1))
 
+  const [eventId, setEventId] = useState(params.get('eventId') ?? '')
   const [donorType, setDonorType] = useState(params.get('donorType') ?? '')
   const [collectorId, setCollectorId] = useState(params.get('collectorId') ?? '')
   const [dateFrom, setDateFrom] = useState(params.get('dateFrom') ?? '')
@@ -56,6 +57,7 @@ function PaymentsContent() {
   const [minAmount, setMinAmount] = useState(params.get('minAmount') ?? '')
   const [maxAmount, setMaxAmount] = useState(params.get('maxAmount') ?? '')
 
+  const [draftEventId, setDraftEventId] = useState(eventId)
   const [draftDonorType, setDraftDonorType] = useState(donorType)
   const [draftCollectorId, setDraftCollectorId] = useState(collectorId)
   const [draftDateFrom, setDraftDateFrom] = useState(dateFrom)
@@ -69,36 +71,33 @@ function PaymentsContent() {
   const [error, setError] = useState<string | null>(null)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
   const [collectors, setCollectors] = useState<User[]>([])
+  const [events, setEvents] = useState<EventSummary[]>([])
 
   const reqRef = useRef(0)
 
-  // pushUrl reads debouncedSearch so the URL always reflects what the API actually queried
   const pushUrl = useCallback((overrides: Record<string, string> = {}) => {
     const p = new URLSearchParams()
     const vals: Record<string, string> = {
-      search: debouncedSearch, method, status, donorType, collectorId, dateFrom, dateTo,
+      search: debouncedSearch, method, status, eventId, donorType, collectorId, dateFrom, dateTo,
       minAmount, maxAmount, page: String(page), ...overrides,
     }
     Object.entries(vals).forEach(([k, v]) => { if (v && v !== '1' || k === 'page') p.set(k, v) })
     router.replace(`?${p.toString()}`, { scroll: false })
-  }, [debouncedSearch, method, status, donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount, page, router])
+  }, [debouncedSearch, method, status, eventId, donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount, page, router])
 
   useEffect(() => {
     getUsers().then(setCollectors).catch(() => {})
+    listActiveEvents().then(setEvents).catch(() => {})
   }, [])
 
-  // When the debounced search value settles, reset to page 1 and sync the URL.
-  // Skips the initial mount so we don't override URL params on first render.
   const searchSyncedRef = useRef(false)
   useEffect(() => {
     if (!searchSyncedRef.current) { searchSyncedRef.current = true; return }
     setPage(1)
     pushUrl({ search: debouncedSearch, page: '1' })
-    // pushUrl is stable within this render cycle; eslint dep omitted intentionally
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch])
 
-  // Fetch payments. debouncedSearch (not raw search) drives the API call.
   useEffect(() => {
     const req = ++reqRef.current
     setLoading(true)
@@ -107,6 +106,7 @@ function PaymentsContent() {
       page, perPage: 20,
       method: method || undefined,
       status: status || undefined,
+      eventId: eventId ? Number(eventId) : undefined,
       donorType: donorType || undefined,
       collectorId: collectorId ? Number(collectorId) : undefined,
       dateFrom: dateFrom || undefined,
@@ -118,50 +118,31 @@ function PaymentsContent() {
       .then((result) => { if (req === reqRef.current) setData(result) })
       .catch((err: ApiError) => { if (req === reqRef.current) setError(err.message ?? 'Failed to load payments.') })
       .finally(() => { if (req === reqRef.current) setLoading(false) })
-  }, [page, method, status, donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount, debouncedSearch])
+  }, [page, method, status, eventId, donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount, debouncedSearch])
 
-  function handleSearchChange(val: string) {
-    setSearch(val)
-    // No debounce timer here — useDebouncedValue handles it
-  }
-
-  function setMethodFilter(m: typeof method) {
-    setMethod(m); setPage(1); pushUrl({ method: m, page: '1' })
-  }
-
-  function setStatusFilter(s: typeof status) {
-    setStatus(s); setPage(1); pushUrl({ status: s, page: '1' })
-  }
+  function setMethodFilter(m: typeof method) { setMethod(m); setPage(1); pushUrl({ method: m, page: '1' }) }
+  function setStatusFilter(s: typeof status) { setStatus(s); setPage(1); pushUrl({ status: s, page: '1' }) }
 
   function applyAdvanced() {
-    setDonorType(draftDonorType)
-    setCollectorId(draftCollectorId)
-    setDateFrom(draftDateFrom)
-    setDateTo(draftDateTo)
-    setMinAmount(draftMinAmount)
-    setMaxAmount(draftMaxAmount)
+    setEventId(draftEventId); setDonorType(draftDonorType); setCollectorId(draftCollectorId)
+    setDateFrom(draftDateFrom); setDateTo(draftDateTo); setMinAmount(draftMinAmount); setMaxAmount(draftMaxAmount)
     setPage(1)
-    pushUrl({
-      donorType: draftDonorType, collectorId: draftCollectorId,
-      dateFrom: draftDateFrom, dateTo: draftDateTo,
-      minAmount: draftMinAmount, maxAmount: draftMaxAmount, page: '1',
-    })
+    pushUrl({ eventId: draftEventId, donorType: draftDonorType, collectorId: draftCollectorId, dateFrom: draftDateFrom, dateTo: draftDateTo, minAmount: draftMinAmount, maxAmount: draftMaxAmount, page: '1' })
     setSheetOpen(false)
   }
 
   function resetAdvanced() {
-    setDraftDonorType(''); setDraftCollectorId('')
-    setDraftDateFrom(''); setDraftDateTo('')
-    setDraftMinAmount(''); setDraftMaxAmount('')
-    setDonorType(''); setCollectorId('')
-    setDateFrom(''); setDateTo('')
-    setMinAmount(''); setMaxAmount('')
+    setDraftEventId(''); setDraftDonorType(''); setDraftCollectorId('')
+    setDraftDateFrom(''); setDraftDateTo(''); setDraftMinAmount(''); setDraftMaxAmount('')
+    setEventId(''); setDonorType(''); setCollectorId('')
+    setDateFrom(''); setDateTo(''); setMinAmount(''); setMaxAmount('')
     setPage(1)
-    pushUrl({ donorType: '', collectorId: '', dateFrom: '', dateTo: '', minAmount: '', maxAmount: '', page: '1' })
+    pushUrl({ eventId: '', donorType: '', collectorId: '', dateFrom: '', dateTo: '', minAmount: '', maxAmount: '', page: '1' })
   }
 
-  const advancedActiveCount = [donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount].filter(Boolean).length
+  const advancedActiveCount = [eventId, donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount].filter(Boolean).length
   const collectorName = collectors.find(c => String(c.id) === collectorId)?.name
+  const eventName = events.find(e => String(e.id) === eventId)?.name
 
   return (
     <div className="p-6 lg:p-8">
@@ -173,12 +154,12 @@ function PaymentsContent() {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
           <Input
             value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Search donor, collector, receipt…"
             className="pl-8 h-8 text-sm"
           />
           {search && (
-            <button onClick={() => handleSearchChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="size-3.5" />
             </button>
           )}
@@ -206,7 +187,7 @@ function PaymentsContent() {
 
         <FilterButton
           onClick={() => {
-            setDraftDonorType(donorType); setDraftCollectorId(collectorId)
+            setDraftEventId(eventId); setDraftDonorType(donorType); setDraftCollectorId(collectorId)
             setDraftDateFrom(dateFrom); setDraftDateTo(dateTo)
             setDraftMinAmount(minAmount); setDraftMaxAmount(maxAmount)
             setSheetOpen(true)
@@ -221,6 +202,16 @@ function PaymentsContent() {
           onApply={applyAdvanced}
           onReset={resetAdvanced}
         >
+          {events.length > 0 && (
+            <FilterField label="Event" wide>
+              <select value={draftEventId} onChange={(e) => setDraftEventId(e.target.value)}
+                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
+                <option value="">All Events</option>
+                {events.map((e) => <option key={e.id} value={String(e.id)}>{e.name}</option>)}
+              </select>
+            </FilterField>
+          )}
+
           <FilterField label="Donor Type">
             <select value={draftDonorType} onChange={(e) => setDraftDonorType(e.target.value)}
               className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
@@ -240,15 +231,12 @@ function PaymentsContent() {
           <FilterField label="Date from">
             <Input type="date" value={draftDateFrom} onChange={(e) => setDraftDateFrom(e.target.value)} className="h-8 text-sm" />
           </FilterField>
-
           <FilterField label="Date to">
             <Input type="date" value={draftDateTo} onChange={(e) => setDraftDateTo(e.target.value)} className="h-8 text-sm" />
           </FilterField>
-
           <FilterField label="Min amount (₹)">
             <Input type="number" min={0} placeholder="0" value={draftMinAmount} onChange={(e) => setDraftMinAmount(e.target.value)} className="h-8 text-sm" />
           </FilterField>
-
           <FilterField label="Max amount (₹)">
             <Input type="number" min={0} placeholder="∞" value={draftMaxAmount} onChange={(e) => setDraftMaxAmount(e.target.value)} className="h-8 text-sm" />
           </FilterField>
@@ -256,8 +244,9 @@ function PaymentsContent() {
       </div>
 
       {/* Active filter chips */}
-      {(donorType || collectorId || dateFrom || dateTo || minAmount || maxAmount) && (
+      {(eventId || donorType || collectorId || dateFrom || dateTo || minAmount || maxAmount) && (
         <div className="flex flex-wrap gap-2 mb-4">
+          {eventId && <FilterChip label={`Event: ${eventName ?? eventId}`} onRemove={() => { setEventId(''); setDraftEventId(''); setPage(1); pushUrl({ eventId: '', page: '1' }) }} />}
           {donorType && <FilterChip label={`Type: ${donorType}`} onRemove={() => { setDonorType(''); setDraftDonorType(''); setPage(1); pushUrl({ donorType: '', page: '1' }) }} />}
           {collectorId && <FilterChip label={`Collector: ${collectorName ?? collectorId}`} onRemove={() => { setCollectorId(''); setDraftCollectorId(''); setPage(1); pushUrl({ collectorId: '', page: '1' }) }} />}
           {dateFrom && <FilterChip label={`From: ${dateFrom}`} onRemove={() => { setDateFrom(''); setDraftDateFrom(''); setPage(1); pushUrl({ dateFrom: '', page: '1' }) }} />}
@@ -283,7 +272,7 @@ function PaymentsContent() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/20">
-                  {['Donor', 'Type', 'Collector', 'Amount', 'Mode', 'Status', 'Date', 'Receipt'].map((h) => (
+                  {['Donor', 'Event', 'Type', 'Collector', 'Amount', 'Mode', 'Status', 'Date', 'Receipt'].map((h) => (
                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -297,6 +286,7 @@ function PaymentsContent() {
                       </button>
                       {p.donor.phone && <p className="text-xs text-muted-foreground">{p.donor.phone}</p>}
                     </td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground">{p.event?.name ?? <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="px-5 py-3 text-xs text-muted-foreground">{p.donor.donorType ?? <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="px-5 py-3 text-muted-foreground">{p.collector.name}</td>
                     <td className="px-5 py-3 font-semibold">{fmt(p.amount)}</td>

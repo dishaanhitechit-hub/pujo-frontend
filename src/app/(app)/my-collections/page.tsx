@@ -3,7 +3,8 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getCollectorSummary, getCollectorPayments } from '@/lib/api/collector'
-import type { CollectorSummary, PaginatedPayments, Payment, ApiError } from '@/types'
+import { listActiveEvents } from '@/lib/api/events'
+import type { CollectorSummary, PaginatedPayments, Payment, EventSummary, ApiError } from '@/types'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -40,7 +41,6 @@ function MyCollectionsContent() {
   const router = useRouter()
   const params = useSearchParams()
 
-  // search = raw input; debouncedSearch gates the API
   const [search, setSearch] = useState(params.get('search') ?? '')
   const debouncedSearch = useDebouncedValue(search, 350)
 
@@ -52,12 +52,14 @@ function MyCollectionsContent() {
   )
   const [page, setPage] = useState(Number(params.get('page') ?? 1))
 
+  const [eventId, setEventId] = useState(params.get('eventId') ?? '')
   const [donorType, setDonorType] = useState(params.get('donorType') ?? '')
   const [dateFrom, setDateFrom] = useState(params.get('dateFrom') ?? '')
   const [dateTo, setDateTo] = useState(params.get('dateTo') ?? '')
   const [minAmount, setMinAmount] = useState(params.get('minAmount') ?? '')
   const [maxAmount, setMaxAmount] = useState(params.get('maxAmount') ?? '')
 
+  const [draftEventId, setDraftEventId] = useState(eventId)
   const [draftDonorType, setDraftDonorType] = useState(donorType)
   const [draftDateFrom, setDraftDateFrom] = useState(dateFrom)
   const [draftDateTo, setDraftDateTo] = useState(dateTo)
@@ -70,18 +72,18 @@ function MyCollectionsContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  const [events, setEvents] = useState<EventSummary[]>([])
   const reqRef = useRef(0)
 
   const pushUrl = useCallback((overrides: Record<string, string> = {}) => {
     const p = new URLSearchParams()
     const vals: Record<string, string> = {
-      search: debouncedSearch, method, status, donorType, dateFrom, dateTo, minAmount, maxAmount, page: String(page), ...overrides,
+      search: debouncedSearch, method, status, eventId, donorType, dateFrom, dateTo, minAmount, maxAmount, page: String(page), ...overrides,
     }
     Object.entries(vals).forEach(([k, v]) => { if (v) p.set(k, v) })
     router.replace(`?${p.toString()}`, { scroll: false })
-  }, [debouncedSearch, method, status, donorType, dateFrom, dateTo, minAmount, maxAmount, page, router])
+  }, [debouncedSearch, method, status, eventId, donorType, dateFrom, dateTo, minAmount, maxAmount, page, router])
 
-  // When debounced search settles: reset page and sync URL (skip initial mount)
   const searchSyncedRef = useRef(false)
   useEffect(() => {
     if (!searchSyncedRef.current) { searchSyncedRef.current = true; return }
@@ -89,6 +91,10 @@ function MyCollectionsContent() {
     pushUrl({ search: debouncedSearch, page: '1' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch])
+
+  useEffect(() => {
+    listActiveEvents().then(setEvents).catch(() => {})
+  }, [])
 
   useEffect(() => {
     const req = ++reqRef.current
@@ -100,6 +106,7 @@ function MyCollectionsContent() {
         page, perPage: 20,
         method: method || undefined,
         status: status || undefined,
+        eventId: eventId ? Number(eventId) : undefined,
         donorType: donorType || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
@@ -111,31 +118,28 @@ function MyCollectionsContent() {
       .then(([s, p]) => { if (req === reqRef.current) { setSummary(s); setPayments(p) } })
       .catch((err: ApiError) => { if (req === reqRef.current) setError(err.message ?? 'Failed to load data.') })
       .finally(() => { if (req === reqRef.current) setLoading(false) })
-  }, [page, method, status, donorType, dateFrom, dateTo, minAmount, maxAmount, debouncedSearch])
-
-  function handleSearchChange(val: string) {
-    setSearch(val)
-  }
+  }, [page, method, status, eventId, donorType, dateFrom, dateTo, minAmount, maxAmount, debouncedSearch])
 
   function setMethodFilter(m: typeof method) { setMethod(m); setPage(1); pushUrl({ method: m, page: '1' }) }
   function setStatusFilter(s: typeof status) { setStatus(s); setPage(1); pushUrl({ status: s, page: '1' }) }
 
   function applyAdvanced() {
-    setDonorType(draftDonorType); setDateFrom(draftDateFrom); setDateTo(draftDateTo)
+    setEventId(draftEventId); setDonorType(draftDonorType); setDateFrom(draftDateFrom); setDateTo(draftDateTo)
     setMinAmount(draftMinAmount); setMaxAmount(draftMaxAmount)
     setPage(1)
-    pushUrl({ donorType: draftDonorType, dateFrom: draftDateFrom, dateTo: draftDateTo, minAmount: draftMinAmount, maxAmount: draftMaxAmount, page: '1' })
+    pushUrl({ eventId: draftEventId, donorType: draftDonorType, dateFrom: draftDateFrom, dateTo: draftDateTo, minAmount: draftMinAmount, maxAmount: draftMaxAmount, page: '1' })
     setSheetOpen(false)
   }
 
   function resetAdvanced() {
-    setDraftDonorType(''); setDraftDateFrom(''); setDraftDateTo(''); setDraftMinAmount(''); setDraftMaxAmount('')
-    setDonorType(''); setDateFrom(''); setDateTo(''); setMinAmount(''); setMaxAmount('')
+    setDraftEventId(''); setDraftDonorType(''); setDraftDateFrom(''); setDraftDateTo(''); setDraftMinAmount(''); setDraftMaxAmount('')
+    setEventId(''); setDonorType(''); setDateFrom(''); setDateTo(''); setMinAmount(''); setMaxAmount('')
     setPage(1)
-    pushUrl({ donorType: '', dateFrom: '', dateTo: '', minAmount: '', maxAmount: '', page: '1' })
+    pushUrl({ eventId: '', donorType: '', dateFrom: '', dateTo: '', minAmount: '', maxAmount: '', page: '1' })
   }
 
-  const advancedActiveCount = [donorType, dateFrom, dateTo, minAmount, maxAmount].filter(Boolean).length
+  const advancedActiveCount = [eventId, donorType, dateFrom, dateTo, minAmount, maxAmount].filter(Boolean).length
+  const eventName = events.find(e => String(e.id) === eventId)?.name
 
   return (
     <div className="p-6 lg:p-8">
@@ -158,10 +162,10 @@ function MyCollectionsContent() {
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <div className="relative flex-1 min-w-[180px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-          <Input value={search} onChange={(e) => handleSearchChange(e.target.value)}
+          <Input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search donor or receipt…" className="pl-8 h-8 text-sm" />
           {search && (
-            <button onClick={() => handleSearchChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="size-3.5" />
             </button>
           )}
@@ -189,7 +193,7 @@ function MyCollectionsContent() {
 
         <FilterButton
           onClick={() => {
-            setDraftDonorType(donorType); setDraftDateFrom(dateFrom); setDraftDateTo(dateTo)
+            setDraftEventId(eventId); setDraftDonorType(donorType); setDraftDateFrom(dateFrom); setDraftDateTo(dateTo)
             setDraftMinAmount(minAmount); setDraftMaxAmount(maxAmount)
             setSheetOpen(true)
           }}
@@ -203,6 +207,16 @@ function MyCollectionsContent() {
           onApply={applyAdvanced}
           onReset={resetAdvanced}
         >
+          {events.length > 0 && (
+            <FilterField label="Event" wide>
+              <select value={draftEventId} onChange={(e) => setDraftEventId(e.target.value)}
+                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
+                <option value="">All Events</option>
+                {events.map((e) => <option key={e.id} value={String(e.id)}>{e.name}</option>)}
+              </select>
+            </FilterField>
+          )}
+
           <FilterField label="Donor Type" wide>
             <select value={draftDonorType} onChange={(e) => setDraftDonorType(e.target.value)}
               className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
@@ -228,8 +242,9 @@ function MyCollectionsContent() {
       </div>
 
       {/* Active chips */}
-      {(donorType || dateFrom || dateTo || minAmount || maxAmount) && (
+      {(eventId || donorType || dateFrom || dateTo || minAmount || maxAmount) && (
         <div className="flex flex-wrap gap-2 mb-4">
+          {eventId && <FilterChip label={`Event: ${eventName ?? eventId}`} onRemove={() => { setEventId(''); setDraftEventId(''); setPage(1); pushUrl({ eventId: '', page: '1' }) }} />}
           {donorType && <FilterChip label={`Type: ${donorType}`} onRemove={() => { setDonorType(''); setDraftDonorType(''); setPage(1); pushUrl({ donorType: '', page: '1' }) }} />}
           {dateFrom && <FilterChip label={`From: ${dateFrom}`} onRemove={() => { setDateFrom(''); setDraftDateFrom(''); setPage(1); pushUrl({ dateFrom: '', page: '1' }) }} />}
           {dateTo && <FilterChip label={`To: ${dateTo}`} onRemove={() => { setDateTo(''); setDraftDateTo(''); setPage(1); pushUrl({ dateTo: '', page: '1' }) }} />}
@@ -256,7 +271,7 @@ function MyCollectionsContent() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  {['Donor', 'Amount', 'Mode', 'Status', 'Date', 'Receipt'].map((h) => (
+                  {['Donor', 'Event', 'Amount', 'Mode', 'Status', 'Date', 'Receipt'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -271,6 +286,7 @@ function MyCollectionsContent() {
                       {p.donor.phone && <p className="text-xs text-muted-foreground">{p.donor.phone}</p>}
                       <p className="text-xs text-muted-foreground/60">{p.donor.donorType ?? 'Not specified'}</p>
                     </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{p.event?.name ?? <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="px-4 py-3 font-semibold text-foreground">{formatCurrency(p.amount)}</td>
                     <td className="px-4 py-3"><span className="text-xs font-bold uppercase">{p.method}</span></td>
                     <td className="px-4 py-3"><StatusBadge status={p.status} /></td>

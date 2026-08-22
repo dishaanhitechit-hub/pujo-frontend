@@ -1,26 +1,89 @@
 import Link from 'next/link'
 import { siteConfig } from '@/config/site'
 import { festivalConfig } from '@/config/festival'
+import { getFeaturedEvent } from '@/lib/api/public'
 import { CountdownTimer } from '@/components/public/CountdownTimer'
 import { SectionHeading } from '@/components/public/SectionHeading'
 import { HeroSection } from '@/components/public/hero/HeroSection'
+import type { PublicEventDay } from '@/types'
 import {
   Flower2, Star, Music, Users, MapPin, Heart, Calendar,
   ChevronRight, ExternalLink,
 } from 'lucide-react'
 
-export default function HomePage() {
+// Stable emoji mapping for known puja day keys — no yearly code changes needed.
+const DAY_EMOJI: Record<string, string> = {
+  mahasaptami:    '🌸',
+  mahashtami:     '🙏',
+  mahanavami:     '🪔',
+  vijaya_dashami: '🌊',
+}
+function dayEmoji(key: string) { return DAY_EMOJI[key] ?? '🪷' }
+
+/** Format a YYYY-MM-DD date pinned to IST to avoid off-by-one in UTC environments. */
+function fmtFestivalDate(dateStr: string, opts: Intl.DateTimeFormatOptions): string {
+  return new Date(dateStr + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
+    ...opts,
+    timeZone: 'Asia/Kolkata',
+  })
+}
+
+/** Derive a countdown target ISO string from featured event data. */
+function countdownTarget(days: PublicEventDay[], startDate: string | null): string {
+  const firstDate = days[0]?.date ?? startDate
+  return firstDate ? firstDate + 'T06:00:00+05:30' : festivalConfig.countdownTarget
+}
+
+/** Derive a countdown end ISO string from featured event data. */
+function countdownEnd(days: PublicEventDay[], endDate: string | null): string {
+  const lastDate = days[days.length - 1]?.date ?? endDate
+  return lastDate ? lastDate + 'T23:59:59+05:30' : festivalConfig.festivalEnd
+}
+
+export default async function HomePage() {
+  const featured = await getFeaturedEvent()
+
+  const heroProps = featured
+    ? {
+        eventName: featured.name,
+        year:      featured.year,
+        startDate: featured.days[0]?.date ?? featured.startDate,
+        endDate:   featured.days[featured.days.length - 1]?.date ?? featured.endDate,
+      }
+    : {}
+
+  const cdTarget = featured
+    ? countdownTarget(featured.days, featured.startDate)
+    : festivalConfig.countdownTarget
+  const cdEnd = featured
+    ? countdownEnd(featured.days, featured.endDate)
+    : festivalConfig.festivalEnd
+  const cdName  = featured?.name   ?? festivalConfig.name
+
+  const activeDays = featured?.days?.length ? featured.days : null
+
   return (
     <>
-      <HeroSection />
+      <HeroSection {...heroProps} />
       <AboutSection />
-      <CountdownSection />
-      <PujaSection />
+      <CountdownSection
+        targetISO={cdTarget}
+        endISO={cdEnd}
+        festivalName={cdName}
+        year={featured?.year ?? festivalConfig.year}
+        days={activeDays}
+        fallbackDays={festivalConfig.days}
+      />
+      <PujaSection days={activeDays} />
       <EventsSection />
       <GallerySection />
       <CommunitySection />
       <ContributionCTA />
-      <ContactSection />
+      <ContactSection
+        startDate={featured?.days[0]?.date ?? featured?.startDate ?? null}
+        endDate={featured?.days[featured?.days.length - 1]?.date ?? featured?.endDate ?? null}
+        year={featured?.year ?? festivalConfig.year}
+      />
     </>
   )
 }
@@ -29,9 +92,9 @@ export default function HomePage() {
 function AboutSection() {
   const pillars = [
     { icon: Flower2, label: 'Tradition', desc: 'Decades of cultural heritage' },
-    { icon: Heart, label: 'Devotion', desc: 'Spiritual celebrations' },
-    { icon: Users, label: 'Community', desc: 'United in festivity' },
-    { icon: Star, label: 'Excellence', desc: 'Premium pandal & programs' },
+    { icon: Heart,   label: 'Devotion',  desc: 'Spiritual celebrations' },
+    { icon: Users,   label: 'Community', desc: 'United in festivity' },
+    { icon: Star,    label: 'Excellence',desc: 'Premium pandal & programs' },
   ]
 
   return (
@@ -79,55 +142,62 @@ function AboutSection() {
 }
 
 /* ── Countdown ─────────────────────────────────────────────────── */
+function CountdownSection({
+  targetISO,
+  endISO,
+  festivalName,
+  year,
+  days,
+  fallbackDays,
+}: {
+  targetISO: string
+  endISO: string
+  festivalName: string
+  year: number
+  days: PublicEventDay[] | null
+  fallbackDays: typeof festivalConfig.days
+}) {
+  const firstDay = days?.[0]
+  const lastDay  = days?.[days.length - 1]
 
-/**
- * Format a 'YYYY-MM-DD' date string for display, pinned to IST (Asia/Kolkata).
- * We cannot rely on toLocaleDateString() alone because date-only ISO strings
- * are parsed as UTC midnight, which can show the previous day in non-IST
- * environments (including server-side rendering in Node.js).
- */
-function fmtFestivalDate(dateStr: string, opts: Intl.DateTimeFormatOptions): string {
-  // Attach IST noon so UTC-equivalent is always within the same calendar day
-  return new Date(dateStr + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
-    ...opts,
-    timeZone: 'Asia/Kolkata',
-  })
-}
+  const firstDate = firstDay?.date
+    ? fmtFestivalDate(firstDay.date, { day: 'numeric', month: 'long' })
+    : fmtFestivalDate(fallbackDays[0].date, { day: 'numeric', month: 'long' })
 
-function CountdownSection() {
-  const first = festivalConfig.days[0]
-  const last  = festivalConfig.days[festivalConfig.days.length - 1]
+  const lastDate = lastDay?.date
+    ? fmtFestivalDate(lastDay.date, { day: 'numeric', month: 'long' })
+    : fmtFestivalDate(fallbackDays[fallbackDays.length - 1].date, { day: 'numeric', month: 'long' })
 
-  const firstDate = fmtFestivalDate(first.date, { day: 'numeric', month: 'long' })
-  const lastDate  = fmtFestivalDate(last.date,  { day: 'numeric', month: 'long' })
+  const firstLabel = firstDay?.label ?? fallbackDays[0].label
+  const lastLabel  = lastDay?.label  ?? fallbackDays[fallbackDays.length - 1].label
 
   return (
     <section
       className="py-20 bg-gradient-to-br from-brand-navy via-[oklch(0.25_0.09_264.5)] to-[oklch(0.2_0.08_264.5)] relative overflow-hidden"
-      aria-label={`Countdown to ${festivalConfig.name} ${festivalConfig.year}`}
+      aria-label={`Countdown to ${festivalName} ${year}`}
     >
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-full bg-gradient-to-b from-transparent via-brand-orange/20 to-transparent" />
       </div>
 
       <div className="relative mx-auto max-w-3xl px-4 sm:px-6 text-center">
-        {/* Year eyebrow — the only place year appears; driven by festivalConfig */}
         <p className="text-brand-orange/80 text-xs uppercase tracking-[0.25em] font-semibold mb-3">
-          {festivalConfig.year}
+          {year}
         </p>
-        {/* Heading names the festival; the countdown label (inside CountdownTimer)
-            supplies the action phrase "…Begins In" so there is no duplication. */}
         <h2 className="font-heading font-bold text-3xl sm:text-4xl text-white mb-8">
-          {festivalConfig.name}
+          {festivalName}
         </h2>
 
-        <CountdownTimer />
+        <CountdownTimer
+          targetISO={targetISO}
+          endISO={endISO}
+          festivalName={festivalName}
+        />
 
-        {/* Footer dates — displayed in IST regardless of visitor's timezone */}
         <div className="mt-10 flex flex-wrap justify-center gap-4 text-sm text-white/55">
-          <span>{first.label} · {firstDate}</span>
+          <span>{firstLabel} · {firstDate}</span>
           <span className="text-brand-orange/35">·</span>
-          <span>{last.label} · {lastDate}</span>
+          <span>{lastLabel} · {lastDate}</span>
         </div>
       </div>
     </section>
@@ -135,13 +205,26 @@ function CountdownSection() {
 }
 
 /* ── Puja Highlights ───────────────────────────────────────────── */
-function PujaSection() {
-  const highlights = festivalConfig.days.map((day) => ({
-    icon: day.emoji,
-    title: day.label,
-    date: new Date(day.date).toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' }),
-    desc: day.description,
-  }))
+function PujaSection({ days }: { days: PublicEventDay[] | null }) {
+  const highlights = days?.length
+    ? days.map((day) => ({
+        icon: dayEmoji(day.key),
+        title: day.label,
+        date: day.date
+          ? new Date(day.date + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
+              weekday: 'long', month: 'long', day: 'numeric',
+            })
+          : '',
+        desc: day.description ?? '',
+      }))
+    : festivalConfig.days.map((day) => ({
+        icon: day.emoji,
+        title: day.label,
+        date: new Date(day.date + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
+          weekday: 'long', month: 'long', day: 'numeric',
+        }),
+        desc: day.description,
+      }))
 
   return (
     <section className="py-20 lg:py-28 bg-[oklch(0.985_0.01_90)]" aria-labelledby="puja-heading">
@@ -183,7 +266,7 @@ function PujaSection() {
 
 /* ── Events ────────────────────────────────────────────────────── */
 function EventsSection() {
-  const events = [
+  const programs = [
     { icon: Music, title: 'Cultural Programs', desc: 'An evening of music, dance, and theatrical performances by talented artists from Kolaghat and beyond.' },
     { icon: '🥁' as const, title: 'Dhunuchi Naach', desc: 'The mesmerising traditional dance with earthen incense pots, a symbol of devotion to Ma Durga.' },
     { icon: '🍽️' as const, title: 'Community Feast', desc: 'Traditional Bengali cuisine served to all — bhog prasad, sweets, and more through the festive days.' },
@@ -203,7 +286,7 @@ function EventsSection() {
           />
 
           <div className="flex flex-col gap-5">
-            {events.map(({ icon, title, desc }) => {
+            {programs.map(({ icon, title, desc }) => {
               const IconComp = typeof icon !== 'string' ? icon : null
               return (
                 <div key={title} className="group flex items-start gap-4 p-5 rounded-xl bg-[oklch(0.985_0.01_90)] border border-transparent hover:border-brand-orange/20 hover:bg-white transition-all">
@@ -271,7 +354,6 @@ function GallerySection() {
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/10 text-6xl pointer-events-none">
                 🪷
               </div>
-              <p className="absolute top-3 right-3 text-[10px] text-white/30 italic">Photo coming soon</p>
             </div>
           ))}
         </div>
@@ -356,7 +438,23 @@ function ContributionCTA() {
 }
 
 /* ── Contact ───────────────────────────────────────────────────── */
-function ContactSection() {
+function ContactSection({
+  startDate,
+  endDate,
+  year,
+}: {
+  startDate: string | null
+  endDate: string | null
+  year: number
+}) {
+  const start = startDate
+    ? new Date(startDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', { month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata' })
+    : new Date(festivalConfig.days[0].date + 'T12:00:00+05:30').toLocaleDateString('en-IN', { month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata' })
+
+  const end = endDate
+    ? new Date(endDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' })
+    : new Date(festivalConfig.days[festivalConfig.days.length - 1].date + 'T12:00:00+05:30').toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' })
+
   return (
     <section className="py-20 bg-[oklch(0.985_0.01_90)]" aria-labelledby="contact-heading">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -384,11 +482,9 @@ function ContactSection() {
                 <Calendar className="size-5 text-brand-orange" />
               </div>
               <div>
-                <p className="font-semibold text-brand-navy text-sm">Puja Dates {festivalConfig.year}</p>
+                <p className="font-semibold text-brand-navy text-sm">Puja Dates {year}</p>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {new Date(festivalConfig.days[0].date).toLocaleDateString('en-IN', { month: 'long', day: 'numeric' })}
-                  {' – '}
-                  {new Date(festivalConfig.days[festivalConfig.days.length - 1].date).toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  {start} – {end}
                 </p>
               </div>
             </div>
