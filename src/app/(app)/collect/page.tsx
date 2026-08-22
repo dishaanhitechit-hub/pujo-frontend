@@ -17,10 +17,10 @@ import { initiatePayment } from '@/lib/api/payments'
 import type { ApiError } from '@/types'
 
 const schema = z.object({
-  donor_name: z.string().min(1, 'Donor name is required'),
-  donor_phone: z.string().optional(),
-  donor_address: z.string().optional(),
-  donor_notes: z.string().optional(),
+  donorName: z.string().min(1, 'Donor name is required'),
+  donorPhone: z.string().optional(),
+  donorAddress: z.string().optional(),
+  donorNotes: z.string().optional(),
   amount: z
     .string()
     .min(1, 'Amount is required')
@@ -82,43 +82,43 @@ function CollectContent() {
           <legend className="text-sm font-semibold text-foreground px-1">Donor Information</legend>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="donor_name" className="flex items-center gap-1.5">
+            <Label htmlFor="donorName" className="flex items-center gap-1.5">
               <User className="size-3.5 text-muted-foreground" /> Donor Name <span className="text-destructive">*</span>
             </Label>
             <Input
-              id="donor_name"
+              id="donorName"
               placeholder="Full name"
-              aria-invalid={!!errors.donor_name}
-              {...register('donor_name')}
+              aria-invalid={!!errors.donorName}
+              {...register('donorName')}
             />
-            {errors.donor_name && <p className="text-xs text-destructive">{errors.donor_name.message}</p>}
+            {errors.donorName && <p className="text-xs text-destructive">{errors.donorName.message}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="donor_phone" className="flex items-center gap-1.5">
+              <Label htmlFor="donorPhone" className="flex items-center gap-1.5">
                 <Phone className="size-3.5 text-muted-foreground" /> Phone
               </Label>
-              <Input id="donor_phone" type="tel" placeholder="10-digit mobile" {...register('donor_phone')} />
+              <Input id="donorPhone" type="tel" placeholder="10-digit mobile" {...register('donorPhone')} />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="donor_address" className="flex items-center gap-1.5">
+              <Label htmlFor="donorAddress" className="flex items-center gap-1.5">
                 <MapPin className="size-3.5 text-muted-foreground" /> Address
               </Label>
-              <Input id="donor_address" placeholder="Optional" {...register('donor_address')} />
+              <Input id="donorAddress" placeholder="Optional" {...register('donorAddress')} />
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="donor_notes" className="flex items-center gap-1.5">
+            <Label htmlFor="donorNotes" className="flex items-center gap-1.5">
               <FileText className="size-3.5 text-muted-foreground" /> Notes
             </Label>
             <Textarea
-              id="donor_notes"
+              id="donorNotes"
               placeholder="Annual member, special occasion, etc."
               rows={2}
-              {...register('donor_notes')}
+              {...register('donorNotes')}
             />
           </div>
         </fieldset>

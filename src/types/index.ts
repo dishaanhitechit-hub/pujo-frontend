@@ -99,10 +99,10 @@ export interface ApiError {
 }
 
 export interface PaymentInitiateInput {
-  donor_name: string
-  donor_phone?: string
-  donor_address?: string
-  donor_notes?: string
+  donorName: string
+  donorPhone?: string
+  donorAddress?: string
+  donorNotes?: string
   amount: string
   method: PaymentMethod
 }
