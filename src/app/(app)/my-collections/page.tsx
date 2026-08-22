@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getCollectorSummary, getCollectorPayments } from '@/lib/api/collector'
-import type { CollectorSummary, PaginatedPayments } from '@/types'
+import type { CollectorSummary, PaginatedPayments, Payment } from '@/types'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { PaymentDetailDialog } from '@/components/shared/PaymentDetailDialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { IndianRupee, Banknote, Smartphone, CheckCircle2, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
@@ -30,25 +31,34 @@ function MyCollectionsContent() {
   const [summary, setSummary] = useState<CollectorSummary | null>(null)
   const [payments, setPayments] = useState<PaginatedPayments | null>(null)
   const [page, setPage] = useState(1)
-  const [method, setMethod] = useState<'upi' | 'cash' | ''>('')
+  const [method, setMethod] = useState<'upi' | 'cash' | 'cheque' | ''>('')
   const [donorType, setDonorType] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  const reqRef = useRef(0)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true) // intentional: reset state before each fetch so stale data isn't shown
+    const req = ++reqRef.current
+    setLoading(true)
     setError(null)
     Promise.all([
       getCollectorSummary(),
       getCollectorPayments({ page, method: method || undefined, donorType: donorType || undefined, perPage: 20 }),
     ])
       .then(([s, p]) => {
+        if (req !== reqRef.current) return
         setSummary(s)
         setPayments(p)
       })
-      .catch((err: ApiError) => setError(err.message ?? 'Failed to load data.'))
-      .finally(() => setLoading(false))
+      .catch((err: ApiError) => {
+        if (req !== reqRef.current) return
+        setError(err.message ?? 'Failed to load data.')
+      })
+      .finally(() => {
+        if (req !== reqRef.current) return
+        setLoading(false)
+      })
   }, [page, method, donorType])
 
   return (
@@ -72,7 +82,7 @@ function MyCollectionsContent() {
       {/* Filters */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
         <span className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Filter className="size-3" /> Method:</span>
-        {(['', 'upi', 'cash'] as const).map((m) => (
+        {(['', 'upi', 'cash', 'cheque'] as const).map((m) => (
           <button
             key={m}
             onClick={() => { setMethod(m); setPage(1) }}
@@ -129,7 +139,12 @@ function MyCollectionsContent() {
                 {payments.payments.map((p) => (
                   <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-3">
-                      <p className="font-medium text-foreground">{p.donor.name}</p>
+                      <button
+                        onClick={() => setSelectedPayment(p)}
+                        className="font-medium text-foreground text-left hover:text-brand-orange transition-colors cursor-pointer"
+                      >
+                        {p.donor.name}
+                      </button>
                       {p.donor.phone && <p className="text-xs text-muted-foreground">{p.donor.phone}</p>}
                       <p className="text-xs text-muted-foreground/60">{p.donor.donorType ?? 'Not specified'}</p>
                     </td>
@@ -163,7 +178,6 @@ function MyCollectionsContent() {
             </table>
           </div>
 
-          {/* Pagination */}
           {payments.pages > 1 && (
             <div className="flex items-center justify-between mt-5">
               <p className="text-xs text-muted-foreground">
@@ -181,6 +195,12 @@ function MyCollectionsContent() {
           )}
         </>
       )}
+
+      <PaymentDetailDialog
+        payment={selectedPayment}
+        open={!!selectedPayment}
+        onOpenChange={(o) => { if (!o) setSelectedPayment(null) }}
+      />
     </div>
   )
 }

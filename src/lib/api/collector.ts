@@ -5,7 +5,7 @@ import type { ApiResponse, CollectorSummary, PaginatedPayments } from '@/types'
 export interface CollectorPaymentsQuery {
   page?: number
   perPage?: number
-  method?: 'cash' | 'upi'
+  method?: 'cash' | 'upi' | 'cheque'
   date?: string
   donorType?: string
 }

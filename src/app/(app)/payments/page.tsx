@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getDashboardPayments } from '@/lib/api/dashboard'
-import type { PaginatedPayments, ApiError } from '@/types'
+import type { PaginatedPayments, Payment, ApiError } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { PaymentDetailDialog } from '@/components/shared/PaymentDetailDialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Filter } from 'lucide-react'
@@ -27,15 +28,19 @@ export default function PaymentsPage() {
 function PaymentsContent() {
   const [data, setData] = useState<PaginatedPayments | null>(null)
   const [page, setPage] = useState(1)
-  const [method, setMethod] = useState<'upi' | 'cash' | ''>('')
-  const [status, setStatus] = useState<'pending' | 'confirmed' | 'expired' | ''>('')
+  const [method, setMethod] = useState<'upi' | 'cash' | 'cheque' | ''>('')
+  const [status, setStatus] = useState<'pending' | 'confirmed' | 'expired' | 'cancelled' | ''>('')
   const [donorType, setDonorType] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  // Stale-response guard: only the latest request's result updates state.
+  const reqRef = useRef(0)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true) // intentional: reset loading state before each fetch
+    const req = ++reqRef.current
+    setLoading(true)
+    setError(null)
     getDashboardPayments({
       page,
       method: method || undefined,
@@ -43,9 +48,18 @@ function PaymentsContent() {
       donorType: donorType || undefined,
       perPage: 20,
     })
-      .then(setData)
-      .catch((err: ApiError) => setError(err.message ?? 'Failed to load payments.'))
-      .finally(() => setLoading(false))
+      .then((result) => {
+        if (req !== reqRef.current) return
+        setData(result)
+      })
+      .catch((err: ApiError) => {
+        if (req !== reqRef.current) return
+        setError(err.message ?? 'Failed to load payments.')
+      })
+      .finally(() => {
+        if (req !== reqRef.current) return
+        setLoading(false)
+      })
   }, [page, method, status, donorType])
 
   return (
@@ -54,14 +68,14 @@ function PaymentsContent() {
 
       <div className="flex items-center gap-3 mb-5 flex-wrap">
         <span className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Filter className="size-3" /> Method:</span>
-        {(['', 'upi', 'cash'] as const).map((m) => (
+        {(['', 'upi', 'cash', 'cheque'] as const).map((m) => (
           <button key={m} onClick={() => { setMethod(m); setPage(1) }}
             className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${method === m ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}>
             {m === '' ? 'All' : m.toUpperCase()}
           </button>
         ))}
         <span className="text-xs font-medium text-muted-foreground ml-3">Status:</span>
-        {(['', 'pending', 'confirmed', 'expired'] as const).map((s) => (
+        {(['', 'pending', 'confirmed', 'expired', 'cancelled'] as const).map((s) => (
           <button key={s} onClick={() => { setStatus(s); setPage(1) }}
             className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${status === s ? 'bg-brand-navy text-white' : 'bg-muted text-muted-foreground hover:bg-brand-navy/10 hover:text-brand-navy'}`}>
             {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
@@ -102,7 +116,14 @@ function PaymentsContent() {
               <tbody>
                 {data.payments.map((p) => (
                   <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                    <td className="px-5 py-3 font-medium">{p.donor.name}</td>
+                    <td className="px-5 py-3">
+                      <button
+                        onClick={() => setSelectedPayment(p)}
+                        className="font-medium text-left hover:text-brand-orange transition-colors cursor-pointer"
+                      >
+                        {p.donor.name}
+                      </button>
+                    </td>
                     <td className="px-5 py-3 text-xs text-muted-foreground">{p.donor.donorType ?? <span className="text-muted-foreground/40">Not specified</span>}</td>
                     <td className="px-5 py-3 text-muted-foreground">{p.collector.name}</td>
                     <td className="px-5 py-3 font-semibold">{fmt(p.amount)}</td>
@@ -133,6 +154,12 @@ function PaymentsContent() {
           )}
         </>
       )}
+
+      <PaymentDetailDialog
+        payment={selectedPayment}
+        open={!!selectedPayment}
+        onOpenChange={(o) => { if (!o) setSelectedPayment(null) }}
+      />
     </div>
   )
 }

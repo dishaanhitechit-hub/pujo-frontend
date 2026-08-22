@@ -41,10 +41,19 @@ export function getDashboardNav(role: Role): DashboardNavItem[] {
 
   if (can(role, 'dashboard.view')) {
     items.push({ label: 'All Payments', href: '/payments', iconName: 'CreditCard' })
+    items.push({ label: 'Pledges', href: '/pledges', iconName: 'Handshake' })
+    items.push({ label: 'Donors', href: '/donors', iconName: 'UserSearch' })
+  } else if (can(role, 'payment.initiate')) {
+    items.push({ label: 'Pledges', href: '/pledges', iconName: 'Handshake' })
+  }
+
+  if (can(role, 'token.view') || can(role, 'token.generate')) {
+    items.push({ label: 'Tokens', href: '/tokens', iconName: 'Ticket' })
   }
 
   if (can(role, 'users.manage')) {
     items.push({ label: 'Users', href: '/admin/users', iconName: 'Users' })
+    items.push({ label: 'Token Config', href: '/admin/token-config', iconName: 'SlidersHorizontal' })
     items.push({ label: 'Settings', href: '/admin/config', iconName: 'Settings' })
   }
 

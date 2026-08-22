@@ -1,15 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getDashboardSummary, getDashboardCollectors, getDashboardPayments } from '@/lib/api/dashboard'
-import type { DashboardSummary, CollectorBreakdown, PaginatedPayments } from '@/types'
+import type { DashboardSummary, CollectorBreakdown, PaginatedPayments, Payment } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { PaymentDetailDialog } from '@/components/shared/PaymentDetailDialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { IndianRupee, Smartphone, Banknote, CheckCircle2, Clock, Users, ChevronLeft, ChevronRight } from 'lucide-react'
+import { IndianRupee, Smartphone, Banknote, CheckCircle2, Clock, Users, ChevronLeft, ChevronRight, FileText, TrendingUp } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
@@ -35,22 +36,32 @@ function DashboardContent() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  const reqRef = useRef(0)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true) // intentional: reset loading state before each page change
+    const req = ++reqRef.current
+    setLoading(true)
+    setError(null)
     Promise.all([
       getDashboardSummary(),
       getDashboardCollectors(),
       getDashboardPayments({ page, perPage: 10 }),
     ])
       .then(([s, c, p]) => {
+        if (req !== reqRef.current) return
         setSummary(s)
         setCollectors(c)
         setPayments(p)
       })
-      .catch((err: ApiError) => setError(err.message ?? 'Failed to load dashboard.'))
-      .finally(() => setLoading(false))
+      .catch((err: ApiError) => {
+        if (req !== reqRef.current) return
+        setError(err.message ?? 'Failed to load dashboard.')
+      })
+      .finally(() => {
+        if (req !== reqRef.current) return
+        setLoading(false)
+      })
   }, [page])
 
   if (error) {
@@ -73,19 +84,46 @@ function DashboardContent() {
 
       {/* Summary */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
         </div>
       ) : summary && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          <div className="xl:col-span-2">
-            <StatCard label="Grand Total" value={fmt(summary.grandTotal)} icon={IndianRupee} variant="primary" />
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="xl:col-span-2">
+              <StatCard label="Grand Total" value={fmt(summary.grandTotal)} icon={IndianRupee} variant="primary" />
+            </div>
+            <StatCard label="UPI Total" value={fmt(summary.upiTotal)} icon={Smartphone} />
+            <StatCard label="Cash Total" value={fmt(summary.cashTotal)} icon={Banknote} />
+            <StatCard label="Cheque Total" value={fmt(summary.chequeTotal)} icon={FileText} />
+            <StatCard label="Confirmed" value={summary.confirmedCount} icon={CheckCircle2} variant="success" />
+            <StatCard label="Pending" value={summary.pendingCount} icon={Clock} variant="warning" />
+            <StatCard label="Total Donors" value={summary.totalDonors} icon={Users} />
           </div>
-          <StatCard label="UPI Total" value={fmt(summary.upiTotal)} icon={Smartphone} />
-          <StatCard label="Cash Total" value={fmt(summary.cashTotal)} icon={Banknote} />
-          <StatCard label="Confirmed" value={summary.confirmedCount} icon={CheckCircle2} variant="success" />
-          <StatCard label="Pending" value={summary.pendingCount} icon={Clock} variant="warning" />
-        </div>
+          {(Number(summary.totalPledged) > 0 || summary.openPledgeCount > 0) && (
+            <div className="rounded-xl border border-border bg-card p-5">
+              <h2 className="font-semibold text-sm mb-4 flex items-center gap-2"><TrendingUp className="size-4" /> Pledge Summary</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs">Total Pledged</p>
+                  <p className="font-semibold text-lg">{fmt(summary.totalPledged)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Paid</p>
+                  <p className="font-semibold text-lg text-green-700">{fmt(summary.totalPledgePaid)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Outstanding</p>
+                  <p className="font-semibold text-lg text-yellow-700">{fmt(summary.totalPledgeOutstanding)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Open Pledges</p>
+                  <p className="font-semibold text-lg">{summary.openPledgeCount}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -177,7 +215,12 @@ function DashboardContent() {
                   {payments.payments.map((p) => (
                     <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="px-5 py-3">
-                        <p className="font-medium">{p.donor.name}</p>
+                        <button
+                          onClick={() => setSelectedPayment(p)}
+                          className="font-medium text-left hover:text-brand-orange transition-colors cursor-pointer"
+                        >
+                          {p.donor.name}
+                        </button>
                         {p.donor.phone && <p className="text-xs text-muted-foreground">{p.donor.phone}</p>}
                         <p className="text-xs text-muted-foreground/60">{p.donor.donorType ?? 'Not specified'}</p>
                       </td>
@@ -223,6 +266,12 @@ function DashboardContent() {
           </>
         )}
       </div>
+
+      <PaymentDetailDialog
+        payment={selectedPayment}
+        open={!!selectedPayment}
+        onOpenChange={(o) => { if (!o) setSelectedPayment(null) }}
+      />
     </div>
   )
 }

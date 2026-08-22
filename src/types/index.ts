@@ -1,6 +1,9 @@
 export type Role = 'admin' | 'executive' | 'committee' | 'general'
-export type PaymentMethod = 'upi' | 'cash'
-export type PaymentStatus = 'pending' | 'confirmed' | 'expired'
+export type PaymentMethod = 'upi' | 'cash' | 'cheque'
+export type PaymentStatus = 'pending' | 'confirmed' | 'expired' | 'cancelled'
+export type PledgeStatus = 'open' | 'complete' | 'cancelled'
+export type TokenType = 'single' | 'dual' | 'bulk'
+export type TokenStatus = 'active' | 'void'
 
 export interface User {
   id: number
@@ -24,10 +27,16 @@ export interface Donor {
   createdAt: string
 }
 
+export interface DonorWithStats extends Donor {
+  totalDonated: string
+  confirmedCount: number
+  lastDonatedAt: string | null
+}
+
 export interface Collector {
   id: number
   name: string
-  role: Role
+  role?: Role
 }
 
 export interface Payment {
@@ -38,9 +47,14 @@ export interface Payment {
   amount: string
   method: PaymentMethod
   utrNumber?: string | null
+  chequeNumber?: string | null
+  bankName?: string | null
+  chequeDate?: string | null
+  pledgeId?: number | null
   status: PaymentStatus
   whatsappSent?: boolean
   confirmedAt?: string | null
+  cancelledAt?: string | null
   receiptPdfPath?: string | null
   createdAt: string
 }
@@ -50,6 +64,7 @@ export interface CollectorSummary {
   upiTotal: string
   grandTotal: string
   confirmedCount: number
+  pendingCount: number
 }
 
 export interface CollectorBreakdown {
@@ -63,10 +78,15 @@ export interface CollectorBreakdown {
 export interface DashboardSummary {
   cashTotal: string
   upiTotal: string
+  chequeTotal: string
   grandTotal: string
   confirmedCount: number
   pendingCount: number
   totalDonors: number
+  totalPledged: string
+  totalPledgePaid: string
+  totalPledgeOutstanding: string
+  openPledgeCount: number
 }
 
 export interface PaginatedPayments {
@@ -75,6 +95,83 @@ export interface PaginatedPayments {
   perPage: number
   total: number
   pages: number
+}
+
+export interface Pledge {
+  id: number
+  donor: Donor
+  collector: Collector
+  totalAmount: string
+  paidAmount: string
+  outstandingAmount: string
+  status: PledgeStatus
+  notes: string | null
+  createdAt: string
+}
+
+export interface PledgeDetail {
+  pledge: Pledge
+  payments: Payment[]
+}
+
+export interface PaginatedPledges {
+  pledges: Pledge[]
+  page: number
+  perPage: number
+  total: number
+  pages: number
+}
+
+export interface Token {
+  id: number
+  tokenNo: string
+  slNo: number
+  type: TokenType
+  status: TokenStatus
+  participantName: string | null
+  topic: string | null
+  orgName: string | null
+  generatedBy: { id: number; name: string }
+  generatedAt: string
+  batchId: string | null
+  printUrl: string
+  viewUrl: string
+}
+
+export interface BulkTokenResponse {
+  batchId: string
+  count: number
+  tokens: Token[]
+  printUrl: string
+}
+
+export interface PaginatedTokens {
+  tokens: Token[]
+  total: number
+  page: number
+  pages: number
+}
+
+export interface PaginatedDonors {
+  donors: DonorWithStats[]
+  page: number
+  perPage: number
+  total: number
+  pages: number
+}
+
+export interface DonorDetail {
+  donor: DonorWithStats
+  payments: Payment[]
+}
+
+export interface TokenConfig {
+  tokenPrefix: string
+  tokenSuffix: string
+  tokenPadWidth: string
+  tokenStartNumber: string
+  tokenCurrentNumber: string | null
+  tokenDefaultTopic: string
 }
 
 export interface AdminConfig {
@@ -88,6 +185,7 @@ export interface AdminConfigResponse {
 }
 
 export interface ApiResponse<T> {
+  success: boolean
   message: string
   data: T
 }
@@ -107,6 +205,7 @@ export interface PaymentInitiateInput {
   donorType: string
   amount: string
   method: PaymentMethod
+  pledgeId?: number | null
 }
 
 export interface PaymentInitiateResponse {
@@ -115,7 +214,33 @@ export interface PaymentInitiateResponse {
   amount: string
   donorName: string
   status: PaymentStatus
+  pledgeId: number | null
   nextUrl: string
+}
+
+export interface CreatePledgeInput {
+  donorName: string
+  donorPhone?: string
+  donorAddress?: string
+  donorNotes?: string
+  donorType?: string
+  totalAmount: string
+  notes?: string
+}
+
+export interface PledgePayInput {
+  amount: string
+  method: PaymentMethod
+}
+
+export interface GenerateTokenInput {
+  type: 'single' | 'dual'
+  participantName: string
+  topic?: string
+}
+
+export interface BulkTokenInput {
+  count: number
 }
 
 export interface CreateUserInput {

@@ -18,6 +18,7 @@ import { ROLE_LABELS } from '@/config/roles'
 import type { User, Role, ApiError, UpdateUserInput } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/lib/auth/auth-provider'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 
 const createSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -45,9 +46,12 @@ function UsersContent() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deactivating, setDeactivating] = useState<number | null>(null)
+  const [pendingDeactivate, setPendingDeactivate] = useState<User | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   async function loadUsers() {
+    setLoading(true)
+    setError(null)
     try {
       const data = await getUsers()
       setUsers(data)
@@ -61,8 +65,10 @@ function UsersContent() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadUsers() }, [])
 
-  async function handleDeactivate(u: User) {
-    if (!confirm(`Deactivate ${u.name}? They will no longer be able to sign in.`)) return
+  async function confirmDeactivate() {
+    if (!pendingDeactivate) return
+    const u = pendingDeactivate
+    setPendingDeactivate(null)
     setDeactivating(u.id)
     try {
       await deactivateUser(u.id)
@@ -129,7 +135,7 @@ function UsersContent() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeactivate(u)}
+                          onClick={() => setPendingDeactivate(u)}
                           disabled={deactivating === u.id}
                           className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 gap-1 text-xs"
                         >
@@ -169,6 +175,16 @@ function UsersContent() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!pendingDeactivate}
+        onOpenChange={(o) => { if (!o) setPendingDeactivate(null) }}
+        title={`Deactivate ${pendingDeactivate?.name ?? 'user'}?`}
+        description="They will no longer be able to sign in. This can be reversed by re-creating their account."
+        confirmLabel="Deactivate"
+        cancelLabel="Keep active"
+        onConfirm={confirmDeactivate}
+      />
     </div>
   )
 }

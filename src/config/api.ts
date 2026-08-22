@@ -16,10 +16,13 @@ export const apiConfig = {
     },
     admin: {
       config: '/api/admin/config',
+      tokenConfig: '/api/admin/token-config',
+      tokenConfigReset: '/api/admin/token-config/reset',
     },
     payment: {
       initiate: '/api/payment/initiate',
       receipt: (id: number) => `/api/payment/receipt/${id}`,
+      byReceiptNo: (receiptNo: string) => `/api/payment/by-receipt/${receiptNo}`,
     },
     collector: {
       summary: '/api/collector/summary',
@@ -30,11 +33,33 @@ export const apiConfig = {
       collectors: '/api/dashboard/collectors',
       payments: '/api/dashboard/payments',
     },
+    pledge: {
+      list: '/api/pledge/',
+      create: '/api/pledge/',
+      get: (id: number) => `/api/pledge/${id}`,
+      pay: (id: number) => `/api/pledge/${id}/pay`,
+      cancel: (id: number) => `/api/pledge/${id}/cancel`,
+    },
+    donor: {
+      list: '/api/donor/',
+      get: (id: number) => `/api/donor/${id}`,
+    },
+    token: {
+      generate: '/api/token/generate',
+      bulk: '/api/token/bulk',
+      list: '/api/token/list',
+      get: (tokenNo: string) => `/api/token/${tokenNo}`,
+      void: (tokenNo: string) => `/api/token/${tokenNo}/void`,
+    },
   },
   backendPages: {
     payQr: (paymentId: number) => `/pay/qr/${paymentId}`,
     payCash: (paymentId: number) => `/pay/cash/${paymentId}`,
+    payCheque: (paymentId: number) => `/pay/cheque/${paymentId}`,
     payReceipt: (paymentId: number) => `/pay/receipt/${paymentId}`,
     receipt: (receiptNo: string) => `/receipt/${receiptNo}`,
+    tokenView: (tokenNo: string) => `/token/${tokenNo}`,
+    tokenPrint: (tokenNo: string) => `/token/print/${tokenNo}`,
+    tokenPrintBulk: (batchId: string) => `/token/print/bulk/${batchId}`,
   },
 } as const

@@ -28,7 +28,7 @@ const schema = z.object({
     .string()
     .min(1, 'Amount is required')
     .regex(/^\d+(\.\d{1,2})?$/, 'Enter a valid amount (e.g. 500 or 500.00)'),
-  method: z.enum(['upi', 'cash'], { message: 'Select a payment method' }),
+  method: z.enum(['upi', 'cash', 'cheque'], { message: 'Select a payment method' }),
 })
 
 type FormData = z.infer<typeof schema>
@@ -178,15 +178,16 @@ function CollectContent() {
 
           <div className="flex flex-col gap-2">
             <Label>Payment Method <span className="text-destructive">*</span></Label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               {[
                 { value: 'upi', label: 'UPI', emoji: '📱', desc: 'QR code payment' },
                 { value: 'cash', label: 'Cash', emoji: '💵', desc: 'Physical cash' },
+                { value: 'cheque', label: 'Cheque', emoji: '📝', desc: 'Cheque payment' },
               ].map(({ value, label, emoji, desc }) => (
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setValue('method', value as 'upi' | 'cash', { shouldValidate: true })}
+                  onClick={() => setValue('method', value as 'upi' | 'cash' | 'cheque', { shouldValidate: true })}
                   className={`flex flex-col items-center gap-1 p-4 rounded-xl border-2 transition-all text-center ${
                     selectedMethod === value
                       ? 'border-brand-orange bg-brand-orange/5 text-brand-navy'
@@ -208,6 +209,8 @@ function CollectContent() {
           <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
             {selectedMethod === 'upi'
               ? '📱 After submitting, you will be redirected to the UPI payment page with a QR code for the donor to scan.'
+              : selectedMethod === 'cheque'
+              ? '📝 After submitting, you will be redirected to the cheque details entry page.'
               : '💵 After submitting, you will be redirected to the cash confirmation page.'}
           </div>
         )}

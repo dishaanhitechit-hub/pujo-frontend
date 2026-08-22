@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from './auth-provider'
 import type { Role } from '@/types'
@@ -18,17 +19,19 @@ export function RoleGuard({ children, permission, requiredRole, fallback }: Role
   const { user } = useAuth()
   const router = useRouter()
 
-  if (!user) return null
-
   const permitted =
+    !!user &&
     (!permission || hasPermission(user.role, permission)) &&
     (!requiredRole || user.role === requiredRole || user.role === 'admin')
 
-  if (!permitted) {
-    if (fallback) return <>{fallback}</>
-    router.replace('/forbidden')
-    return null
-  }
+  useEffect(() => {
+    if (user && !permitted && !fallback) {
+      router.replace('/forbidden')
+    }
+  }, [user, permitted, fallback, router])
+
+  if (!user) return null
+  if (!permitted) return fallback ? <>{fallback}</> : null
 
   return <>{children}</>
 }

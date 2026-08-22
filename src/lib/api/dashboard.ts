@@ -5,8 +5,8 @@ import type { ApiResponse, DashboardSummary, CollectorBreakdown, PaginatedPaymen
 export interface DashboardPaymentsQuery {
   page?: number
   perPage?: number
-  method?: 'cash' | 'upi'
-  status?: 'pending' | 'confirmed' | 'expired'
+  method?: 'cash' | 'upi' | 'cheque'
+  status?: 'pending' | 'confirmed' | 'expired' | 'cancelled'
   collectorId?: number
   date?: string
   donorType?: string

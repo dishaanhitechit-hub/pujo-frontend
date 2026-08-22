@@ -1,7 +1,7 @@
 # Project Status
 
-**Last Updated:** 2026-08-17
-**Phase:** 13 — Glassmorphism Hero Redesign
+**Last Updated:** 2026-08-22
+**Phase:** 18 — Full API Audit & New Feature Implementation
 
 ---
 
@@ -377,6 +377,123 @@ Comprehensive audit and fix of authentication, routing, permissions, loading sta
 ### Verified
 - `tsc --noEmit` — 0 errors
 - `npm run build` — 19 routes, 0 errors
+
+---
+
+---
+
+## Phase 18 — Full API Audit & New Feature Implementation (2026-08-22)
+
+Audited the frontend against `NEW_README_APIS.md` (new backend pulled by another developer) and implemented all missing features. **No backend code was modified.**
+
+### Gaps Found and Implemented
+
+**Types (`src/types/index.ts`)**
+- Added `'cheque'` to `PaymentMethod`
+- Added `'cancelled'` to `PaymentStatus`
+- Added new types: `PledgeStatus`, `TokenType`, `TokenStatus`, `Pledge`, `PledgeDetail`, `PaginatedPledges`, `Token`, `BulkTokenResponse`, `PaginatedTokens`, `DonorWithStats`, `PaginatedDonors`, `DonorDetail`, `TokenConfig`
+- Added new input types: `CreatePledgeInput`, `PledgePayInput`, `GenerateTokenInput`, `BulkTokenInput`
+- Added to `Payment`: `chequeNumber`, `bankName`, `chequeDate`, `pledgeId`, `cancelledAt`
+- Added `pendingCount` to `CollectorSummary`
+- Added to `DashboardSummary`: `chequeTotal`, `totalPledged`, `totalPledgePaid`, `totalPledgeOutstanding`, `openPledgeCount`
+- Added `pledgeId` to `PaymentInitiateInput` and `PaymentInitiateResponse`
+
+**Permissions (`src/config/roles.ts`)**
+- Added permissions: `payment.confirm`, `payment.view_receipt`, `token.generate`, `token.bulk`, `token.view`, `permissions.manage`
+- Updated `ROLE_PERMISSIONS` for all 4 roles per API permission matrix
+
+**API Config (`src/config/api.ts`)**
+- Added endpoints: `pledge.*`, `donor.*`, `token.*`, `admin.tokenConfig`, `admin.tokenConfigReset`, `payment.byReceiptNo`
+- Added `backendPages.payCheque`, `backendPages.tokenView`, `backendPages.tokenPrint`, `backendPages.tokenPrintBulk`
+
+**API Clients**
+- `dashboard.ts` — method filter now includes `'cheque'`; status filter now includes `'cancelled'`
+- `collector.ts` — method filter now includes `'cheque'`
+- `src/lib/api/pledges.ts` *(new)* — `createPledge`, `listPledges`, `getPledge`, `payPledgeInstallment`, `cancelPledge`
+- `src/lib/api/donors.ts` *(new)* — `listDonors`, `getDonor`
+- `src/lib/api/tokens.ts` *(new)* — `generateToken`, `bulkGenerateTokens`, `listTokens`, `getToken`, `voidToken`, `getTokenConfig`, `updateTokenConfig`, `resetTokenCounter`
+
+**StatusBadge (`src/components/shared/StatusBadge.tsx`)**
+- Added `cancelled` to payment status config (slate/grey)
+- Added `PledgeStatusBadge` (open=blue, complete=green, cancelled=slate)
+- Added `TokenStatusBadge` (active=green, void=red)
+
+**Navigation (`src/config/navigation.ts`)**
+- Added: Pledges (`dashboard.view`), Donors (`dashboard.view`), Tokens (`token.view` or `token.generate`), Token Config (`users.manage`)
+
+**AppSidebar (`src/components/dashboard/AppSidebar.tsx`)**
+- Added icon imports: `Handshake`, `UserSearch`, `Ticket`, `SlidersHorizontal`
+- Added to `ICON_MAP`
+
+**Updated pages**
+- `collect/page.tsx` — Cheque added as 3rd payment method (📝, `grid-cols-3`); cheque info callout text
+- `payments/page.tsx` — Method filter: `cheque` added; Status filter: `cancelled` added
+- `my-collections/page.tsx` — Method filter: `cheque` added
+- `dashboard/page.tsx` — Added Cheque Total stat card; added Pledge Summary panel (totalPledged, paid, outstanding, open count)
+
+**New pages**
+- `src/app/(app)/pledges/page.tsx` — Pledge list with status filter, pagination, View links
+- `src/app/(app)/pledges/new/page.tsx` — Create pledge form (donor info + total amount + notes)
+- `src/app/(app)/pledges/[id]/page.tsx` — Pledge detail: summary cards, pay installment form, installment history table, cancel button (admin only)
+- `src/app/(app)/donors/page.tsx` — Donor list with search + donorType filter, totalDonated/confirmedCount/lastDonatedAt stats
+- `src/app/(app)/donors/[id]/page.tsx` — Donor detail: profile cards + full payment history
+- `src/app/(app)/tokens/page.tsx` — Single/dual token generator form + bulk generate (admin) + token list with print/view links
+- `src/app/(app)/admin/token-config/page.tsx` — Token config form (prefix, suffix, pad width, start number, default topic) + counter reset (admin only)
+
+### Verified
+- `tsc --noEmit` — 0 errors
+- Route count: 26 pages (up from 19)
+
+---
+
+---
+
+## Phase 18 (continued) — Pledge Permission & UX Audit (2026-08-22)
+
+Audited and fixed pledge module role/permission handling to match the backend authorization model exactly.
+
+### Root Cause
+
+The frontend `ROLE_PERMISSIONS` config grants `payment.initiate` to admin (for symmetry), but the backend explicitly blocks admin from `POST /api/pledge/` and `POST /api/payment/initiate` ("admin accounts cannot collect/create pledges"). The pledge pages did not enforce this admin exclusion at the frontend level, leading to:
+
+- Admin could navigate to `/pledges/new` (would get a 403 from the backend only after submission)
+- Admin saw the "New Pledge" button on the `/pledges` list page
+- Committee/General had no navigation path to `/pledges/new` even though the API allows them to create pledges
+
+### Changes Made
+
+**`src/app/(app)/pledges/new/page.tsx`**
+- Added `useAuth` import and admin-exclusion check inside `NewPledgeContent`
+- `useEffect` redirects admin to `/forbidden` (mirrors backend's 403 behavior at the frontend)
+- Guard returns `null` while user is unresolved or is admin — prevents form flash
+
+**`src/app/(app)/pledges/page.tsx`**
+- Added `useAuth` to `PledgesContent`
+- "New Pledge" button is now conditional on `user?.role !== 'admin'`
+- Admin sees the pledge list (permitted via `dashboard.view`) but no create action
+
+**`src/config/navigation.ts`**
+- Added `else if (can(role, 'payment.initiate'))` branch below the `dashboard.view` block
+- Committee/General (who have `payment.initiate` but not `dashboard.view`) now get a "New Pledge" nav link pointing to `/pledges/new`
+- Admin and Executive are unaffected: Executive sees the "Pledges" list link and reaches `/pledges/new` from the New Pledge button on the list; Committee/General get a direct nav entry
+
+**`src/lib/auth/role-guard.tsx`** (earlier in this session)
+- Fixed React render-phase `router.replace()` call (was causing "Cannot update a component while rendering" warning)
+- Navigation side effect moved into `useEffect`
+
+### Final Pledge Role Matrix
+
+| Feature              | Admin | Executive | Committee | General |
+|----------------------|:-----:|:---------:|:---------:|:-------:|
+| View pledge list     | ✅    | ✅         | ❌         | ❌       |
+| View pledge details  | ✅    | ✅         | ✅         | ✅       |
+| Create pledge        | ❌    | ✅         | ✅         | ✅       |
+| Pay installment      | ❌    | ✅         | ✅         | ✅       |
+| Cancel pledge        | ✅    | ❌         | ❌         | ❌       |
+
+### Verified
+- `tsc --noEmit` — 0 errors
+- `npm run build` — clean (all routes pass)
 
 ---
 
