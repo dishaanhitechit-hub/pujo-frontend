@@ -13,7 +13,8 @@ import type {
 } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { useAuth } from '@/lib/auth/auth-provider'
-import { hasPermission } from '@/config/roles'
+import { hasPermission, can, OVERSIGHT_ROLES } from '@/config/roles'
+import type { Role } from '@/types'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { StatusBadge, EventStatusBadge } from '@/components/shared/StatusBadge'
@@ -39,6 +40,45 @@ function fmt(val: string | number) {
   return `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`
 }
 
+// ── View access options — controls which cells render as links vs plain text ──
+interface ViewOptions {
+  canManageEvents:      boolean  // link event name → /admin/events/{id}
+  canViewDonors:        boolean  // link donor count → /donors?eventId=
+  canViewPayments:      boolean  // link total received → /payments?eventId=
+  canViewPledges:       boolean  // "View Pledges" links in Collection/Pledge cards
+  canViewExpenses:      boolean  // link expenses → /admin/expenses?eventId=
+  canViewReport:        boolean  // show the Report button and open the full Event Report
+  canViewBudgetInReport: boolean // show budget planning totals inside the Expense Summary card
+}
+
+const FULL_ACCESS: ViewOptions = {
+  canManageEvents:      true,
+  canViewDonors:        true,
+  canViewPayments:      true,
+  canViewPledges:       true,
+  canViewExpenses:      true,
+  canViewReport:        true,
+  canViewBudgetInReport: true,
+}
+
+function getViewOptions(role: Role): ViewOptions {
+  const isOversight = OVERSIGHT_ROLES.includes(role)
+  return {
+    canManageEvents:      can(role, 'event.manage'),
+    canViewDonors:        !isOversight && can(role, 'dashboard.view'),
+    canViewPayments:      !isOversight && can(role, 'dashboard.view'),
+    canViewPledges:       !isOversight && can(role, 'payment.view_receipt'),
+    canViewExpenses:      can(role, 'expense.manage'),
+    // All dashboard.view roles may open the report; collector/committee/general
+    // have no dashboard.view so they are blocked at the RoleGuard level already.
+    canViewReport:        can(role, 'dashboard.view'),
+    // Budget planning data (Total Planned, Remaining, Utilization) is visible only
+    // to event managers (admin) and oversight roles that review overall org finances.
+    // Cashier registers expenses but does not own budget planning.
+    canViewBudgetInReport: can(role, 'event.manage') || isOversight,
+  }
+}
+
 export default function DashboardPage() {
   return (
     <RoleGuard permission="dashboard.view">
@@ -49,10 +89,10 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const { user } = useAuth()
-  const hasEventReportAccess = !!user && hasPermission(user.role, 'dashboard.view')
-
-  if (hasEventReportAccess) return <AdminDashboard />
-  return <CollectorDashboard />
+  if (!user) return null
+  if (user.role === 'admin') return <AdminDashboard />
+  if (hasPermission(user.role, 'dashboard.view')) return <ReportingDashboard role={user.role} />
+  return null
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -95,16 +135,59 @@ function AdminDashboard() {
   )
 }
 
+// ── Reporting Dashboard — cashier / managing_committee / executive ─────────────
+
+function ReportingDashboard({ role }: { role: Role }) {
+  const viewOpts = getViewOptions(role)
+  const [eventStats, setEventStats]   = useState<EventStats[]>([])
+  const [loadingEvents, setLoadingEvents] = useState(true)
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
+
+  useEffect(() => {
+    setLoadingEvents(true)
+    getDashboardEvents()
+      .then((d) => setEventStats(d ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingEvents(false))
+  }, [])
+
+  if (selectedEventId !== null) {
+    const ev = eventStats.find((s) => s.event.id === selectedEventId)
+    return (
+      <AdminEventReport
+        eventId={selectedEventId}
+        eventName={ev?.event.name ?? `Event #${selectedEventId}`}
+        onBack={() => setSelectedEventId(null)}
+        viewOpts={viewOpts}
+      />
+    )
+  }
+
+  return (
+    <div className="p-6 lg:p-8 flex flex-col gap-6">
+      <PageHeader title="Dashboard" subtitle="Event-level collection and expense overview." />
+      <EventOverviewTable
+        eventStats={eventStats}
+        loading={loadingEvents}
+        onSelectEvent={setSelectedEventId}
+        viewOpts={viewOpts}
+      />
+    </div>
+  )
+}
+
 // ── Event Overview Table ───────────────────────────────────────────────────────
 
 function EventOverviewTable({
   eventStats,
   loading,
   onSelectEvent,
+  viewOpts = FULL_ACCESS,
 }: {
   eventStats: EventStats[]
   loading: boolean
   onSelectEvent: (id: number) => void
+  viewOpts?: ViewOptions
 }) {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 300)
@@ -171,7 +254,8 @@ function EventOverviewTable({
               <tr className="border-b border-border bg-muted/20">
                 {[
                   'Event', 'Status', 'Donor Count', 'Donation Charge', 'Total Received',
-                  'Pending', 'Expenses Paid', 'Balance in Hand', 'Budget', 'Budget Status', 'Report'
+                  'Pending', 'Expenses Paid', 'Balance in Hand', 'Budget', 'Budget Status',
+                  ...(viewOpts.canViewReport ? ['Report'] : []),
                 ].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
                     {h}
@@ -186,44 +270,48 @@ function EventOverviewTable({
                 return (
                   <tr key={s.event.id} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/admin/events/${s.event.id}`}
-                        className="font-semibold text-foreground hover:text-brand-orange transition-colors"
-                      >
-                        {s.event.name}
-                      </Link>
+                      {viewOpts.canManageEvents ? (
+                        <Link href={`/admin/events/${s.event.id}`} className="font-semibold text-foreground hover:text-brand-orange transition-colors">
+                          {s.event.name}
+                        </Link>
+                      ) : (
+                        <span className="font-semibold">{s.event.name}</span>
+                      )}
                       {s.event.year && <div className="text-xs text-muted-foreground mt-0.5">{s.event.year}</div>}
                     </td>
                     <td className="px-4 py-3">
                       <EventStatusBadge status={s.event.status as 'draft' | 'published' | 'archived'} />
                     </td>
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/donors?eventId=${s.event.id}`}
-                        className="font-medium text-brand-navy hover:underline"
-                      >
-                        {s.donorCount}
-                      </Link>
+                      {viewOpts.canViewDonors ? (
+                        <Link href={`/donors?eventId=${s.event.id}`} className="font-medium text-brand-navy hover:underline">
+                          {s.donorCount}
+                        </Link>
+                      ) : (
+                        <span className="font-medium">{s.donorCount}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-medium">{fmt(s.donationCharge)}</td>
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/payments?eventId=${s.event.id}`}
-                        className="font-semibold hover:text-brand-orange transition-colors"
-                      >
-                        {fmt(s.totalReceived)}
-                      </Link>
+                      {viewOpts.canViewPayments ? (
+                        <Link href={`/payments?eventId=${s.event.id}`} className="font-semibold hover:text-brand-orange transition-colors">
+                          {fmt(s.totalReceived)}
+                        </Link>
+                      ) : (
+                        <span className="font-semibold">{fmt(s.totalReceived)}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-yellow-700 dark:text-yellow-400 font-medium">
                       {Number(s.pending) > 0 ? fmt(s.pending) : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/admin/expenses?eventId=${s.event.id}`}
-                        className="font-medium text-foreground hover:text-brand-orange transition-colors"
-                      >
-                        {fmt(s.expensesPaid)}
-                      </Link>
+                      {viewOpts.canViewExpenses ? (
+                        <Link href={`/admin/expenses?eventId=${s.event.id}`} className="font-medium text-foreground hover:text-brand-orange transition-colors">
+                          {fmt(s.expensesPaid)}
+                        </Link>
+                      ) : (
+                        <span className="font-medium">{fmt(s.expensesPaid)}</span>
+                      )}
                     </td>
                     <td className={`px-4 py-3 font-semibold ${Number(s.balanceInHand) < 0 ? 'text-destructive' : 'text-green-700'}`}>{fmt(s.balanceInHand)}</td>
                     <td className="px-4 py-3 text-muted-foreground">
@@ -245,16 +333,18 @@ function EventOverviewTable({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        onClick={() => onSelectEvent(s.event.id)}
-                      >
-                        Report
-                      </Button>
-                    </td>
+                    {viewOpts.canViewReport && (
+                      <td className="px-4 py-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => onSelectEvent(s.event.id)}
+                        >
+                          Report
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                 )
               })}
@@ -272,10 +362,12 @@ function AdminEventReport({
   eventId,
   eventName,
   onBack,
+  viewOpts = FULL_ACCESS,
 }: {
   eventId: number
   eventName: string
   onBack: () => void
+  viewOpts?: ViewOptions
 }) {
   const [report, setReport] = useState<EventReport | null>(null)
   const [loading, setLoading] = useState(true)
@@ -329,9 +421,11 @@ function AdminEventReport({
               )}
               {ev.location && <span>{ev.location}</span>}
               <EventStatusBadge status={ev.status as 'draft' | 'published' | 'archived'} />
-              <Link href={`/admin/events/${eventId}`} className="text-brand-orange hover:underline text-xs flex items-center gap-1">
-                Event Settings <ExternalLink className="size-3" />
-              </Link>
+              {viewOpts.canManageEvents && (
+                <Link href={`/admin/events/${eventId}`} className="text-brand-orange hover:underline text-xs flex items-center gap-1">
+                  Event Settings <ExternalLink className="size-3" />
+                </Link>
+              )}
             </div>
           )}
 
@@ -362,12 +456,12 @@ function AdminEventReport({
           </section>
 
           {/* C. Collection Summary */}
-          <CollectionSummaryCard summary={report.collectionSummary} eventId={eventId} />
+          <CollectionSummaryCard summary={report.collectionSummary} eventId={eventId} showLink={viewOpts.canViewPledges} />
 
           {/* D. Mode Breakdown + E. Pledge Summary */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <PaymentModesCard modes={report.paymentModes} />
-            <PledgeCard pledge={report.pledgeSummary} eventId={eventId} />
+            <PledgeCard pledge={report.pledgeSummary} eventId={eventId} showLink={viewOpts.canViewPledges} />
           </div>
 
           {/* F. Collector Breakdown */}
@@ -375,7 +469,12 @@ function AdminEventReport({
 
           {/* G. Budget/Expense Summary */}
           {report.expenseSummary && (
-            <ExpenseSummaryCard summary={report.expenseSummary} eventId={eventId} />
+            <ExpenseSummaryCard
+              summary={report.expenseSummary}
+              eventId={eventId}
+              showManageLink={viewOpts.canViewExpenses}
+              showBudgetDetails={viewOpts.canViewBudgetInReport}
+            />
           )}
         </>
       )}
@@ -385,7 +484,7 @@ function AdminEventReport({
 
 // ── Sub-cards ──────────────────────────────────────────────────────────────────
 
-function CollectionSummaryCard({ summary, eventId }: { summary: CollectionSummary; eventId: number }) {
+function CollectionSummaryCard({ summary, eventId, showLink = true }: { summary: CollectionSummary; eventId: number; showLink?: boolean }) {
   const tiles = [
     {
       label: 'Full Received',
@@ -426,7 +525,7 @@ function CollectionSummaryCard({ summary, eventId }: { summary: CollectionSummar
         <h3 className="font-semibold text-sm flex items-center gap-2">
           <CheckCircle2 className="size-4" /> Pledge Collection Summary
         </h3>
-        <Link href={`/pledges?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View Pledges</Link>
+        {showLink && <Link href={`/pledges?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View Pledges</Link>}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tiles.map((t) => (
@@ -464,12 +563,12 @@ function PaymentModesCard({ modes }: { modes: EventReport['paymentModes'] }) {
   )
 }
 
-function PledgeCard({ pledge, eventId }: { pledge: EventReport['pledgeSummary']; eventId: number }) {
+function PledgeCard({ pledge, eventId, showLink = true }: { pledge: EventReport['pledgeSummary']; eventId: number; showLink?: boolean }) {
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-sm flex items-center gap-2"><TrendingUp className="size-4" /> Pledge Summary</h3>
-        <Link href={`/pledges?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View</Link>
+        {showLink && <Link href={`/pledges?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View</Link>}
       </div>
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div>
@@ -539,25 +638,31 @@ function CollectorBreakdownCard({ collectors }: { collectors: EventReport['colle
 function ExpenseSummaryCard({
   summary,
   eventId,
+  showManageLink = true,
+  showBudgetDetails = true,
 }: {
   summary: EventReport['expenseSummary']
   eventId: number
+  showManageLink?: boolean
+  showBudgetDetails?: boolean
 }) {
   const br = summary.budgetReport
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-sm flex items-center gap-2"><Receipt className="size-4" /> Expense Summary</h3>
-        <Link href={`/admin/expenses?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline flex items-center gap-1">
-          Manage Expenses <ExternalLink className="size-3" />
-        </Link>
+        {showManageLink && (
+          <Link href={`/admin/expenses?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline flex items-center gap-1">
+            Manage Expenses <ExternalLink className="size-3" />
+          </Link>
+        )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mb-4">
         <div>
           <p className="text-xs text-muted-foreground">Total Expenses</p>
           <p className="font-semibold text-lg">{fmt(summary.totalExpenses)}</p>
         </div>
-        {br && (
+        {showBudgetDetails && br && (
           <>
             <div>
               <p className="text-xs text-muted-foreground">Total Planned</p>

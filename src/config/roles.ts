@@ -64,29 +64,13 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'expense.manage',
   ],
   managing_committee: [
-    'payment.initiate',
-    'payment.confirm',
-    'payment.view_receipt',
-    'collector.view_own',
     'dashboard.view',
-    'token.generate',
-    'token.view',
   ],
   core_committee: [
-    'payment.initiate',
-    'payment.confirm',
-    'payment.view_receipt',
-    'collector.view_own',
-    'token.generate',
+    'dashboard.view',
   ],
   executive: [
-    'payment.initiate',
-    'payment.confirm',
-    'payment.view_receipt',
-    'collector.view_own',
     'dashboard.view',
-    'token.generate',
-    'token.view',
   ],
   cashier: [
     'payment.initiate',
@@ -138,14 +122,20 @@ export function getDefaultRoute(role: Role): string {
   return '/collect'
 }
 
+// Oversight roles — attend meetings / review reports, never handle collections
+const OVERSIGHT_ROLES: Role[] = ['managing_committee', 'executive', 'core_committee']
+
 /**
  * Whether a user has collection capability.
- * - admin: never
+ * - admin / oversight roles: never
  * - collector: always
- * - other roles: only when canCollect flag is explicitly true
+ * - cashier + others: only when canCollect flag is explicitly true
  */
 export function userCanCollect(user: { role: Role; canCollect?: boolean }): boolean {
   if (user.role === 'admin') return false
+  if (OVERSIGHT_ROLES.includes(user.role)) return false
   if (user.role === 'collector') return true
   return user.canCollect === true
 }
+
+export { OVERSIGHT_ROLES }

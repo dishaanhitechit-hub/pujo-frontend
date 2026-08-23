@@ -1,5 +1,5 @@
 import type { Role } from '@/types'
-import { can } from '@/config/roles'
+import { can, OVERSIGHT_ROLES } from '@/config/roles'
 
 export interface NavItem {
   label: string
@@ -26,22 +26,24 @@ export interface DashboardNavItem {
 
 export function getDashboardNav(role: Role, canCollect?: boolean): DashboardNavItem[] {
   const items: DashboardNavItem[] = []
+  const isOversight = OVERSIGHT_ROLES.includes(role)
 
   if (can(role, 'dashboard.view')) {
     items.push({ label: 'Dashboard', href: '/dashboard', iconName: 'LayoutDashboard' })
   }
 
-  // Collection navigation is driven by per-user capability, not role permission
-  if (canCollect) {
+  // Collection navigation: oversight roles never collect regardless of canCollect flag
+  if (!isOversight && canCollect) {
     items.push({ label: 'Collect Payment', href: '/collect', iconName: 'IndianRupee' })
     items.push({ label: 'My Collections', href: '/my-collections', iconName: 'ClipboardList' })
   }
 
-  if (can(role, 'dashboard.view')) {
+  // Payment records: oversight roles see only the aggregate dashboard, not individual records
+  if (!isOversight && can(role, 'dashboard.view')) {
     items.push({ label: 'All Payments', href: '/payments', iconName: 'CreditCard' })
     items.push({ label: 'Pledges', href: '/pledges', iconName: 'Handshake' })
     items.push({ label: 'Donors', href: '/donors', iconName: 'UserSearch' })
-  } else if (canCollect) {
+  } else if (!isOversight && can(role, 'payment.view_receipt')) {
     items.push({ label: 'Pledges', href: '/pledges', iconName: 'Handshake' })
   }
 
@@ -52,13 +54,16 @@ export function getDashboardNav(role: Role, canCollect?: boolean): DashboardNavI
   if (can(role, 'event.manage')) {
     items.push({ label: 'Events',  href: '/admin/events',  iconName: 'Calendar' })
     items.push({ label: 'Budget',  href: '/admin/budgets', iconName: 'Wallet' })
+  } else {
+    // All other authenticated users get a read-only events view
+    items.push({ label: 'Events', href: '/event-overview', iconName: 'Calendar' })
   }
 
   if (can(role, 'expense.manage')) {
     items.push({ label: 'Expenses', href: '/admin/expenses', iconName: 'Receipt' })
   }
 
-  if (can(role, 'dashboard.view') && !can(role, 'content.manage')) {
+  if (!can(role, 'content.manage')) {
     items.push({ label: 'Announcements', href: '/announcements', iconName: 'Megaphone' })
   }
 

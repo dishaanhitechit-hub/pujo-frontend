@@ -14,7 +14,7 @@ import { Megaphone, Search, X, Calendar, ChevronDown, ChevronUp } from 'lucide-r
 
 export default function AnnouncementsPage() {
   return (
-    <RoleGuard permission="dashboard.view">
+    <RoleGuard>
       <AnnouncementsContent />
     </RoleGuard>
   )
