@@ -170,7 +170,7 @@ function EventOverviewTable({
             <thead>
               <tr className="border-b border-border bg-muted/20">
                 {[
-                  'Event', 'Donor Count', 'Donation Charge', 'Total Received',
+                  'Event', 'Status', 'Donor Count', 'Donation Charge', 'Total Received',
                   'Pending', 'Expenses Paid', 'Balance in Hand', 'Budget', 'Budget Status', 'Report'
                 ].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
@@ -192,10 +192,10 @@ function EventOverviewTable({
                       >
                         {s.event.name}
                       </Link>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {s.event.year && <span className="text-xs text-muted-foreground">{s.event.year}</span>}
-                        <EventStatusBadge status={s.event.status as 'draft' | 'published' | 'archived'} />
-                      </div>
+                      {s.event.year && <div className="text-xs text-muted-foreground mt-0.5">{s.event.year}</div>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <EventStatusBadge status={s.event.status as 'draft' | 'published' | 'archived'} />
                     </td>
                     <td className="px-4 py-3">
                       <Link
