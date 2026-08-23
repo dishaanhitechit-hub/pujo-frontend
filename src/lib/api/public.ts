@@ -6,6 +6,7 @@ import type {
   PublicAnnouncement,
   PublicSiteConfig,
   PublicGalleryResponse,
+  PublicStats,
   ContactQueryInput,
   ContactQuery,
 } from '@/types'
@@ -44,8 +45,9 @@ export async function getFeaturedEvent(): Promise<PublicEventDetail | null> {
 export async function listPublicEvents(
   page = 1,
   perPage = 12,
+  includeDays = false,
 ): Promise<PublicEventsList | null> {
-  const qs = `?page=${page}&perPage=${perPage}`
+  const qs = `?page=${page}&perPage=${perPage}${includeDays ? '&includeDays=true' : ''}`
   return publicGet<PublicEventsList>(apiConfig.endpoints.public.events + qs, 300)
 }
 
@@ -77,6 +79,10 @@ export async function getSiteConfig(): Promise<PublicSiteConfig | null> {
 
 export async function listPublicGallery(): Promise<PublicGalleryResponse | null> {
   return publicGet<PublicGalleryResponse>(apiConfig.endpoints.public.gallery, 300)
+}
+
+export async function getPublicStats(): Promise<PublicStats | null> {
+  return publicGet<PublicStats>(apiConfig.endpoints.public.stats, 3600)
 }
 
 export async function submitContactQuery(input: ContactQueryInput): Promise<ContactQuery> {

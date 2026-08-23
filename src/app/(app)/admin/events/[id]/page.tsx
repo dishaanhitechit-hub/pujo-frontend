@@ -3,6 +3,7 @@
 import { use, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useForm, Controller, useFieldArray } from 'react-hook-form'
+import type { Control, UseFormRegister, FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -19,7 +20,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PageHeader } from '@/components/dashboard/PageHeader'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { EventStatusBadge } from '@/components/shared/StatusBadge'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -28,9 +28,8 @@ import {
   getEvent, updateEvent, setEventDays, getEventSummary,
   uploadEventCover, uploadEventGallery, deleteEventMedia, reorderEventGallery,
 } from '@/lib/api/events'
-import type { UpdateEventInput } from '@/lib/api/events'
 import { apiConfig } from '@/config/api'
-import type { Event, EventDay, DashboardSummary, ApiError } from '@/types'
+import type { Event, DashboardSummary, ApiError } from '@/types'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -67,12 +66,16 @@ type InfoFormData = z.infer<typeof infoSchema>
 
 const daySchema = z.object({
   days: z.array(z.object({
-    backendId:   z.number().optional(), // tracks whether the item exists in the backend
+    backendId:   z.number().optional(),
     key:         z.string().min(1, 'Key is required').max(50),
     label:       z.string().min(1, 'Label is required').max(100),
     date:        z.string().optional(),
     description: z.string().optional(),
-    rituals:     z.string(),
+    activities:  z.array(z.object({
+      time:        z.string(),
+      name:        z.string().min(1, 'Activity name is required'),
+      description: z.string().optional(),
+    })),
   })),
 })
 
@@ -103,6 +106,7 @@ function EventDetailContent({ params }: { params: Promise<{ id: string }> }) {
     variant?: 'destructive' | 'default'; onConfirm: () => void
   }>({ open: false, title: '', description: '', label: 'Confirm', onConfirm: () => {} })
 
+  // Used by MediaTab's onRefresh (user-triggered, not an effect — synchronous setState is fine here).
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -116,7 +120,24 @@ function EventDetailContent({ params }: { params: Promise<{ id: string }> }) {
     }
   }, [eventId])
 
-  useEffect(() => { load() }, [load])
+  // Initial load / eventId change: all setState calls are inside async callbacks
+  // so nothing runs synchronously inside the effect body.
+  useEffect(() => {
+    let active = true
+    getEvent(eventId)
+      .then((data) => {
+        if (!active) return
+        setEv(data as EventDetail)
+        setError(null)
+        setLoading(false)
+      })
+      .catch((err: unknown) => {
+        if (!active) return
+        setError((err as ApiError).message ?? 'Failed to load event.')
+        setLoading(false)
+      })
+    return () => { active = false }
+  }, [eventId])
 
   async function quickPatch(payload: Parameters<typeof updateEvent>[1], msg: string) {
     if (!ev) return
@@ -436,10 +457,15 @@ function ViewSchedulePanel({ ev, onEdit }: { ev: EventDetail; onEdit: () => void
               {day.description && (
                 <p className="text-sm text-muted-foreground mb-3">{day.description}</p>
               )}
-              {day.rituals && day.rituals.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {day.rituals.map((r, i) => (
-                    <span key={i} className="px-2 py-0.5 rounded-full bg-muted text-xs text-muted-foreground">{r}</span>
+              {day.activities && day.activities.length > 0 && (
+                <div className="flex flex-col gap-1.5 mt-1">
+                  {day.activities.map((a, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      {a.time && (
+                        <span className="font-mono text-xs text-brand-orange w-16 shrink-0 pt-0.5">{a.time}</span>
+                      )}
+                      <span className="px-2 py-0.5 rounded-full bg-muted text-xs text-muted-foreground">{a.name}</span>
+                    </div>
                   ))}
                 </div>
               )}
@@ -805,6 +831,107 @@ function InfoTab({ ev, eventId, onSaved, onCancel }: InfoTabProps) {
   )
 }
 
+// ── Day Activities sub-component (must be defined before ScheduleTab) ────────
+
+interface DayActivitiesListProps {
+  control: Control<DayFormData>
+  register: UseFormRegister<DayFormData>
+  dayIndex: number
+  errors: FieldErrors<DayFormData>
+}
+
+function DayActivitiesList({ control, register, dayIndex, errors }: DayActivitiesListProps) {
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: `days.${dayIndex}.activities`,
+  })
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <Label className="text-xs">Activities</Label>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          Add activities with an optional 24-hour time. Leave time blank if not scheduled.
+        </p>
+      </div>
+
+      {fields.map((field, i) => {
+        const actErr = (errors.days?.[dayIndex]?.activities as { name?: { message?: string } }[] | undefined)?.[i]
+        return (
+          <div key={field.id} className="rounded-lg border border-border bg-muted/20 p-3 flex flex-col gap-2.5">
+            {/* Row header: activity number + delete */}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Activity {i + 1}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-destructive -mr-1"
+                onClick={() => remove(i)}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+
+            {/* Time + Name — stacks on mobile, side-by-side on sm+ */}
+            <div className="grid grid-cols-1 sm:grid-cols-[10rem_1fr] gap-2">
+              <div className="flex flex-col gap-1">
+                <Label className="text-[10px] font-medium text-muted-foreground">
+                  Time <span className="font-normal">(24 h, e.g. 08:00)</span>
+                </Label>
+                <Input
+                  type="time"
+                  className="font-mono text-xs w-full"
+                  {...register(`days.${dayIndex}.activities.${i}.time`)}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label className="text-[10px] font-medium text-muted-foreground">
+                  Activity name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  placeholder="e.g. Pushpanjali, Music Concert…"
+                  aria-invalid={!!actErr?.name}
+                  {...register(`days.${dayIndex}.activities.${i}.name`)}
+                />
+                {actErr?.name && (
+                  <p className="text-xs text-destructive">{actErr.name.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Note — auto-expanding textarea */}
+            <div className="flex flex-col gap-1">
+              <Label className="text-[10px] font-medium text-muted-foreground">
+                Note <span className="font-normal text-muted-foreground/60">(optional — shown beneath the activity name)</span>
+              </Label>
+              <Textarea
+                placeholder="e.g. with flowers from the mandap, dress code formal…"
+                rows={1}
+                className="resize-none text-xs min-h-[2.25rem] leading-relaxed"
+                style={{ fieldSizing: 'content' } as React.CSSProperties}
+                {...register(`days.${dayIndex}.activities.${i}.description`)}
+              />
+            </div>
+          </div>
+        )
+      })}
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="self-start text-xs"
+        onClick={() => append({ time: '', name: '', description: '' })}
+      >
+        <Plus className="size-3.5 mr-1.5" />Add Activity
+      </Button>
+    </div>
+  )
+}
+
 // ── Schedule Tab (edit mode) ─────────────────────────────────────────────────
 
 interface ScheduleTabProps {
@@ -827,7 +954,9 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
         label:       d.label,
         date:        d.date ?? '',
         description: d.description ?? '',
-        rituals:     (d.rituals ?? []).join(', '),
+        activities:  d.activities?.length
+          ? d.activities.map((a) => ({ time: a.time, name: a.name, description: a.description ?? '' }))
+          : (d.rituals ?? []).map((r) => ({ time: '', name: r, description: '' })),
       })),
     },
   })
@@ -853,7 +982,9 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
         label:       d.label,
         date:        d.date || null,
         description: d.description || null,
-        rituals:     d.rituals.split(',').map((r) => r.trim()).filter(Boolean),
+        rituals:     (d.activities ?? [])
+          .filter((a) => a.name.trim())
+          .map((a) => ({ time: a.time.trim(), name: a.name.trim(), description: a.description?.trim() || null })),
         sortOrder:   i,
       }))) as EventDetail
       toast.success('Schedule saved.')
@@ -869,7 +1000,7 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
         <div className="bg-muted/40 rounded-lg p-4 flex flex-col gap-1">
           <p className="text-xs font-semibold text-foreground">Event Schedule</p>
-          <p className="text-xs text-muted-foreground">Add the important days, sessions, activities, or programme items for this event. Each entry has a key (internal identifier), title, optional date, and activities (comma-separated). This replaces the entire schedule on save.</p>
+          <p className="text-xs text-muted-foreground">Add the important days, sessions, or programme items. Each entry has a key (internal identifier), title, optional date, and a list of activities with optional times. This replaces the entire schedule on save.</p>
         </div>
 
         {fields.length === 0 && (
@@ -923,17 +1054,19 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
                   <Input placeholder="Optional short description" {...register(`days.${idx}.description`)} />
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs">Activities (comma-separated)</Label>
-                  <Input placeholder="e.g. Pushpanjali, Sandhi Puja, Dance Performance, Music Programme" {...register(`days.${idx}.rituals`)} />
-                </div>
+                <DayActivitiesList
+                  control={control}
+                  register={register}
+                  dayIndex={idx}
+                  errors={errors}
+                />
               </div>
             )
           })}
         </div>
 
         <Button type="button" variant="outline" className="self-start"
-          onClick={() => append({ backendId: undefined, key: '', label: '', date: '', description: '', rituals: '' })}>
+          onClick={() => append({ backendId: undefined, key: '', label: '', date: '', description: '', activities: [] })}>
           <Plus className="size-4 mr-2" />Add Day
         </Button>
 
@@ -978,13 +1111,17 @@ function MediaTab({ ev, eventId, onRefresh }: { ev: EventDetail; eventId: number
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [reorderingId, setReorderingId] = useState<number | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; mediaId: number | null }>({ open: false, mediaId: null })
+  const [prevEvGallery, setPrevEvGallery] = useState(ev.gallery)
   const [gallery, setGallery] = useState<GalleryItem[]>(
     () => [...(ev.gallery ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
   )
 
-  useEffect(() => {
+  // Derived-state pattern: sync gallery when ev.gallery changes after a refresh,
+  // while still allowing local optimistic reorder via setGallery.
+  if (prevEvGallery !== ev.gallery) {
+    setPrevEvGallery(ev.gallery)
     setGallery([...(ev.gallery ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)))
-  }, [ev.gallery])
+  }
 
   const base = apiConfig.baseUrl
 
@@ -1153,3 +1290,4 @@ function MediaTab({ ev, eventId, onRefresh }: { ev: EventDetail; eventId: number
     </div>
   )
 }
+

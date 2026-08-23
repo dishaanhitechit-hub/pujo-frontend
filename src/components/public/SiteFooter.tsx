@@ -97,6 +97,12 @@ export async function SiteFooter() {
 
         <div className="mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-white/40">
           <p>© {new Date().getFullYear()} {siteConfig.fullName}. All rights reserved.</p>
+          <p>
+            Designed &amp; developed by{' '}
+            <a href="tel:+919832661429" className="hover:text-white/70 transition-colors">Ankan Das</a>
+            {' '}&amp;{' '}
+            <a href="tel:+919339243759" className="hover:text-white/70 transition-colors">Soumyajit Maity</a>
+          </p>
           <Link href="/login" className="hover:text-white/70 transition-colors">
             Collector Portal
           </Link>

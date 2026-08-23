@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { siteConfig } from '@/config/site'
 import { festivalConfig } from '@/config/festival'
-import { getFeaturedEvent } from '@/lib/api/public'
+import { getFeaturedEvent, listPublicGallery, getPublicStats, mediaUrl } from '@/lib/api/public'
+import Image from 'next/image'
+import type { PublicGalleryImage } from '@/types'
 import { CountdownTimer } from '@/components/public/CountdownTimer'
 import { SectionHeading } from '@/components/public/SectionHeading'
 import { HeroSection } from '@/components/public/hero/HeroSection'
@@ -41,7 +43,12 @@ function countdownEnd(days: PublicEventDay[], endDate: string | null): string {
 }
 
 export default async function HomePage() {
-  const featured = await getFeaturedEvent()
+  const [featured, galleryResult, stats] = await Promise.all([
+    getFeaturedEvent(),
+    listPublicGallery(),
+    getPublicStats(),
+  ])
+  const galleryImages = galleryResult?.images.slice(0, 6) ?? []
 
   const heroProps = featured
     ? {
@@ -76,13 +83,18 @@ export default async function HomePage() {
       />
       <PujaSection days={activeDays} />
       <EventsSection />
-      <GallerySection />
-      <CommunitySection />
+      <GallerySection images={galleryImages} />
+      <CommunitySection
+        donorCount={stats?.donorCount ?? null}
+        oldestYear={stats?.oldestYear ?? null}
+        festivalDays={activeDays?.length ?? null}
+      />
       <ContributionCTA />
       <ContactSection
         startDate={featured?.days[0]?.date ?? featured?.startDate ?? null}
         endDate={featured?.days[featured?.days.length - 1]?.date ?? featured?.endDate ?? null}
         year={featured?.year ?? festivalConfig.year}
+        eventName={featured?.name ?? null}
       />
     </>
   )
@@ -94,7 +106,7 @@ function AboutSection() {
     { icon: Flower2, label: 'Tradition', desc: 'Decades of cultural heritage' },
     { icon: Heart,   label: 'Devotion',  desc: 'Spiritual celebrations' },
     { icon: Users,   label: 'Community', desc: 'United in festivity' },
-    { icon: Star,    label: 'Excellence',desc: 'Premium pandal & programs' },
+    { icon: Star,    label: 'Excellence',desc: 'Artful pandal & cultural shows' },
   ]
 
   return (
@@ -105,7 +117,7 @@ function AboutSection() {
             <SectionHeading
               label="Our Story"
               title={`শতদল — The Lotus`}
-              subtitle="Like the lotus that blooms from still waters, Shatadal rises every year to celebrate Ma Durga with grandeur, devotion, and the collective spirit of the Kolaghat community."
+              subtitle="Like the lotus that blooms from still waters, Shatadal blooms every year to celebrate Ma Durga with grandeur, devotion, and the collective spirit of the Kolaghat community."
               align="left"
             />
             <p className="mt-6 text-muted-foreground leading-relaxed">
@@ -192,6 +204,7 @@ function CountdownSection({
           targetISO={targetISO}
           endISO={endISO}
           festivalName={festivalName}
+          label={`${festivalName} Begins In`}
         />
 
         <div className="mt-10 flex flex-wrap justify-center gap-4 text-sm text-white/55">
@@ -208,6 +221,7 @@ function CountdownSection({
 function PujaSection({ days }: { days: PublicEventDay[] | null }) {
   const highlights = days?.length
     ? days.map((day) => ({
+        id:   day.key,
         icon: dayEmoji(day.key),
         title: day.label,
         date: day.date
@@ -218,6 +232,7 @@ function PujaSection({ days }: { days: PublicEventDay[] | null }) {
         desc: day.description ?? '',
       }))
     : festivalConfig.days.map((day) => ({
+        id:   day.key,
         icon: day.emoji,
         title: day.label,
         date: new Date(day.date + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
@@ -231,15 +246,21 @@ function PujaSection({ days }: { days: PublicEventDay[] | null }) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
           label="The Celebration"
-          title="Puja Schedule"
-          subtitle="Four sacred days of rituals, culture, and devotion. Mark your calendar."
+          title="Event Schedule"
+          subtitle={`${highlights.length} sacred day${highlights.length !== 1 ? 's' : ''} of rituals, culture, and devotion. Mark your calendar.`}
           className="mb-12"
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {highlights.map(({ icon, title, date, desc }) => (
+        <div className={`grid grid-cols-1 gap-5 ${
+          highlights.length <= 2
+            ? 'sm:grid-cols-2 max-w-2xl mx-auto'
+            : highlights.length === 3
+            ? 'sm:grid-cols-2 lg:grid-cols-3'
+            : 'sm:grid-cols-2 lg:grid-cols-4'
+        }`}>
+          {highlights.map(({ id, icon, title, date, desc }) => (
             <div
-              key={title}
+              key={id}
               className="group relative p-6 bg-white rounded-2xl shadow-sm border border-border hover:shadow-md hover:border-brand-orange/20 transition-all"
             >
               <div className="text-3xl mb-4">{icon}</div>
@@ -253,10 +274,10 @@ function PujaSection({ days }: { days: PublicEventDay[] | null }) {
 
         <div className="text-center mt-10">
           <Link
-            href="/puja"
+            href="/upcoming"
             className="inline-flex items-center gap-2 text-sm font-semibold text-brand-orange hover:gap-3 transition-all"
           >
-            Full puja details <ChevronRight className="size-4" />
+            Full event details <ChevronRight className="size-4" />
           </Link>
         </div>
       </div>
@@ -317,15 +338,17 @@ function EventsSection() {
 }
 
 /* ── Gallery Preview ───────────────────────────────────────────── */
-function GallerySection() {
-  const placeholders = [
-    { label: 'Durga Idol', bg: 'from-brand-orange/20 to-brand-pink/20' },
-    { label: 'Pandal', bg: 'from-brand-navy/20 to-brand-orange/10' },
-    { label: 'Dhunuchi', bg: 'from-brand-pink/20 to-brand-green/10' },
-    { label: 'Sindoor Khela', bg: 'from-brand-green/10 to-brand-orange/20' },
-    { label: 'Immersion', bg: 'from-brand-navy/15 to-brand-pink/15' },
-    { label: 'Anjali', bg: 'from-brand-orange/15 to-brand-navy/10' },
-  ]
+const GALLERY_PLACEHOLDERS = [
+  { label: 'Durga Idol',   bg: 'from-brand-orange/20 to-brand-pink/20' },
+  { label: 'Pandal',       bg: 'from-brand-navy/20 to-brand-orange/10' },
+  { label: 'Dhunuchi',     bg: 'from-brand-pink/20 to-brand-green/10' },
+  { label: 'Sindoor Khela',bg: 'from-brand-green/10 to-brand-orange/20' },
+  { label: 'Immersion',    bg: 'from-brand-navy/15 to-brand-pink/15' },
+  { label: 'Anjali',       bg: 'from-brand-orange/15 to-brand-navy/10' },
+]
+
+function GallerySection({ images }: { images: PublicGalleryImage[] }) {
+  const hasImages = images.length > 0
 
   return (
     <section className="py-20 lg:py-28 bg-brand-navy relative overflow-hidden" aria-labelledby="gallery-heading">
@@ -344,18 +367,45 @@ function GallerySection() {
         />
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-          {placeholders.map(({ label, bg }) => (
-            <div
-              key={label}
-              className={`group relative aspect-square rounded-2xl bg-gradient-to-br ${bg} border border-white/10 overflow-hidden flex items-end p-4 cursor-pointer hover:scale-[1.02] transition-transform`}
-            >
-              <div className="absolute inset-0 bg-brand-navy/30 group-hover:bg-brand-navy/20 transition-colors" />
-              <p className="relative text-xs text-white/70 font-medium">{label}</p>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/10 text-6xl pointer-events-none">
-                🪷
-              </div>
-            </div>
-          ))}
+          {hasImages
+            ? images.map((item) => {
+                const src = mediaUrl(item.url)
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/events/${item.event.slug}`}
+                    className="group relative aspect-square rounded-2xl overflow-hidden border border-white/10 bg-white/5 hover:scale-[1.02] transition-transform"
+                  >
+                    {src ? (
+                      <Image
+                        src={src}
+                        alt={item.altText ?? item.event.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        sizes="(max-width: 640px) 50vw, 33vw"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-5xl text-white/10">🪷</div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-brand-navy/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end p-3">
+                      <p className="text-[11px] font-semibold text-white line-clamp-1">{item.event.name}</p>
+                    </div>
+                  </Link>
+                )
+              })
+            : GALLERY_PLACEHOLDERS.map(({ label, bg }) => (
+                <div
+                  key={label}
+                  className={`group relative aspect-square rounded-2xl bg-gradient-to-br ${bg} border border-white/10 overflow-hidden flex items-end p-4`}
+                >
+                  <div className="absolute inset-0 bg-brand-navy/30" />
+                  <p className="relative text-xs text-white/70 font-medium">{label}</p>
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/10 text-6xl pointer-events-none">
+                    🪷
+                  </div>
+                </div>
+              ))
+          }
         </div>
 
         <div className="text-center mt-10">
@@ -369,11 +419,33 @@ function GallerySection() {
 }
 
 /* ── Community ─────────────────────────────────────────────────── */
-function CommunitySection() {
+function CommunitySection({
+  donorCount,
+  oldestYear,
+  festivalDays,
+}: {
+  donorCount: number | null
+  oldestYear: number | null
+  festivalDays: number | null
+}) {
+  const currentYear = new Date().getFullYear()
+
+  const startYear = oldestYear ?? festivalConfig.foundingYear
+  const yearsCount = Math.max(1, currentYear - startYear)
+
   const stats = [
-    { value: '50+', label: 'Years of celebration' },
-    { value: '5000+', label: 'Community members' },
-    { value: '4 Days', label: 'Of festivities' },
+    {
+      value: `${yearsCount}+`,
+      label: 'Years of celebration',
+    },
+    {
+      value: donorCount !== null ? (donorCount > 999 ? `${(donorCount / 1000).toFixed(1)}k+` : `${donorCount}+`) : '—',
+      label: 'Community donors',
+    },
+    {
+      value: festivalDays !== null ? `${festivalDays} Day${festivalDays !== 1 ? 's' : ''}` : '4 Days',
+      label: 'Of festivities',
+    },
     { value: '∞', label: 'Devotion' },
   ]
 
@@ -408,13 +480,13 @@ function ContributionCTA() {
           <div className="absolute inset-0 pointer-events-none" aria-hidden>
             <div className="absolute top-0 right-0 text-white/5 text-9xl pointer-events-none select-none rotate-12">🪷</div>
           </div>
-          <p className="text-white/70 text-xs uppercase tracking-widest mb-3">Support the Celebration</p>
+          <p className="text-white/70 text-xs uppercase tracking-widest mb-3">Support Our Community</p>
           <h2 className="font-heading font-bold text-3xl sm:text-4xl text-white mb-4">
             Be Part of Shatadal
           </h2>
           <p className="text-white/80 text-base sm:text-lg max-w-xl mx-auto mb-8">
-            Your contribution helps us celebrate Ma Durga with the grandeur and devotion she deserves.
-            Every donation, big or small, strengthens our community.
+            Your support keeps our celebrations alive — grand, joyful, and rooted in the spirit of Kolaghat.
+            Every contribution, big or small, makes a difference.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -442,10 +514,12 @@ function ContactSection({
   startDate,
   endDate,
   year,
+  eventName,
 }: {
   startDate: string | null
   endDate: string | null
   year: number
+  eventName: string | null
 }) {
   const start = startDate
     ? new Date(startDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', { month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata' })
@@ -482,7 +556,7 @@ function ContactSection({
                 <Calendar className="size-5 text-brand-orange" />
               </div>
               <div>
-                <p className="font-semibold text-brand-navy text-sm">Puja Dates {year}</p>
+                <p className="font-semibold text-brand-navy text-sm">{eventName ?? 'Event Dates'}</p>
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {start} – {end}
                 </p>

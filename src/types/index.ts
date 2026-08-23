@@ -15,13 +15,20 @@ export type TokenType = 'single' | 'dual' | 'bulk'
 export type TokenStatus = 'active' | 'void'
 export type EventStatus = 'draft' | 'published' | 'archived'
 
+export interface ActivityItem {
+  time: string        // HH:MM (24h) or empty string
+  name: string
+  description?: string  // optional note shown beneath the activity name
+}
+
 export interface EventDay {
   id: number
   key: string          // e.g. "saptami"
   label: string        // e.g. "Maha Saptami"
   date: string | null
   description: string | null
-  rituals: string[]
+  rituals: string[]    // backward compat — names only
+  activities: ActivityItem[]
   sortOrder: number
 }
 
@@ -472,8 +479,14 @@ export interface PublicEventDay {
   label: string
   date: string | null
   description: string | null
-  rituals: string[]
+  rituals: string[]         // backward compat — names only
+  activities: ActivityItem[]
   sortOrder: number
+}
+
+export interface PublicStats {
+  donorCount: number      // total donors ever recorded
+  oldestYear: number | null  // earliest published event year, null if none set
 }
 
 export interface PublicGalleryItem {
@@ -509,6 +522,7 @@ export interface PublicEvent {
   year: number | null
   isFeatured: boolean
   coverImageUrl: string | null  // /media/... path
+  days?: PublicEventDay[]       // present when ?includeDays=true
 }
 
 export interface PublicEventDetail extends PublicEvent {

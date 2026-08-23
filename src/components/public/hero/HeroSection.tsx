@@ -128,14 +128,14 @@ export function HeroSection({ eventName, year, startDate, endDate }: HeroSection
 
             {/* CTA */}
             <Link
-              href="/puja"
+              href="/upcoming"
               className="group flex items-center justify-between gap-4
                          bg-brand-orange text-white
                          px-6 py-3.5
                          text-[13px] font-semibold tracking-wide
                          hover:bg-[oklch(0.62_0.19_38)] transition-colors duration-300"
             >
-              <span>Explore Puja</span>
+              <span>Upcoming Events</span>
               <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform duration-300" />
             </Link>
 

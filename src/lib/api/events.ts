@@ -33,7 +33,7 @@ export interface SetEventDaysInput {
   label: string
   date?: string | null        // YYYY-MM-DD
   description?: string | null
-  rituals?: string[]
+  rituals?: (string | { time: string; name: string })[]
   sortOrder?: number
 }
 

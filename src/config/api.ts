@@ -78,6 +78,7 @@ export const apiConfig = {
       eventBySlug:   (slug: string) => `/api/public/events/${slug}`,
       featuredEvent: '/api/public/featured-event',
       gallery:       '/api/public/gallery',
+      stats:         '/api/public/stats',
       announcements: '/api/public/announcements',
       committee:     '/api/public/committee',
     },

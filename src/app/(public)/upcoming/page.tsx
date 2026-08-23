@@ -1,13 +1,12 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
 import { SectionHeading } from '@/components/public/SectionHeading'
-import { getPublicEventBySlug, getPublicAnnouncements, mediaUrl } from '@/lib/api/public'
-import { festivalConfig } from '@/config/festival'
+import { getFeaturedEvent, getPublicAnnouncements, mediaUrl } from '@/lib/api/public'
 import { MapPin, Calendar, ChevronLeft } from 'lucide-react'
 
-// Stable emoji map for known day keys
+export const metadata: Metadata = { title: 'Upcoming' }
+
 const DAY_EMOJI: Record<string, string> = {
   mahasaptami:    '🌸',
   mahashtami:     '🙏',
@@ -31,28 +30,36 @@ function fmtTime(t: string): string {
   return `${h12}:${m.toString().padStart(2, '0')} ${period}`
 }
 
-interface Props {
-  params: Promise<{ slug: string }>
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params
-  const event = await getPublicEventBySlug(slug)
-  if (!event) return { title: 'Event Not Found' }
-  return {
-    title: event.name,
-    description: event.description ?? undefined,
-  }
-}
-
-export default async function EventDetailPage({ params }: Props) {
-  const { slug } = await params
+export default async function UpcomingPage() {
   const [event, announcements] = await Promise.all([
-    getPublicEventBySlug(slug),
+    getFeaturedEvent(),
     getPublicAnnouncements(),
   ])
 
-  if (!event) notFound()
+  // No featured event — placeholder
+  if (!event) {
+    return (
+      <>
+        <div className="pt-32 pb-16 bg-gradient-to-br from-brand-navy to-[oklch(0.28_0.1_264.5)] text-center px-4">
+          <h1 className="font-heading font-bold text-4xl sm:text-5xl text-white">Upcoming Event</h1>
+          <p className="text-white/60 mt-4 max-w-xl mx-auto">Details will be published closer to the celebration.</p>
+        </div>
+        <section className="py-20 bg-white">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 text-center text-muted-foreground">
+            <p className="text-4xl mb-4">🪷</p>
+            <p className="font-semibold text-brand-navy text-lg mb-2">Event details coming soon</p>
+            <p className="text-sm mb-8">Stay tuned — schedule and programme will be published soon.</p>
+            <Link
+              href="/events"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-brand-orange border border-brand-orange/30 px-5 py-2.5 rounded-xl hover:bg-brand-orange/5 transition-colors"
+            >
+              View All Events
+            </Link>
+          </div>
+        </section>
+      </>
+    )
+  }
 
   const cover = mediaUrl(event.coverImageUrl)
   const startStr = fmtDate(event.startDate, { day: 'numeric', month: 'long' })
@@ -78,11 +85,9 @@ export default async function EventDetailPage({ params }: Props) {
           />
         )}
         <div className="relative text-center px-4">
-          {event.isFeatured && (
-            <span className="inline-block mb-3 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-brand-orange/20 text-brand-orange border border-brand-orange/30">
-              Featured Event
-            </span>
-          )}
+          <span className="inline-block mb-3 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-brand-orange/20 text-brand-orange border border-brand-orange/30">
+            Featured Event
+          </span>
           {event.year && (
             <p className="text-brand-orange/80 text-xs uppercase tracking-widest font-semibold mb-3">
               {event.year}
@@ -107,7 +112,7 @@ export default async function EventDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Cover image (full display) */}
+      {/* Cover image */}
       {cover && (
         <div className="bg-brand-navy">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 -mt-6 relative z-10 pb-8">
@@ -134,7 +139,7 @@ export default async function EventDetailPage({ params }: Props) {
               {event.days.map(({ key, label, date, description, activities, rituals }, idx) => {
                 const items = activities?.length
                   ? activities
-                  : (rituals ?? []).map((r) => ({ time: '', name: r }))
+                  : (rituals ?? []).map((r) => ({ time: '', name: r, description: undefined }))
                 const hasTimes = items.some((a) => a.time)
                 return (
                   <div key={key} className="group relative flex gap-6">
@@ -254,7 +259,7 @@ export default async function EventDetailPage({ params }: Props) {
         </section>
       )}
 
-      {/* Empty state when event has no days AND no gallery */}
+      {/* Empty state */}
       {event.days.length === 0 && event.gallery.length === 0 && (
         <section className="py-20 bg-white">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 text-center text-muted-foreground">

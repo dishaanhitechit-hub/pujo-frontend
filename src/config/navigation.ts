@@ -10,7 +10,7 @@ export interface NavItem {
 export const publicNav: NavItem[] = [
   { label: 'Home', href: '/' },
   { label: 'About', href: '/about' },
-  { label: 'Puja', href: '/puja' },
+  { label: 'Upcoming', href: '/upcoming' },
   { label: 'Events', href: '/events' },
   { label: 'Gallery', href: '/gallery' },
   { label: 'Committee', href: '/committee' },

@@ -69,8 +69,15 @@ export default async function GalleryPage() {
                     ) : (
                       <div className="aspect-square flex items-center justify-center text-4xl text-brand-orange/15">🪷</div>
                     )}
+                    {/* Event name overlay — visible on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-brand-navy/75 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-2.5">
+                      <p className="text-[11px] font-semibold text-white leading-snug line-clamp-1">{item.event.name}</p>
+                      {item.event.isFeatured && (
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-brand-orange mt-0.5">Featured</p>
+                      )}
+                    </div>
                     {item.event.isFeatured && (
-                      <span className="absolute top-2 left-2 text-[9px] font-semibold uppercase tracking-wide bg-brand-orange text-white px-1.5 py-0.5 rounded-full">
+                      <span className="absolute top-2 left-2 text-[9px] font-semibold uppercase tracking-wide bg-brand-orange text-white px-1.5 py-0.5 rounded-full group-hover:opacity-0 transition-opacity duration-200">
                         Featured
                       </span>
                     )}

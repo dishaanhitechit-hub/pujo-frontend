@@ -59,6 +59,8 @@ export type PujaDay = {
 export type FestivalConfig = {
   year: number
   name: string
+  /** The year the club first started celebrating — used to compute "X+ years of celebration". */
+  foundingYear: number
   /**
    * Human-readable label shown on the countdown widget.
    * Must stay in sync with what `countdownTarget` actually points to.
@@ -99,6 +101,7 @@ export type FestivalConfig = {
 export const festivalConfig: FestivalConfig = {
   year: 2026,
   name: 'Durga Puja',
+  foundingYear: 1975, // update with actual founding year from the club
 
   // Countdown label — must match what countdownTarget represents
   countdownLabel: 'Durga Puja Begins In',
