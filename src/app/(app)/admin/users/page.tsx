@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -35,6 +35,7 @@ const createSchema = z.object({
   email:      z.string().email('Enter a valid email').optional().or(z.literal('')),
   address:    z.string().optional(),
   password:   z.string().min(8, 'Password must be at least 8 characters'),
+  canCollect: z.boolean().optional(),
 })
 
 type CreateFormData = z.infer<typeof createSchema>
@@ -52,6 +53,7 @@ const editSchema = z.object({
   email:      z.string().email('Enter a valid email').optional().or(z.literal('')),
   address:    z.string().optional(),
   password:   z.string().min(8, 'Password must be at least 8 characters').optional().or(z.literal('')),
+  canCollect: z.boolean().optional(),
 })
 
 type EditFormData = z.infer<typeof editSchema>
@@ -168,7 +170,7 @@ function UsersContent() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/20">
-                {['Name', 'Email', 'Role', 'Status', 'Phone', 'Actions'].map((h) => (
+                {['Name', 'Email', 'Role', 'Can Collect', 'Status', 'Phone', 'Actions'].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -182,6 +184,15 @@ function UsersContent() {
                     <span className="text-xs font-semibold text-brand-navy">
                       {ROLE_LABELS[u.role] ?? u.role}
                     </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    {u.role === 'admin' ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : u.canCollect ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-medium dark:bg-green-900/30 dark:text-green-400">Yes</span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-medium">No</span>
+                    )}
                   </td>
                   <td className="px-5 py-3"><ActiveBadge isActive={u.isActive} /></td>
                   <td className="px-5 py-3 text-muted-foreground">{u.phone ?? '—'}</td>
@@ -280,11 +291,14 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<CreateFormData>({
     resolver: zodResolver(createSchema),
-    defaultValues: { role: 'collector' },
+    defaultValues: { role: 'collector', canCollect: false },
   })
+
+  const watchedRole = useWatch({ control, name: 'role' })
 
   async function onSubmit(data: CreateFormData) {
     try {
@@ -296,6 +310,7 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         email:      data.email || null,
         address:    data.address || null,
         password:   data.password,
+        canCollect: data.canCollect,
       })
       toast.success(`User ${data.name} created successfully.`)
       onSuccess()
@@ -334,6 +349,34 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <RoleSelect id="c-role" roles={SELECTABLE_ROLES} selectProps={register('role')} />
             {errors.role && <p className="text-xs text-destructive">{errors.role.message}</p>}
           </div>
+
+          {/* Can Collect */}
+          {watchedRole !== 'admin' && (
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+              {watchedRole === 'collector' ? (
+                <>
+                  <input type="checkbox" checked readOnly disabled className="size-4 accent-brand-orange" />
+                  <div>
+                    <p className="text-sm font-medium">Can Collect Payments</p>
+                    <p className="text-xs text-muted-foreground">Always enabled for Collection Representatives</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <input
+                    id="c-canCollect"
+                    type="checkbox"
+                    className="size-4 accent-brand-orange"
+                    {...register('canCollect')}
+                  />
+                  <label htmlFor="c-canCollect" className="cursor-pointer">
+                    <p className="text-sm font-medium">Can Collect Payments</p>
+                    <p className="text-xs text-muted-foreground">Allow this user to initiate collections</p>
+                  </label>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Mobile | WhatsApp */}
           <div className="grid grid-cols-2 gap-4">
@@ -421,6 +464,7 @@ function EditUserModal({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<EditFormData>({
     resolver: zodResolver(editSchema),
@@ -432,8 +476,11 @@ function EditUserModal({
       email:      user.email ?? '',
       address:    user.address ?? '',
       password:   '',
+      canCollect: user.canCollect,
     },
   })
+
+  const watchedRole = useWatch({ control, name: 'role' })
 
   async function onSubmit(data: EditFormData) {
     const input: UpdateUserInput = {
@@ -443,6 +490,7 @@ function EditUserModal({
       whatsappNo: data.whatsappNo || null,
       email:      data.email || null,
       address:    data.address || null,
+      canCollect: data.canCollect,
     }
     if (data.password) input.password = data.password
 
@@ -485,6 +533,34 @@ function EditUserModal({
             <RoleSelect id="e-role" roles={SELECTABLE_ROLES} selectProps={register('role')} />
             {errors.role && <p className="text-xs text-destructive">{errors.role.message}</p>}
           </div>
+
+          {/* Can Collect */}
+          {watchedRole !== 'admin' && (
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+              {watchedRole === 'collector' ? (
+                <>
+                  <input type="checkbox" checked readOnly disabled className="size-4 accent-brand-orange" />
+                  <div>
+                    <p className="text-sm font-medium">Can Collect Payments</p>
+                    <p className="text-xs text-muted-foreground">Always enabled for Collection Representatives</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <input
+                    id="e-canCollect"
+                    type="checkbox"
+                    className="size-4 accent-brand-orange"
+                    {...register('canCollect')}
+                  />
+                  <label htmlFor="e-canCollect" className="cursor-pointer">
+                    <p className="text-sm font-medium">Can Collect Payments</p>
+                    <p className="text-xs text-muted-foreground">Allow this user to initiate collections</p>
+                  </label>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Mobile | WhatsApp */}
           <div className="grid grid-cols-2 gap-4">

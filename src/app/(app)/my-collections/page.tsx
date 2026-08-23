@@ -28,7 +28,7 @@ function formatCurrency(val: string | number) {
 
 export default function MyCollectionsPage() {
   return (
-    <RoleGuard permission="collector.view_own">
+    <RoleGuard requireCanCollect>
       <Suspense>
         <MyCollectionsContent />
       </Suspense>

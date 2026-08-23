@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { getDashboardNav } from '@/config/navigation'
-import { ROLE_LABELS } from '@/config/roles'
+import { ROLE_LABELS, userCanCollect } from '@/config/roles'
 import { siteConfig } from '@/config/site'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -48,7 +48,8 @@ export function AppSidebar() {
 
   if (!user) return null
 
-  const navItems = getDashboardNav(user.role)
+  const canCollect = userCanCollect(user)
+  const navItems = getDashboardNav(user.role, canCollect)
 
   async function handleLogout() {
     await logout()

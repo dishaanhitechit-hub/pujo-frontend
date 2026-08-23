@@ -9,7 +9,7 @@ import {
 import type { DashboardPaymentsQuery } from '@/lib/api/dashboard'
 import type {
   DashboardSummary, CollectorBreakdown, PaginatedPayments, Payment,
-  EventStats, EventReport, ApiError,
+  EventStats, EventReport, CollectionSummary, ApiError,
 } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { useAuth } from '@/lib/auth/auth-provider'
@@ -49,9 +49,9 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const { user } = useAuth()
-  const isAdmin = !!user && hasPermission(user.role, 'event.manage')
+  const hasEventReportAccess = !!user && hasPermission(user.role, 'dashboard.view')
 
-  if (isAdmin) return <AdminDashboard />
+  if (hasEventReportAccess) return <AdminDashboard />
   return <CollectorDashboard />
 }
 
@@ -170,8 +170,8 @@ function EventOverviewTable({
             <thead>
               <tr className="border-b border-border bg-muted/20">
                 {[
-                  'Event', 'Donors', 'Total Received', 'Total Pledged',
-                  'Expenses', 'Balance in Hand', 'Budget', 'Budget Remaining', 'Status', ''
+                  'Event', 'Donor Count', 'Total Pledged', 'Total Received',
+                  'Expenses Paid', 'Balance in Hand', 'Budget', 'Budget Status', ''
                 ].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
                     {h}
@@ -192,7 +192,10 @@ function EventOverviewTable({
                       >
                         {s.event.name}
                       </Link>
-                      {s.event.year && <p className="text-xs text-muted-foreground">{s.event.year}</p>}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {s.event.year && <span className="text-xs text-muted-foreground">{s.event.year}</span>}
+                        <EventStatusBadge status={s.event.status as 'draft' | 'published' | 'archived'} />
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <Link
@@ -200,6 +203,11 @@ function EventOverviewTable({
                         className="font-medium text-brand-navy hover:underline"
                       >
                         {s.donorCount}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      <Link href={`/pledges?eventId=${s.event.id}`} className="hover:text-brand-orange transition-colors">
+                        {fmt(s.totalPledged)}
                       </Link>
                     </td>
                     <td className="px-4 py-3">
@@ -210,14 +218,9 @@ function EventOverviewTable({
                         {fmt(s.totalReceived)}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      <Link href={`/pledges?eventId=${s.event.id}`} className="hover:text-brand-orange transition-colors">
-                        {fmt(s.totalPledged)}
-                      </Link>
-                    </td>
                     <td className="px-4 py-3">
                       <Link
-                        href={`/admin/events/${s.event.id}/expenses`}
+                        href={`/admin/expenses?eventId=${s.event.id}`}
                         className="font-medium text-foreground hover:text-brand-orange transition-colors"
                       >
                         {fmt(s.expensesPaid)}
@@ -231,16 +234,17 @@ function EventOverviewTable({
                       {budRem === null ? (
                         <span className="text-muted-foreground/40 text-xs italic">—</span>
                       ) : overBudget ? (
-                        <span className="flex items-center gap-1 text-destructive text-xs font-semibold">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-semibold">
                           <AlertTriangle className="size-3" />
-                          Over by {fmt(Math.abs(Number(budRem)))}
+                          ₹{Number(Math.abs(Number(budRem))).toLocaleString('en-IN')} over
                         </span>
+                      ) : Number(budRem) === 0 ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-semibold">At Budget</span>
                       ) : (
-                        <span className="text-green-700 text-xs font-semibold">{fmt(budRem)} left</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-semibold">
+                          ₹{Number(budRem).toLocaleString('en-IN')} left
+                        </span>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <EventStatusBadge status={s.event.status as 'draft' | 'published' | 'archived'} />
                     </td>
                     <td className="px-4 py-3">
                       <Button
@@ -315,10 +319,15 @@ function AdminEventReport({
         </div>
       ) : report && s && (
         <>
-          {/* Event meta */}
+          {/* A. Event Header meta */}
           {ev && (
-            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-              {ev.startDate && <span className="flex items-center gap-1"><Calendar className="size-3.5" />{ev.startDate}{ev.endDate && ev.endDate !== ev.startDate ? ` → ${ev.endDate}` : ''}</span>}
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground -mt-2">
+              {ev.startDate && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="size-3.5" />
+                  {ev.startDate}{ev.endDate && ev.endDate !== ev.startDate ? ` → ${ev.endDate}` : ''}
+                </span>
+              )}
               {ev.location && <span>{ev.location}</span>}
               <EventStatusBadge status={ev.status as 'draft' | 'published' | 'archived'} />
               <Link href={`/admin/events/${eventId}`} className="text-brand-orange hover:underline text-xs flex items-center gap-1">
@@ -327,34 +336,43 @@ function AdminEventReport({
             </div>
           )}
 
-          {/* Summary cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Total Received" value={fmt(s.totalReceived)} icon={IndianRupee} variant="primary" />
-            <StatCard label="Balance in Hand" value={fmt(s.balanceInHand)} icon={Wallet} variant="success" />
-            <StatCard label="Expenses Paid" value={fmt(s.expensesPaid)} icon={Receipt} />
-            <StatCard label="Total Donors" value={s.donorCount} icon={Users} />
-            <StatCard label="Completed" value={s.completedCount} icon={CheckCircle2} variant="success" />
-            <StatCard label="Pending" value={s.pendingCount} icon={Clock} variant="warning" />
-            <StatCard label="Total Pledged" value={fmt(s.totalPledged)} icon={TrendingUp} />
-            <StatCard label="Outstanding Pledges" value={fmt(s.pledgeOutstanding)} icon={FileText} />
-          </div>
+          {/* B. Financial Position */}
+          <section className="flex flex-col gap-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Financial Position</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <StatCard label="Total Received" value={fmt(s.totalReceived)} icon={IndianRupee} variant="primary" />
+              <StatCard label="Expenses Paid" value={fmt(s.expensesPaid)} icon={Receipt} />
+              <StatCard label="Balance in Hand" value={fmt(s.balanceInHand)} icon={Wallet} variant={Number(s.balanceInHand) < 0 ? 'default' : 'success'} />
+              <StatCard label="Total Donors" value={s.donorCount} icon={Users} />
+            </div>
+            {s.budget !== null && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <StatCard label="Budget" value={fmt(s.budget)} icon={BarChart2} />
+                {s.budgetRemaining !== null && (
+                  <StatCard
+                    label={s.overBudget ? 'Over Budget' : 'Budget Remaining'}
+                    value={fmt(Math.abs(Number(s.budgetRemaining)))}
+                    icon={s.overBudget ? AlertTriangle : TrendingUp}
+                    variant={s.overBudget ? 'warning' : 'success'}
+                  />
+                )}
+              </div>
+            )}
+          </section>
 
-          {/* Budget vs Expenses */}
-          {(s.budget !== null || Number(s.expensesPaid) > 0) && (
-            <BudgetExpenseCard summary={s} eventId={eventId} />
-          )}
+          {/* C. Collection Summary */}
+          <CollectionSummaryCard summary={report.collectionSummary} eventId={eventId} />
 
-          {/* Mode + Status + Pledge in a grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* D. Mode Breakdown + E. Pledge Summary */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <PaymentModesCard modes={report.paymentModes} />
-            <PaymentStatusCard breakdown={report.paymentStatusBreakdown} />
             <PledgeCard pledge={report.pledgeSummary} eventId={eventId} />
           </div>
 
-          {/* Collector breakdown */}
+          {/* F. Collector Breakdown */}
           <CollectorBreakdownCard collectors={report.collectorBreakdown} />
 
-          {/* Expense summary */}
+          {/* G. Budget/Expense Summary */}
           {report.expenseSummary && (
             <ExpenseSummaryCard summary={report.expenseSummary} eventId={eventId} />
           )}
@@ -366,46 +384,59 @@ function AdminEventReport({
 
 // ── Sub-cards ──────────────────────────────────────────────────────────────────
 
-function BudgetExpenseCard({ summary: s, eventId }: { summary: EventReport['summary']; eventId: number }) {
+function CollectionSummaryCard({ summary, eventId }: { summary: CollectionSummary; eventId: number }) {
+  const tiles = [
+    {
+      label: 'Full Received',
+      count: summary.fullCount,
+      amount: summary.fullAmount,
+      cls: 'border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900',
+      labelCls: 'text-green-700 dark:text-green-400',
+      valueCls: 'text-green-800 dark:text-green-300',
+    },
+    {
+      label: 'Part Received',
+      count: summary.partCount,
+      amount: summary.partAmount,
+      cls: 'border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-900',
+      labelCls: 'text-yellow-700 dark:text-yellow-400',
+      valueCls: 'text-yellow-800 dark:text-yellow-300',
+    },
+    {
+      label: 'Pending',
+      count: summary.pendingCount,
+      amount: summary.pendingAmount,
+      cls: 'border-border bg-muted/30',
+      labelCls: 'text-muted-foreground',
+      valueCls: 'text-foreground',
+    },
+    {
+      label: 'Cancelled',
+      count: summary.cancelledCount,
+      amount: summary.cancelledAmount,
+      cls: 'border-destructive/20 bg-destructive/5',
+      labelCls: 'text-destructive',
+      valueCls: 'text-destructive',
+    },
+  ]
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-sm flex items-center gap-2"><BarChart2 className="size-4" /> Budget & Cash Position</h3>
-        <Link href={`/admin/events/${eventId}/expenses`} className="text-xs text-brand-orange hover:underline flex items-center gap-1">
-          Manage Expenses <ExternalLink className="size-3" />
-        </Link>
+        <h3 className="font-semibold text-sm flex items-center gap-2">
+          <CheckCircle2 className="size-4" /> Collection Summary
+          <span className="text-xs font-normal text-muted-foreground">(pledge-based)</span>
+        </h3>
+        <Link href={`/pledges?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View Pledges</Link>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-        {s.budget !== null && (
-          <>
-            <div>
-              <p className="text-xs text-muted-foreground">Budget</p>
-              <p className="font-semibold text-lg">{fmt(s.budget)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Expenses</p>
-              <p className="font-semibold text-lg">{fmt(s.expensesPaid)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{s.overBudget ? 'Over Budget' : 'Budget Remaining'}</p>
-              <p className={`font-semibold text-lg ${s.overBudget ? 'text-destructive' : 'text-green-700'}`}>
-                {s.budgetRemaining !== null ? fmt(Math.abs(Number(s.budgetRemaining))) : '—'}
-              </p>
-            </div>
-          </>
-        )}
-        <div>
-          <p className="text-xs text-muted-foreground">Balance in Hand</p>
-          <p className={`font-semibold text-lg ${Number(s.balanceInHand) < 0 ? 'text-destructive' : 'text-green-700'}`}>{fmt(s.balanceInHand)}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Received − Expenses</p>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {tiles.map((t) => (
+          <div key={t.label} className={`rounded-lg border p-3 ${t.cls}`}>
+            <p className={`text-[11px] font-semibold uppercase tracking-wide ${t.labelCls}`}>{t.label}</p>
+            <p className={`font-bold text-xl mt-1 ${t.valueCls}`}>{t.count}</p>
+            <p className={`text-xs mt-0.5 ${t.labelCls}`}>{fmt(t.amount)}</p>
+          </div>
+        ))}
       </div>
-      {s.overBudget && (
-        <p className="mt-3 text-xs text-destructive flex items-center gap-1">
-          <AlertTriangle className="size-3.5" />
-          Expenses have exceeded the planned budget. Expenses can still be added.
-        </p>
-      )}
     </div>
   )
 }
@@ -424,29 +455,6 @@ function PaymentModesCard({ modes }: { modes: EventReport['paymentModes'] }) {
               <div className="text-right">
                 <p className="font-semibold">{fmt(m.total)}</p>
                 <p className="text-xs text-muted-foreground">{m.count} payment{m.count !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function PaymentStatusCard({ breakdown }: { breakdown: EventReport['paymentStatusBreakdown'] }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <h3 className="font-semibold text-sm mb-4 flex items-center gap-2"><CheckCircle2 className="size-4" /> Payment Status</h3>
-      {breakdown.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">No payments.</p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {breakdown.map((b) => (
-            <div key={b.status} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-              <StatusBadge status={b.status as 'pending' | 'completed' | 'expired' | 'cancelled'} />
-              <div className="text-right">
-                <p className="font-semibold">{fmt(b.total)}</p>
-                <p className="text-xs text-muted-foreground">{b.count} payment{b.count !== 1 ? 's' : ''}</p>
               </div>
             </div>
           ))}
@@ -486,6 +494,7 @@ function PledgeCard({ pledge, eventId }: { pledge: EventReport['pledgeSummary'];
 }
 
 function CollectorBreakdownCard({ collectors }: { collectors: EventReport['collectorBreakdown'] }) {
+  const hasPledgeData = collectors.some((c) => c.fullCount !== undefined)
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <h3 className="font-semibold text-sm mb-4 flex items-center gap-2"><Users className="size-4" /> Collector Breakdown</h3>
@@ -493,26 +502,30 @@ function CollectorBreakdownCard({ collectors }: { collectors: EventReport['colle
         <p className="text-sm text-muted-foreground text-center py-6">No collections recorded.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-xs min-w-[520px]">
             <thead>
               <tr className="border-b border-border">
                 <th className="pb-2 text-left text-muted-foreground font-semibold">Collector</th>
-                <th className="pb-2 text-right text-muted-foreground font-semibold">UPI</th>
-                <th className="pb-2 text-right text-muted-foreground font-semibold">Cash</th>
-                <th className="pb-2 text-right text-muted-foreground font-semibold">Cheque</th>
+                <th className="pb-2 text-right text-muted-foreground font-semibold">Payments</th>
+                {hasPledgeData && <>
+                  <th className="pb-2 text-right text-green-700 font-semibold">Full</th>
+                  <th className="pb-2 text-right text-yellow-700 font-semibold">Partial</th>
+                  <th className="pb-2 text-right text-destructive font-semibold">Cancelled</th>
+                </>}
                 <th className="pb-2 text-right text-muted-foreground font-semibold">Total</th>
-                <th className="pb-2 text-right text-muted-foreground font-semibold">Count</th>
               </tr>
             </thead>
             <tbody>
               {collectors.map((c) => (
                 <tr key={c.collector.id} className="border-b border-border/50 last:border-0">
                   <td className="py-2.5 font-medium">{c.collector.name}</td>
-                  <td className="py-2.5 text-right text-muted-foreground">{fmt(c.upiTotal)}</td>
-                  <td className="py-2.5 text-right text-muted-foreground">{fmt(c.cashTotal)}</td>
-                  <td className="py-2.5 text-right text-muted-foreground">{fmt(c.chequeTotal)}</td>
-                  <td className="py-2.5 text-right font-semibold">{fmt(c.grandTotal)}</td>
                   <td className="py-2.5 text-right text-muted-foreground">{c.confirmedCount}</td>
+                  {hasPledgeData && <>
+                    <td className="py-2.5 text-right text-green-700 font-semibold">{c.fullCount ?? 0}</td>
+                    <td className="py-2.5 text-right text-yellow-700 font-semibold">{c.partCount ?? 0}</td>
+                    <td className="py-2.5 text-right text-destructive font-semibold">{c.cancelledCount ?? 0}</td>
+                  </>}
+                  <td className="py-2.5 text-right font-semibold">{fmt(c.grandTotal)}</td>
                 </tr>
               ))}
             </tbody>

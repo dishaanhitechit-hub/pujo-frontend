@@ -200,8 +200,20 @@ export interface EventReportSummary {
   pledgePaid: string
 }
 
+export interface CollectionSummary {
+  fullCount: number
+  fullAmount: string
+  partCount: number
+  partAmount: string
+  pendingCount: number
+  pendingAmount: string
+  cancelledCount: number
+  cancelledAmount: string
+}
+
 export interface EventReport {
   event: Event
+  collectionSummary: CollectionSummary
   summary: EventReportSummary
   paymentModes: { mode: PaymentMethod; count: number; total: string }[]
   paymentStatusBreakdown: { status: PaymentStatus | 'completed'; count: number; total: string }[]
@@ -236,6 +248,7 @@ export interface User {
   address: string | null
   role: Role
   isActive: boolean
+  canCollect: boolean
   createdAt: string
 }
 
@@ -298,6 +311,9 @@ export interface CollectorBreakdown {
   chequeTotal: string
   grandTotal: string
   confirmedCount: number
+  fullCount?: number
+  partCount?: number
+  cancelledCount?: number
 }
 
 export interface DashboardSummary {
@@ -624,6 +640,7 @@ export interface CreateUserInput {
   email?: string | null
   address?: string | null
   password: string
+  canCollect?: boolean
 }
 
 export interface UpdateUserInput {
@@ -635,4 +652,5 @@ export interface UpdateUserInput {
   address?: string | null
   password?: string
   isActive?: boolean
+  canCollect?: boolean
 }

@@ -24,18 +24,16 @@ export interface DashboardNavItem {
   permission?: Parameters<typeof can>[1]
 }
 
-export function getDashboardNav(role: Role): DashboardNavItem[] {
+export function getDashboardNav(role: Role, canCollect?: boolean): DashboardNavItem[] {
   const items: DashboardNavItem[] = []
 
   if (can(role, 'dashboard.view')) {
     items.push({ label: 'Dashboard', href: '/dashboard', iconName: 'LayoutDashboard' })
   }
 
-  if (can(role, 'payment.initiate')) {
+  // Collection navigation is driven by per-user capability, not role permission
+  if (canCollect) {
     items.push({ label: 'Collect Payment', href: '/collect', iconName: 'IndianRupee' })
-  }
-
-  if (can(role, 'collector.view_own')) {
     items.push({ label: 'My Collections', href: '/my-collections', iconName: 'ClipboardList' })
   }
 
@@ -43,7 +41,7 @@ export function getDashboardNav(role: Role): DashboardNavItem[] {
     items.push({ label: 'All Payments', href: '/payments', iconName: 'CreditCard' })
     items.push({ label: 'Pledges', href: '/pledges', iconName: 'Handshake' })
     items.push({ label: 'Donors', href: '/donors', iconName: 'UserSearch' })
-  } else if (can(role, 'payment.initiate')) {
+  } else if (canCollect) {
     items.push({ label: 'Pledges', href: '/pledges', iconName: 'Handshake' })
   }
 

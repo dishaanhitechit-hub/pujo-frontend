@@ -134,6 +134,17 @@ export function can(role: Role, permission: Permission): boolean {
 
 export function getDefaultRoute(role: Role): string {
   if (can(role, 'dashboard.view')) return '/dashboard'
-  if (can(role, 'collector.view_own')) return '/collect'
   return '/collect'
+}
+
+/**
+ * Whether a user has collection capability.
+ * - admin: never
+ * - collector: always
+ * - other roles: only when canCollect flag is explicitly true
+ */
+export function userCanCollect(user: { role: Role; canCollect?: boolean }): boolean {
+  if (user.role === 'admin') return false
+  if (user.role === 'collector') return true
+  return user.canCollect === true
 }

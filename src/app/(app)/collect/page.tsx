@@ -37,7 +37,7 @@ type FormData = z.infer<typeof schema>
 
 export default function CollectPage() {
   return (
-    <RoleGuard permission="payment.initiate">
+    <RoleGuard requireCanCollect>
       <CollectContent />
     </RoleGuard>
   )
