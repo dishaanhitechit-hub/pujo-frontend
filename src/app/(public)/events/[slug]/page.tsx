@@ -134,7 +134,7 @@ export default async function EventDetailPage({ params }: Props) {
               {event.days.map(({ key, label, date, description, activities, rituals }, idx) => {
                 const items = activities?.length
                   ? activities
-                  : (rituals ?? []).map((r) => ({ time: '', name: r }))
+                  : (rituals ?? []).map((r) => ({ time: '', name: r, description: undefined }))
                 const hasTimes = items.some((a) => a.time)
                 return (
                   <div key={key} className="group relative flex gap-6">
