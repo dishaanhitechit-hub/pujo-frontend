@@ -91,11 +91,11 @@ function LoginContent() {
             {siteConfig.nav.appName}
           </p>
           <h1 className="font-heading font-bold text-4xl text-white leading-tight mb-4">
-            Collection Management System
+            Member Portal
           </h1>
           <p className="text-white/60 text-base leading-relaxed">
-            Securely collect and manage donations for Shatadal Durga Puja. Real-time tracking,
-            digital receipts, and transparent reporting.
+            One place for collectors, admins, and committee members — manage donations,
+            generate digital receipts, and keep the community's celebration running smoothly.
           </p>
         </div>
         <p className="relative text-white/25 text-xs">
@@ -113,8 +113,8 @@ function LoginContent() {
           </Link>
 
           <div className="mb-8">
-            <h2 className="font-heading font-bold text-2xl text-brand-navy">Sign in</h2>
-            <p className="text-muted-foreground text-sm mt-1">Enter your credentials to access PujoPay</p>
+            <h2 className="font-heading font-bold text-2xl text-brand-navy">Welcome back</h2>
+            <p className="text-muted-foreground text-sm mt-1">Sign in to your account to continue</p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
