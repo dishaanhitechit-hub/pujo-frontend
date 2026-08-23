@@ -93,3 +93,7 @@ export async function uploadEventGallery(id: number, file: File, altText?: strin
 export async function deleteEventMedia(mediaId: number): Promise<void> {
   await apiClient.delete(apiConfig.endpoints.media.delete(mediaId))
 }
+
+export async function reorderEventGallery(eventId: number, orderedIds: number[]): Promise<void> {
+  await apiClient.post(apiConfig.endpoints.events.galleryReorder(eventId), { ids: orderedIds })
+}

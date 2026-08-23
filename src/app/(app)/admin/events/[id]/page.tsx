@@ -8,9 +8,9 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import {
   ArrowLeft, Loader2, Save, Star, StarOff, Archive, Globe, Ban,
-  Plus, Trash2, Upload, X, Image as ImageIcon, GripVertical, Pencil,
+  Plus, Trash2, Upload, X, Image as ImageIcon, Pencil,
   IndianRupee, Smartphone, Banknote, FileText, CheckCircle2, Clock, Users,
-  TrendingUp,
+  TrendingUp, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,7 +26,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import {
   getEvent, updateEvent, setEventDays, getEventSummary,
-  uploadEventCover, uploadEventGallery, deleteEventMedia,
+  uploadEventCover, uploadEventGallery, deleteEventMedia, reorderEventGallery,
 } from '@/lib/api/events'
 import { apiConfig } from '@/config/api'
 import type { Event, EventDay, DashboardSummary, ApiError } from '@/types'
@@ -38,6 +38,7 @@ interface GalleryItem {
   url: string
   altText: string | null
   mimeType?: string
+  sortOrder?: number
 }
 
 interface EventDetail extends Event {
@@ -71,7 +72,6 @@ const daySchema = z.object({
     date:        z.string().optional(),
     description: z.string().optional(),
     rituals:     z.string(),
-    sortOrder:   z.string(),
   })),
 })
 
@@ -737,19 +737,18 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
   const { register, handleSubmit, control, formState: { errors } } = useForm<DayFormData>({
     resolver: zodResolver(daySchema),
     defaultValues: {
-      days: (ev.days ?? []).map((d) => ({
+      days: [...(ev.days ?? [])].sort((a, b) => a.sortOrder - b.sortOrder).map((d) => ({
         backendId:   d.id,
         key:         d.key,
         label:       d.label,
         date:        d.date ?? '',
         description: d.description ?? '',
         rituals:     (d.rituals ?? []).join(', '),
-        sortOrder:   String(d.sortOrder),
       })),
     },
   })
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'days' })
+  const { fields, append, remove, move } = useFieldArray({ control, name: 'days' })
 
   function handleRemoveClick(idx: number) {
     const field = fields[idx]
@@ -771,7 +770,7 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
         date:        d.date || null,
         description: d.description || null,
         rituals:     d.rituals.split(',').map((r) => r.trim()).filter(Boolean),
-        sortOrder:   d.sortOrder ? parseInt(d.sortOrder, 10) : i,
+        sortOrder:   i,
       }))) as EventDetail
       toast.success('Schedule saved.')
       onSaved(updated)
@@ -801,13 +800,20 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
             return (
               <div key={field.id} className="rounded-xl border border-border bg-card p-4 flex flex-col gap-4">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <GripVertical className="size-4 shrink-0" />
-                    <span className="text-xs font-semibold uppercase tracking-wide">Day {idx + 1}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Day {idx + 1}</span>
+                  <div className="flex items-center gap-0.5">
+                    <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground"
+                      disabled={idx === 0} onClick={() => move(idx, idx - 1)} title="Move up">
+                      <ChevronUp className="size-4" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground"
+                      disabled={idx === fields.length - 1} onClick={() => move(idx, idx + 1)} title="Move down">
+                      <ChevronDown className="size-4" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-destructive ml-1" onClick={() => handleRemoveClick(idx)}>
+                      <Trash2 className="size-4" />
+                    </Button>
                   </div>
-                  <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-destructive" onClick={() => handleRemoveClick(idx)}>
-                    <Trash2 className="size-4" />
-                  </Button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -823,15 +829,9 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs">Date</Label>
-                    <Input type="date" {...register(`days.${idx}.date`)} />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs">Sort Order</Label>
-                    <Input type="number" min="0" {...register(`days.${idx}.sortOrder`)} />
-                  </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs">Date</Label>
+                  <Input type="date" {...register(`days.${idx}.date`)} />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
@@ -849,7 +849,7 @@ function ScheduleTab({ ev, eventId, onSaved, onCancel }: ScheduleTabProps) {
         </div>
 
         <Button type="button" variant="outline" className="self-start"
-          onClick={() => append({ backendId: undefined, key: '', label: '', date: '', description: '', rituals: '', sortOrder: String(fields.length) })}>
+          onClick={() => append({ backendId: undefined, key: '', label: '', date: '', description: '', rituals: '' })}>
           <Plus className="size-4 mr-2" />Add Day
         </Button>
 
@@ -892,7 +892,15 @@ function MediaTab({ ev, eventId, onRefresh }: { ev: EventDetail; eventId: number
   const [uploadingCover, setUploadingCover] = useState(false)
   const [uploadingGallery, setUploadingGallery] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [reorderingId, setReorderingId] = useState<number | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; mediaId: number | null }>({ open: false, mediaId: null })
+  const [gallery, setGallery] = useState<GalleryItem[]>(
+    () => [...(ev.gallery ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  )
+
+  useEffect(() => {
+    setGallery([...(ev.gallery ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)))
+  }, [ev.gallery])
 
   const base = apiConfig.baseUrl
 
@@ -943,7 +951,22 @@ function MediaTab({ ev, eventId, onRefresh }: { ev: EventDetail; eventId: number
     }
   }
 
-  const gallery: GalleryItem[] = ev.gallery ?? []
+  async function moveGalleryItem(from: number, to: number) {
+    const next = [...gallery]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    const prev = gallery
+    setGallery(next)
+    setReorderingId(next[to].id)
+    try {
+      await reorderEventGallery(eventId, next.map((i) => i.id))
+    } catch {
+      toast.error('Reorder failed.')
+      setGallery(prev)
+    } finally {
+      setReorderingId(null)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -984,16 +1007,34 @@ function MediaTab({ ev, eventId, onRefresh }: { ev: EventDetail; eventId: number
 
         {gallery.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {gallery.map((img) => (
+            {gallery.map((img, imgIdx) => (
               <div key={img.id} className="relative rounded-xl overflow-hidden border border-border aspect-square bg-muted group">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`${base}${img.url}`} alt={img.altText ?? 'Gallery image'} className="w-full h-full object-cover" />
-                <button type="button" disabled={deletingId === img.id}
+                {/* Delete */}
+                <button type="button" disabled={deletingId === img.id || reorderingId === img.id}
                   onClick={() => setConfirmDelete({ open: true, mediaId: img.id })}
                   className="absolute top-1.5 right-1.5 size-7 rounded-full bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
                   aria-label="Delete image">
                   {deletingId === img.id ? <Loader2 className="size-3.5 animate-spin" /> : <X className="size-3.5" />}
                 </button>
+                {/* Reorder */}
+                <div className="absolute bottom-0 inset-x-0 flex items-center justify-between px-1 py-1 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button type="button"
+                    disabled={imgIdx === 0 || reorderingId !== null}
+                    onClick={() => moveGalleryItem(imgIdx, imgIdx - 1)}
+                    className="size-6 rounded flex items-center justify-center text-white/80 hover:text-white disabled:opacity-30"
+                    aria-label="Move left">
+                    {reorderingId === img.id ? <Loader2 className="size-3 animate-spin" /> : <ChevronLeft className="size-3.5" />}
+                  </button>
+                  <button type="button"
+                    disabled={imgIdx === gallery.length - 1 || reorderingId !== null}
+                    onClick={() => moveGalleryItem(imgIdx, imgIdx + 1)}
+                    className="size-6 rounded flex items-center justify-center text-white/80 hover:text-white disabled:opacity-30"
+                    aria-label="Move right">
+                    <ChevronRight className="size-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

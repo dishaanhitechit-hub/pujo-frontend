@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import {
   Plus, Pencil, Trash2, Search, X, ChevronLeft, ChevronRight,
-  Users2, Upload, ImageOff, ToggleLeft, ToggleRight,
+  Users2, Upload, ImageOff, ToggleLeft, ToggleRight, ArrowUp, ArrowDown,
 } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import {
   listAdminCommittee, createCommitteeMember, updateCommitteeMember,
-  deleteCommitteeMember, uploadCommitteeMemberPhoto,
+  deleteCommitteeMember, uploadCommitteeMemberPhoto, reorderCommitteeMembers,
 } from '@/lib/api/committee'
 import { listActiveEvents } from '@/lib/api/events'
 import { mediaUrl } from '@/lib/api/public'
@@ -44,7 +44,6 @@ const formSchema = z.object({
   roleTitle: z.string().min(1, 'Role/Title is required').max(150),
   phone:     z.string().max(20).optional(),
   eventId:   z.string().optional(),
-  sortOrder: z.string().optional(),
   isActive:  z.boolean(),
 })
 type FormValues = z.infer<typeof formSchema>
@@ -110,6 +109,24 @@ function CommitteeContent() {
       toast.success(updated.isActive ? 'Member activated.' : 'Member deactivated.')
     } catch {
       toast.error('Update failed.')
+    }
+  }
+
+  async function handleMove(m: AdminCommitteeMember, direction: 'up' | 'down') {
+    const idx = members.findIndex((x) => x.id === m.id)
+    if (direction === 'up' && idx <= 0) return
+    if (direction === 'down' && idx >= members.length - 1) return
+    const next = [...members]
+    const swapWith = direction === 'up' ? idx - 1 : idx + 1
+    ;[next[idx], next[swapWith]] = [next[swapWith], next[idx]]
+    const prev = members
+    setMembers(next)
+    try {
+      const updated = await reorderCommitteeMembers(next.map((x) => x.id))
+      setMembers(updated)
+    } catch {
+      toast.error('Reorder failed.')
+      setMembers(prev)
     }
   }
 
@@ -268,7 +285,7 @@ function CommitteeContent() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/20">
-                  {['Photo', 'Name', 'Role', 'Event', 'Sort', 'Status', 'Actions'].map((h) => (
+                  {['Photo', 'Name', 'Role', 'Event', 'Order', 'Status', 'Actions'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -299,7 +316,24 @@ function CommitteeContent() {
                       <td className="px-4 py-3 font-medium">{m.name}</td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{m.roleTitle}</td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{m.event?.name ?? '—'}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-center">{m.sortOrder}</td>
+                      <td className="px-4 py-3">
+                        {!debouncedSearch && !activeFilter ? (
+                          <div className="flex items-center gap-0.5">
+                            <Button variant="ghost" size="icon-sm" className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              disabled={members.findIndex((x) => x.id === m.id) === 0}
+                              onClick={() => handleMove(m, 'up')} title="Move up">
+                              <ArrowUp className="size-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon-sm" className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              disabled={members.findIndex((x) => x.id === m.id) === members.length - 1}
+                              onClick={() => handleMove(m, 'down')} title="Move down">
+                              <ArrowDown className="size-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/40">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${
                           m.isActive ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-50 text-slate-500 border-slate-200'
@@ -400,7 +434,6 @@ function CommitteeMemberDialog({
         roleTitle: editing?.roleTitle ?? '',
         phone:     editing?.phone ?? '',
         eventId:   editing?.event?.id != null ? String(editing.event.id) : '',
-        sortOrder: String(editing?.sortOrder ?? 0),
         isActive:  editing?.isActive ?? true,
       })
     }
@@ -412,7 +445,6 @@ function CommitteeMemberDialog({
       roleTitle: values.roleTitle,
       phone:     values.phone?.trim() || null,
       eventId:   values.eventId ? Number(values.eventId) : null,
-      sortOrder: values.sortOrder ? parseInt(values.sortOrder, 10) : 0,
       isActive:  values.isActive,
     }
     try {
@@ -458,14 +490,9 @@ function CommitteeMemberDialog({
               {errors.roleTitle && <p className="text-xs text-destructive">{errors.roleTitle.message}</p>}
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 col-span-2">
               <Label htmlFor="cm-phone">Phone</Label>
               <Input id="cm-phone" type="tel" placeholder="+91 …" {...register('phone')} />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cm-sort">Sort Order</Label>
-              <Input id="cm-sort" type="number" min={0} {...register('sortOrder')} className="h-9" />
             </div>
 
             <div className="flex flex-col gap-1.5 col-span-2">

@@ -53,3 +53,11 @@ export async function uploadCommitteeMemberPhoto(id: number, file: File): Promis
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
+
+export async function reorderCommitteeMembers(orderedIds: number[]): Promise<AdminCommitteeMember[]> {
+  const res = await apiClient.post<ApiResponse<AdminCommitteeMember[]>>(
+    apiConfig.endpoints.committee.reorder,
+    { ids: orderedIds },
+  )
+  return res.data.data
+}
