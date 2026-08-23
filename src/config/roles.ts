@@ -1,18 +1,38 @@
 import type { Role } from '@/types'
 
 export const ROLES = {
-  ADMIN: 'admin' as const,
-  EXECUTIVE: 'executive' as const,
-  COMMITTEE: 'committee' as const,
-  GENERAL: 'general' as const,
+  ADMIN:               'admin' as const,
+  MANAGING_COMMITTEE:  'managing_committee' as const,
+  CORE_COMMITTEE:      'core_committee' as const,
+  EXECUTIVE:           'executive' as const,
+  CASHIER:             'cashier' as const,
+  COLLECTOR:           'collector' as const,
+  // Legacy — kept for backward compat
+  COMMITTEE:           'committee' as const,
+  GENERAL:             'general' as const,
 }
 
 export const ROLE_LABELS: Record<Role, string> = {
-  admin: 'Administrator',
-  executive: 'Executive',
-  committee: 'Committee Member',
-  general: 'General Member',
+  admin:               'Administrator',
+  managing_committee:  'Managing Committee Member',
+  core_committee:      'Core Committee Member',
+  executive:           'Executive Member',
+  cashier:             'Cashier / Treasurer',
+  collector:           'Collection Representative',
+  // Legacy display labels
+  committee:           'Committee Member',
+  general:             'General Member',
 }
+
+/** Roles available in add/edit dropdowns — excludes legacy committee/general */
+export const SELECTABLE_ROLES: Role[] = [
+  'admin',
+  'managing_committee',
+  'core_committee',
+  'executive',
+  'cashier',
+  'collector',
+]
 
 type Permission =
   | 'payment.initiate'
@@ -41,6 +61,22 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'event.manage',
     'content.manage',
   ],
+  managing_committee: [
+    'payment.initiate',
+    'payment.confirm',
+    'payment.view_receipt',
+    'collector.view_own',
+    'dashboard.view',
+    'token.generate',
+    'token.view',
+  ],
+  core_committee: [
+    'payment.initiate',
+    'payment.confirm',
+    'payment.view_receipt',
+    'collector.view_own',
+    'token.generate',
+  ],
   executive: [
     'payment.initiate',
     'payment.confirm',
@@ -50,6 +86,23 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'token.generate',
     'token.view',
   ],
+  cashier: [
+    'payment.initiate',
+    'payment.confirm',
+    'payment.view_receipt',
+    'collector.view_own',
+    'dashboard.view',
+    'token.generate',
+    'token.view',
+  ],
+  collector: [
+    'payment.initiate',
+    'payment.confirm',
+    'payment.view_receipt',
+    'collector.view_own',
+    'token.generate',
+  ],
+  // Legacy — mirrors old defaults
   committee: [
     'payment.initiate',
     'payment.confirm',
@@ -71,7 +124,7 @@ export function hasPermission(role: Role, permission: Permission): boolean {
 }
 
 export function hasRole(userRole: Role, requiredRole: Role): boolean {
-  const hierarchy: Role[] = ['general', 'committee', 'executive', 'admin']
+  const hierarchy: Role[] = ['general', 'collector', 'committee', 'cashier', 'core_committee', 'executive', 'managing_committee', 'admin']
   return hierarchy.indexOf(userRole) >= hierarchy.indexOf(requiredRole)
 }
 

@@ -1,4 +1,13 @@
-export type Role = 'admin' | 'executive' | 'committee' | 'general'
+export type Role =
+  | 'admin'
+  | 'managing_committee'
+  | 'core_committee'
+  | 'executive'
+  | 'cashier'
+  | 'collector'
+  // Legacy values — kept for backward-compat with existing DB records
+  | 'committee'
+  | 'general'
 export type PaymentMethod = 'upi' | 'cash' | 'cheque'
 export type PaymentStatus = 'pending' | 'completed' | 'expired' | 'cancelled'
 export type PledgeStatus = 'open' | 'complete' | 'cancelled'
@@ -57,10 +66,10 @@ export interface PaginatedEvents {
 export interface User {
   id: number
   name: string
-  email: string
+  email: string | null
   phone: string | null
-  upiId: string | null
   whatsappNo: string | null
+  address: string | null
   role: Role
   isActive: boolean
   createdAt: string
@@ -445,20 +454,21 @@ export interface BulkTokenInput {
 
 export interface CreateUserInput {
   name: string
-  email: string
-  password: string
-  phone?: string | null
-  upiId?: string | null
-  whatsappNo?: string | null
   role: Role
+  phone: string
+  whatsappNo?: string | null
+  email?: string | null
+  address?: string | null
+  password: string
 }
 
 export interface UpdateUserInput {
   name?: string
-  phone?: string | null
-  upiId?: string | null
-  whatsappNo?: string | null
   role?: Role
+  phone?: string | null
+  whatsappNo?: string | null
+  email?: string | null
+  address?: string | null
   password?: string
   isActive?: boolean
 }
