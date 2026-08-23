@@ -47,6 +47,7 @@ type Permission =
   | 'token.view'
   | 'event.manage'
   | 'content.manage'
+  | 'expense.manage'
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   admin: [
@@ -60,6 +61,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'token.view',
     'event.manage',
     'content.manage',
+    'expense.manage',
   ],
   managing_committee: [
     'payment.initiate',
@@ -92,8 +94,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'payment.view_receipt',
     'collector.view_own',
     'dashboard.view',
-    'token.generate',
-    'token.view',
+    'expense.manage',
   ],
   collector: [
     'payment.initiate',

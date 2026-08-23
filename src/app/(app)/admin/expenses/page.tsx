@@ -50,7 +50,7 @@ type ExpenseForm = z.infer<typeof expenseSchema>
 
 export default function ExpensesPage() {
   return (
-    <RoleGuard permission="event.manage">
+    <RoleGuard permission="expense.manage">
       <ExpensesContent />
     </RoleGuard>
   )

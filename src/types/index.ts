@@ -60,7 +60,9 @@ export interface EventStats {
   }
   // collection totals
   donorCount: number
+  donationCharge: string
   totalReceived: string
+  pending: string
   paymentCount: number
   totalPledged: string
   pledgeOutstanding: string
@@ -184,8 +186,10 @@ export interface UpdateExpenseInput {
 
 export interface EventReportSummary {
   donorCount: number
+  donationCharge: string
   totalPledged: string
   totalReceived: string
+  pending: string
   pendingAmount: string
   cancelledAmount: string
   budget: string | null

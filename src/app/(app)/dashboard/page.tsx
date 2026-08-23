@@ -170,8 +170,8 @@ function EventOverviewTable({
             <thead>
               <tr className="border-b border-border bg-muted/20">
                 {[
-                  'Event', 'Donor Count', 'Total Pledged', 'Total Received',
-                  'Expenses Paid', 'Balance in Hand', 'Budget', 'Budget Status', ''
+                  'Event', 'Donor Count', 'Donation Charge', 'Total Received',
+                  'Pending', 'Expenses Paid', 'Balance in Hand', 'Budget', 'Budget Status', 'Report'
                 ].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
                     {h}
@@ -205,11 +205,7 @@ function EventOverviewTable({
                         {s.donorCount}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      <Link href={`/pledges?eventId=${s.event.id}`} className="hover:text-brand-orange transition-colors">
-                        {fmt(s.totalPledged)}
-                      </Link>
-                    </td>
+                    <td className="px-4 py-3 font-medium">{fmt(s.donationCharge)}</td>
                     <td className="px-4 py-3">
                       <Link
                         href={`/payments?eventId=${s.event.id}`}
@@ -217,6 +213,9 @@ function EventOverviewTable({
                       >
                         {fmt(s.totalReceived)}
                       </Link>
+                    </td>
+                    <td className="px-4 py-3 text-yellow-700 dark:text-yellow-400 font-medium">
+                      {Number(s.pending) > 0 ? fmt(s.pending) : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <Link
@@ -340,24 +339,26 @@ function AdminEventReport({
           <section className="flex flex-col gap-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Financial Position</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <StatCard label="Total Received" value={fmt(s.totalReceived)} icon={IndianRupee} variant="primary" />
-              <StatCard label="Expenses Paid" value={fmt(s.expensesPaid)} icon={Receipt} />
-              <StatCard label="Balance in Hand" value={fmt(s.balanceInHand)} icon={Wallet} variant={Number(s.balanceInHand) < 0 ? 'default' : 'success'} />
+              <StatCard label="Donation Charge" value={fmt(s.donationCharge)} icon={IndianRupee} />
+              <StatCard label="Total Received" value={fmt(s.totalReceived)} icon={CheckCircle2} variant="primary" />
+              <StatCard label="Pending" value={fmt(s.pending)} icon={Clock} variant={Number(s.pending) > 0 ? 'warning' : 'default'} />
               <StatCard label="Total Donors" value={s.donorCount} icon={Users} />
             </div>
-            {s.budget !== null && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <StatCard label="Expenses Paid" value={fmt(s.expensesPaid)} icon={Receipt} />
+              <StatCard label="Balance in Hand" value={fmt(s.balanceInHand)} icon={Wallet} variant={Number(s.balanceInHand) < 0 ? 'default' : 'success'} />
+              {s.budget !== null && (
                 <StatCard label="Budget" value={fmt(s.budget)} icon={BarChart2} />
-                {s.budgetRemaining !== null && (
-                  <StatCard
-                    label={s.overBudget ? 'Over Budget' : 'Budget Remaining'}
-                    value={fmt(Math.abs(Number(s.budgetRemaining)))}
-                    icon={s.overBudget ? AlertTriangle : TrendingUp}
-                    variant={s.overBudget ? 'warning' : 'success'}
-                  />
-                )}
-              </div>
-            )}
+              )}
+              {s.budget !== null && s.budgetRemaining !== null && (
+                <StatCard
+                  label={s.overBudget ? 'Over Budget' : 'Budget Remaining'}
+                  value={fmt(Math.abs(Number(s.budgetRemaining)))}
+                  icon={s.overBudget ? AlertTriangle : TrendingUp}
+                  variant={s.overBudget ? 'warning' : 'success'}
+                />
+              )}
+            </div>
           </section>
 
           {/* C. Collection Summary */}
@@ -423,8 +424,7 @@ function CollectionSummaryCard({ summary, eventId }: { summary: CollectionSummar
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-sm flex items-center gap-2">
-          <CheckCircle2 className="size-4" /> Collection Summary
-          <span className="text-xs font-normal text-muted-foreground">(pledge-based)</span>
+          <CheckCircle2 className="size-4" /> Pledge Collection Summary
         </h3>
         <Link href={`/pledges?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View Pledges</Link>
       </div>

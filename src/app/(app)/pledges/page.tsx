@@ -148,7 +148,7 @@ function PledgesContent() {
     <div className="p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
         <PageHeader title="Pledges" subtitle="Multi-installment donation commitments." />
-        {user?.role !== 'admin' && (
+        {user?.role !== 'admin' && user?.role !== 'cashier' && (
           <Link href="/pledges/new">
             <Button className="bg-brand-orange hover:bg-brand-orange/90 text-white">
               <Plus className="size-4 mr-2" /> New Pledge

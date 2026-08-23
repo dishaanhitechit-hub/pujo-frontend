@@ -50,9 +50,16 @@ export function getDashboardNav(role: Role, canCollect?: boolean): DashboardNavI
   }
 
   if (can(role, 'event.manage')) {
-    items.push({ label: 'Events',   href: '/admin/events',   iconName: 'Calendar' })
-    items.push({ label: 'Budget',   href: '/admin/budgets',  iconName: 'Wallet' })
+    items.push({ label: 'Events',  href: '/admin/events',  iconName: 'Calendar' })
+    items.push({ label: 'Budget',  href: '/admin/budgets', iconName: 'Wallet' })
+  }
+
+  if (can(role, 'expense.manage')) {
     items.push({ label: 'Expenses', href: '/admin/expenses', iconName: 'Receipt' })
+  }
+
+  if (can(role, 'dashboard.view') && !can(role, 'content.manage')) {
+    items.push({ label: 'Announcements', href: '/announcements', iconName: 'Megaphone' })
   }
 
   if (can(role, 'content.manage')) {

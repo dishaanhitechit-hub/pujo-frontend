@@ -52,9 +52,9 @@ function NewPledgeContent() {
   const [eventsLoading, setEventsLoading] = useState(true)
   const reqRef = useRef(0)
 
-  // Backend blocks admin from POST /api/pledge/ — redirect rather than letting it fail.
+  // Backend blocks admin; cashier is view-only for pledges.
   useEffect(() => {
-    if (user?.role === 'admin') router.replace('/forbidden')
+    if (user?.role === 'admin' || user?.role === 'cashier') router.replace('/pledges')
   }, [user, router])
 
   useEffect(() => {
@@ -66,7 +66,7 @@ function NewPledgeContent() {
       .finally(() => { if (seq === reqRef.current) setEventsLoading(false) })
   }, [])
 
-  if (!user || user.role === 'admin') return null
+  if (!user || user.role === 'admin' || user.role === 'cashier') return null
 
   const noActiveEvents = !eventsLoading && events.length === 0
 
