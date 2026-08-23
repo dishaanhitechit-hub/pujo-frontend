@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Settings, Phone, Mail, MapPin, Globe, Save } from 'lucide-react'
+import { Loader2, Settings, Phone, Mail, MapPin, Globe, Save, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,15 +25,18 @@ function withDialCode(val: string | undefined): string {
 }
 
 const schema = z.object({
-  upiId:           z.string().min(1, 'UPI ID is required'),
-  orgName:         z.string().min(1, 'Organisation name is required'),
-  contactPhone:    z.string().max(30).optional(),
-  contactEmail:    z.string().max(150).optional(),
-  contactWhatsapp: z.string().max(30).optional(),
-  contactAddress:  z.string().max(300).optional(),
-  socialFacebook:  z.string().max(300).optional(),
-  socialInstagram: z.string().max(300).optional(),
-  socialYoutube:   z.string().max(300).optional(),
+  upiId:                  z.string().min(1, 'UPI ID is required'),
+  orgName:                z.string().min(1, 'Organisation name is required'),
+  contactPhone:           z.string().max(30).optional(),
+  contactEmail:           z.string().max(150).optional(),
+  contactWhatsapp:        z.string().max(30).optional(),
+  contactAddress:         z.string().max(300).optional(),
+  supportTitle:           z.string().max(100).optional(),
+  supportDescription:     z.string().max(500).optional(),
+  supportWhatsappMessage: z.string().max(300).optional(),
+  socialFacebook:         z.string().max(300).optional(),
+  socialInstagram:        z.string().max(300).optional(),
+  socialYoutube:          z.string().max(300).optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -62,15 +65,18 @@ function ConfigContent() {
       .then((res) => {
         const c = res.config
         reset({
-          upiId:           c['upi_id']           ?? '',
-          orgName:         c['org_name']          ?? '',
-          contactPhone:    stripDialCode(c['contact.phone']    ?? ''),
-          contactEmail:    c['contact.email']     ?? '',
-          contactWhatsapp: stripDialCode(c['contact.whatsapp'] ?? ''),
-          contactAddress:  c['contact.address']   ?? '',
-          socialFacebook:  c['social.facebook']   ?? '',
-          socialInstagram: c['social.instagram']  ?? '',
-          socialYoutube:   c['social.youtube']    ?? '',
+          upiId:                  c['upi_id']                   ?? '',
+          orgName:                c['org_name']                 ?? '',
+          contactPhone:           stripDialCode(c['contact.phone']    ?? ''),
+          contactEmail:           c['contact.email']            ?? '',
+          contactWhatsapp:        stripDialCode(c['contact.whatsapp'] ?? ''),
+          contactAddress:         c['contact.address']          ?? '',
+          supportTitle:           c['support.title']            ?? '',
+          supportDescription:     c['support.description']      ?? '',
+          supportWhatsappMessage: c['support.whatsapp_message'] ?? '',
+          socialFacebook:         c['social.facebook']          ?? '',
+          socialInstagram:        c['social.instagram']         ?? '',
+          socialYoutube:          c['social.youtube']           ?? '',
         })
       })
       .catch((err: ApiError) => setError(err.message ?? 'Failed to load configuration.'))
@@ -140,6 +146,22 @@ function ConfigContent() {
             </Field>
             <Field label="Address" error={errors.contactAddress?.message}>
               <Input id="c-address" placeholder="123 Main St, Kolkata 700001" {...register('contactAddress')} />
+            </Field>
+          </Section>
+
+          {/* Support */}
+          <Section icon={<Heart className="size-4 text-brand-orange" />} title="Support & Contribution CTA"
+            hint="Configures the support section at the bottom of the Contact page.">
+            <Field label="Section Heading" error={errors.supportTitle?.message}>
+              <Input id="support-title" placeholder="Support Our Puja" {...register('supportTitle')} />
+            </Field>
+            <Field label="Description" error={errors.supportDescription?.message}
+              hint="A short sentence explaining how people can contribute.">
+              <Input id="support-desc" placeholder="Want to contribute? Contact us for details about donations, sponsorships, or volunteering." {...register('supportDescription')} />
+            </Field>
+            <Field label="WhatsApp Pre-filled Message" error={errors.supportWhatsappMessage?.message}
+              hint="Plain text — sent as the opening message when someone taps the WhatsApp button.">
+              <Input id="support-wa-msg" placeholder="I would like to support Shatadal Durga Puja" {...register('supportWhatsappMessage')} />
             </Field>
           </Section>
 

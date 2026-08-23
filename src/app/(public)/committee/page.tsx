@@ -14,7 +14,7 @@ export default async function CommitteePage() {
       <div className="pt-32 pb-16 bg-gradient-to-br from-brand-navy to-[oklch(0.28_0.1_264.5)] text-center px-4">
         <p className="text-brand-orange/80 text-xs uppercase tracking-widest font-semibold mb-3">The People Behind It</p>
         <h1 className="font-heading font-bold text-4xl sm:text-5xl text-white">Our Committee</h1>
-        <p className="text-white/60 mt-4 max-w-xl mx-auto">The dedicated volunteers who make Shatadal Puja possible every year.</p>
+        <p className="text-white/60 mt-4 max-w-xl mx-auto">The dedicated volunteers who plan, organise, and bring every Shatadal event to life.</p>
       </div>
 
       <section className="py-20 bg-white">
@@ -29,17 +29,17 @@ export default async function CommitteePage() {
                 </div>
                 <h3 className="font-heading font-bold text-brand-navy text-lg mb-2">Committee Details Coming Soon</h3>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                  Committee details will be published here before the Puja. Please check back closer to the festival.
+                  Our committee members will be listed here shortly. Please check back soon.
                 </p>
               </div>
 
               <div className="mt-10 p-6 rounded-xl border border-border bg-white">
                 <h3 className="font-semibold text-brand-navy mb-3">About Our Committee</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  The Shatadal Puja committee is a group of dedicated volunteers from the Kolaghat
-                  community who work tirelessly throughout the year to organize and execute the
-                  annual Durga Puja. From fundraising to decoration, from cultural programs to
-                  logistics — every aspect is handled with love and dedication.
+                  The Shatadal committee is a group of dedicated volunteers from the Kolaghat
+                  community who work throughout the year to plan and execute all club events — from
+                  our flagship Durga Puja to cultural programmes, sports, and community gatherings.
+                  Every aspect, from fundraising to logistics, is handled with care and commitment.
                 </p>
               </div>
             </>

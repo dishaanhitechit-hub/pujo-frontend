@@ -25,7 +25,7 @@ export default async function EventsPage() {
         <p className="text-brand-orange/80 text-xs uppercase tracking-widest font-semibold mb-3">What&apos;s Happening</p>
         <h1 className="font-heading font-bold text-4xl sm:text-5xl text-white">Events & Programs</h1>
         <p className="text-white/60 mt-4 max-w-xl mx-auto">
-          Our annual Durga Puja celebrations — each year a new chapter of devotion, culture, and community.
+          Everything we celebrate — Durga Puja, cultural programmes, community gatherings, and more. Each event a new chapter.
         </p>
       </div>
 

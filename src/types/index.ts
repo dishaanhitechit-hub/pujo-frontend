@@ -484,6 +484,20 @@ export interface PublicGalleryItem {
   mimeType: string
 }
 
+export interface PublicGalleryImage extends PublicGalleryItem {
+  event: {
+    id: number
+    name: string
+    slug: string
+    isFeatured: boolean
+  }
+}
+
+export interface PublicGalleryResponse {
+  images: PublicGalleryImage[]
+  total: number
+}
+
 export interface PublicEvent {
   id: number
   name: string
@@ -535,6 +549,11 @@ export interface PublicSiteConfig {
     email: string | null
     whatsapp: string | null
     address: string | null
+  }
+  support: {
+    title: string | null
+    description: string | null
+    whatsappMessage: string | null
   }
   social: {
     facebook: string | null

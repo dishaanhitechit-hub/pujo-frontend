@@ -5,6 +5,7 @@ import type {
   PublicCommitteeMember,
   PublicAnnouncement,
   PublicSiteConfig,
+  PublicGalleryResponse,
   ContactQueryInput,
   ContactQuery,
 } from '@/types'
@@ -72,6 +73,10 @@ export async function getPublicAnnouncements(eventId?: number): Promise<PublicAn
 
 export async function getSiteConfig(): Promise<PublicSiteConfig | null> {
   return publicGet<PublicSiteConfig>(apiConfig.endpoints.public.siteConfig, 3600)
+}
+
+export async function listPublicGallery(): Promise<PublicGalleryResponse | null> {
+  return publicGet<PublicGalleryResponse>(apiConfig.endpoints.public.gallery, 300)
 }
 
 export async function submitContactQuery(input: ContactQueryInput): Promise<ContactQuery> {

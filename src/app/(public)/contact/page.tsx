@@ -19,9 +19,15 @@ export default async function ContactPage() {
   const whatsapp = apiConfig?.contact.whatsapp ?? siteConfig.contact.whatsapp
   const address  = apiConfig?.contact.address  ?? siteConfig.contact.address
 
-  // Derive festival dates from featured event or fall back to festivalConfig
+  const supportTitle     = apiConfig?.support?.title         ?? 'Support Our Puja'
+  const supportDesc      = apiConfig?.support?.description   ?? `Want to contribute to ${siteConfig.fullName}? Contact us for details about donations, sponsorships, or volunteering opportunities.`
+  const supportWaMessage = apiConfig?.support?.whatsappMessage ?? `I would like to support ${siteConfig.fullName}`
+
+  // Derive visit card from featured event — no admin config needed, the event IS the source of truth
+  const visitCardTitle = featured?.name ? `Visit Us — ${featured.name}` : 'Visit Us During Our Events'
   const firstDate = featured?.days[0]?.date ?? featured?.startDate ?? festivalConfig.days[0].date
   const lastDate  = featured?.days[featured.days.length - 1]?.date ?? featured?.endDate ?? festivalConfig.days[festivalConfig.days.length - 1].date
+  const hasDates  = !!(featured?.startDate ?? featured?.days?.[0]?.date)
 
   const startStr = new Date(firstDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
     month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata',
@@ -29,6 +35,7 @@ export default async function ContactPage() {
   const endStr = new Date(lastDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
     month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata',
   })
+  const visitLocation = featured?.location ?? address ?? siteConfig.contact.city
 
   return (
     <>
@@ -47,9 +54,15 @@ export default async function ContactPage() {
               <p>{address}</p>
             </ContactCard>
 
-            <ContactCard icon={Clock} title="Visit Us During Puja">
-              <p>{startStr} – {endStr}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Open to all, dawn to dusk</p>
+            <ContactCard icon={Clock} title={visitCardTitle}>
+              {hasDates ? (
+                <p>{startStr} – {endStr}</p>
+              ) : (
+                <p className="italic text-muted-foreground/60">Dates to be announced</p>
+              )}
+              {visitLocation && (
+                <p className="text-xs text-muted-foreground mt-0.5">{visitLocation} · All are welcome</p>
+              )}
             </ContactCard>
 
             {phone ? (
@@ -93,14 +106,11 @@ export default async function ContactPage() {
           <ContactQueryForm />
 
           <div className="mt-5 rounded-2xl bg-gradient-to-br from-brand-orange/5 to-brand-pink/5 border border-brand-orange/15 p-8 text-center">
-            <h3 className="font-heading font-bold text-brand-navy text-xl mb-3">Support Our Puja</h3>
-            <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-              Want to contribute to Shatadal Durga Puja? Contact us for details about donations,
-              sponsorships, or volunteering opportunities.
-            </p>
+            <h3 className="font-heading font-bold text-brand-navy text-xl mb-3">{supportTitle}</h3>
+            <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">{supportDesc}</p>
             {whatsapp ? (
               <a
-                href={`https://wa.me/${whatsapp.replace(/\D/g, '')}?text=I%20would%20like%20to%20support%20Shatadal%20Durga%20Puja`}
+                href={`https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(supportWaMessage)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-xl bg-brand-orange px-6 py-3 text-white font-semibold text-sm hover:bg-brand-orange/90 transition-all"
