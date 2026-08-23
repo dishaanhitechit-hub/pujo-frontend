@@ -22,6 +22,8 @@ export interface CreateEventInput {
   status?: 'draft' | 'published' | 'archived'
   collectionEnabled?: boolean
   isFeatured?: boolean
+  budget?: number | null
+  budgetNotes?: string | null
 }
 
 export type UpdateEventInput = Partial<CreateEventInput>

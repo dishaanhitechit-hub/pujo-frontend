@@ -52,7 +52,9 @@ export function getDashboardNav(role: Role): DashboardNavItem[] {
   }
 
   if (can(role, 'event.manage')) {
-    items.push({ label: 'Events', href: '/admin/events', iconName: 'Calendar' })
+    items.push({ label: 'Events',   href: '/admin/events',   iconName: 'Calendar' })
+    items.push({ label: 'Budget',   href: '/admin/budgets',  iconName: 'Wallet' })
+    items.push({ label: 'Expenses', href: '/admin/expenses', iconName: 'Receipt' })
   }
 
   if (can(role, 'content.manage')) {

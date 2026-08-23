@@ -2,14 +2,21 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { getDashboardSummary, getDashboardCollectors, getDashboardPayments, getDashboardEvents } from '@/lib/api/dashboard'
+import {
+  getDashboardSummary, getDashboardCollectors, getDashboardPayments,
+  getDashboardEvents, getEventReport,
+} from '@/lib/api/dashboard'
 import type { DashboardPaymentsQuery } from '@/lib/api/dashboard'
-import type { DashboardSummary, CollectorBreakdown, PaginatedPayments, Payment, EventStats, ApiError } from '@/types'
+import type {
+  DashboardSummary, CollectorBreakdown, PaginatedPayments, Payment,
+  EventStats, EventReport, ApiError,
+} from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
+import { useAuth } from '@/lib/auth/auth-provider'
+import { hasPermission } from '@/config/roles'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
-import { StatusBadge } from '@/components/shared/StatusBadge'
-import { EventStatusBadge } from '@/components/shared/StatusBadge'
+import { StatusBadge, EventStatusBadge } from '@/components/shared/StatusBadge'
 import { PaymentDetailDialog } from '@/components/shared/PaymentDetailDialog'
 import { FilterChip } from '@/components/shared/FilterChip'
 import { FilterModal, FilterButton, FilterField } from '@/components/shared/FilterModal'
@@ -18,7 +25,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   IndianRupee, Smartphone, Banknote, CheckCircle2, Clock, Users,
-  ChevronLeft, ChevronRight, FileText, TrendingUp, Search, X, Loader2, ExternalLink, Calendar,
+  ChevronLeft, ChevronRight, FileText, TrendingUp, Search, X, Loader2,
+  ExternalLink, Calendar, ArrowLeft, Wallet, BarChart2, Receipt, AlertTriangle,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
@@ -40,6 +48,544 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
+  const { user } = useAuth()
+  const isAdmin = !!user && hasPermission(user.role, 'event.manage')
+
+  if (isAdmin) return <AdminDashboard />
+  return <CollectorDashboard />
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN DASHBOARD — Event-first reporting
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function AdminDashboard() {
+  const [eventStats, setEventStats] = useState<EventStats[]>([])
+  const [loadingEvents, setLoadingEvents] = useState(true)
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
+
+  useEffect(() => {
+    setLoadingEvents(true)
+    getDashboardEvents()
+      .then((d) => setEventStats(d ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingEvents(false))
+  }, [])
+
+  if (selectedEventId !== null) {
+    const ev = eventStats.find((s) => s.event.id === selectedEventId)
+    return (
+      <AdminEventReport
+        eventId={selectedEventId}
+        eventName={ev?.event.name ?? `Event #${selectedEventId}`}
+        onBack={() => setSelectedEventId(null)}
+      />
+    )
+  }
+
+  return (
+    <div className="p-6 lg:p-8 flex flex-col gap-6">
+      <PageHeader title="Dashboard" subtitle="Event-level collection and expense overview." />
+      <EventOverviewTable
+        eventStats={eventStats}
+        loading={loadingEvents}
+        onSelectEvent={setSelectedEventId}
+      />
+    </div>
+  )
+}
+
+// ── Event Overview Table ───────────────────────────────────────────────────────
+
+function EventOverviewTable({
+  eventStats,
+  loading,
+  onSelectEvent,
+}: {
+  eventStats: EventStats[]
+  loading: boolean
+  onSelectEvent: (id: number) => void
+}) {
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
+  const [statusFilter, setStatusFilter] = useState('')
+
+  const filtered = eventStats.filter((s) => {
+    const matchSearch = !debouncedSearch ||
+      s.event.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+    const matchStatus = !statusFilter || s.event.status === statusFilter
+    return matchSearch && matchStatus
+  })
+
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-border bg-muted/10">
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search events…"
+            className="pl-8 h-8 text-xs"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {(['', 'draft', 'published', 'archived'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${statusFilter === s ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}
+            >
+              {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+        {(search || statusFilter) && (
+          <button
+            onClick={() => { setSearch(''); setStatusFilter('') }}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="p-5 flex flex-col gap-3">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="p-12 text-center text-sm text-muted-foreground">
+          {eventStats.length === 0 ? 'No events yet.' : 'No events match the filter.'}
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/20">
+                {[
+                  'Event', 'Donors', 'Total Received', 'Total Pledged',
+                  'Expenses', 'Balance in Hand', 'Budget', 'Budget Remaining', 'Status', ''
+                ].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((s) => {
+                const overBudget = s.overBudget
+                const budRem = s.budgetRemaining
+                return (
+                  <tr key={s.event.id} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/events/${s.event.id}`}
+                        className="font-semibold text-foreground hover:text-brand-orange transition-colors"
+                      >
+                        {s.event.name}
+                      </Link>
+                      {s.event.year && <p className="text-xs text-muted-foreground">{s.event.year}</p>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/donors?eventId=${s.event.id}`}
+                        className="font-medium text-brand-navy hover:underline"
+                      >
+                        {s.donorCount}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/payments?eventId=${s.event.id}`}
+                        className="font-semibold hover:text-brand-orange transition-colors"
+                      >
+                        {fmt(s.totalReceived)}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      <Link href={`/pledges?eventId=${s.event.id}`} className="hover:text-brand-orange transition-colors">
+                        {fmt(s.totalPledged)}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/events/${s.event.id}/expenses`}
+                        className="font-medium text-foreground hover:text-brand-orange transition-colors"
+                      >
+                        {fmt(s.expensesPaid)}
+                      </Link>
+                    </td>
+                    <td className={`px-4 py-3 font-semibold ${Number(s.balanceInHand) < 0 ? 'text-destructive' : 'text-green-700'}`}>{fmt(s.balanceInHand)}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {s.budget ? fmt(s.budget) : <span className="text-muted-foreground/40 text-xs italic">not set</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      {budRem === null ? (
+                        <span className="text-muted-foreground/40 text-xs italic">—</span>
+                      ) : overBudget ? (
+                        <span className="flex items-center gap-1 text-destructive text-xs font-semibold">
+                          <AlertTriangle className="size-3" />
+                          Over by {fmt(Math.abs(Number(budRem)))}
+                        </span>
+                      ) : (
+                        <span className="text-green-700 text-xs font-semibold">{fmt(budRem)} left</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <EventStatusBadge status={s.event.status as 'draft' | 'published' | 'archived'} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() => onSelectEvent(s.event.id)}
+                      >
+                        Report
+                      </Button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Admin Event Report Panel ────────────────────────────────────────────────────
+
+function AdminEventReport({
+  eventId,
+  eventName,
+  onBack,
+}: {
+  eventId: number
+  eventName: string
+  onBack: () => void
+}) {
+  const [report, setReport] = useState<EventReport | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    setError(null)
+    setReport(null)
+    getEventReport(eventId)
+      .then(setReport)
+      .catch((err: ApiError) => setError(err.message ?? 'Failed to load event report.'))
+      .finally(() => setLoading(false))
+  }, [eventId])
+
+  const ev = report?.event
+  const s = report?.summary
+
+  return (
+    <div className="p-6 lg:p-8 flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5 h-8 text-xs">
+          <ArrowLeft className="size-3.5" /> All Events
+        </Button>
+        <div className="h-4 w-px bg-border" />
+        <div>
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Event Report</p>
+          <h1 className="font-heading font-bold text-xl leading-tight">{eventName}</h1>
+        </div>
+      </div>
+
+      {error && (
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>
+      )}
+
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+        </div>
+      ) : report && s && (
+        <>
+          {/* Event meta */}
+          {ev && (
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              {ev.startDate && <span className="flex items-center gap-1"><Calendar className="size-3.5" />{ev.startDate}{ev.endDate && ev.endDate !== ev.startDate ? ` → ${ev.endDate}` : ''}</span>}
+              {ev.location && <span>{ev.location}</span>}
+              <EventStatusBadge status={ev.status as 'draft' | 'published' | 'archived'} />
+              <Link href={`/admin/events/${eventId}`} className="text-brand-orange hover:underline text-xs flex items-center gap-1">
+                Event Settings <ExternalLink className="size-3" />
+              </Link>
+            </div>
+          )}
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard label="Total Received" value={fmt(s.totalReceived)} icon={IndianRupee} variant="primary" />
+            <StatCard label="Balance in Hand" value={fmt(s.balanceInHand)} icon={Wallet} variant="success" />
+            <StatCard label="Expenses Paid" value={fmt(s.expensesPaid)} icon={Receipt} />
+            <StatCard label="Total Donors" value={s.donorCount} icon={Users} />
+            <StatCard label="Completed" value={s.completedCount} icon={CheckCircle2} variant="success" />
+            <StatCard label="Pending" value={s.pendingCount} icon={Clock} variant="warning" />
+            <StatCard label="Total Pledged" value={fmt(s.totalPledged)} icon={TrendingUp} />
+            <StatCard label="Outstanding Pledges" value={fmt(s.pledgeOutstanding)} icon={FileText} />
+          </div>
+
+          {/* Budget vs Expenses */}
+          {(s.budget !== null || Number(s.expensesPaid) > 0) && (
+            <BudgetExpenseCard summary={s} eventId={eventId} />
+          )}
+
+          {/* Mode + Status + Pledge in a grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <PaymentModesCard modes={report.paymentModes} />
+            <PaymentStatusCard breakdown={report.paymentStatusBreakdown} />
+            <PledgeCard pledge={report.pledgeSummary} eventId={eventId} />
+          </div>
+
+          {/* Collector breakdown */}
+          <CollectorBreakdownCard collectors={report.collectorBreakdown} />
+
+          {/* Expense summary */}
+          {report.expenseSummary && (
+            <ExpenseSummaryCard summary={report.expenseSummary} eventId={eventId} />
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── Sub-cards ──────────────────────────────────────────────────────────────────
+
+function BudgetExpenseCard({ summary: s, eventId }: { summary: EventReport['summary']; eventId: number }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-sm flex items-center gap-2"><BarChart2 className="size-4" /> Budget & Cash Position</h3>
+        <Link href={`/admin/events/${eventId}/expenses`} className="text-xs text-brand-orange hover:underline flex items-center gap-1">
+          Manage Expenses <ExternalLink className="size-3" />
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+        {s.budget !== null && (
+          <>
+            <div>
+              <p className="text-xs text-muted-foreground">Budget</p>
+              <p className="font-semibold text-lg">{fmt(s.budget)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Expenses</p>
+              <p className="font-semibold text-lg">{fmt(s.expensesPaid)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">{s.overBudget ? 'Over Budget' : 'Budget Remaining'}</p>
+              <p className={`font-semibold text-lg ${s.overBudget ? 'text-destructive' : 'text-green-700'}`}>
+                {s.budgetRemaining !== null ? fmt(Math.abs(Number(s.budgetRemaining))) : '—'}
+              </p>
+            </div>
+          </>
+        )}
+        <div>
+          <p className="text-xs text-muted-foreground">Balance in Hand</p>
+          <p className={`font-semibold text-lg ${Number(s.balanceInHand) < 0 ? 'text-destructive' : 'text-green-700'}`}>{fmt(s.balanceInHand)}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Received − Expenses</p>
+        </div>
+      </div>
+      {s.overBudget && (
+        <p className="mt-3 text-xs text-destructive flex items-center gap-1">
+          <AlertTriangle className="size-3.5" />
+          Expenses have exceeded the planned budget. Expenses can still be added.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function PaymentModesCard({ modes }: { modes: EventReport['paymentModes'] }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <h3 className="font-semibold text-sm mb-4 flex items-center gap-2"><Smartphone className="size-4" /> Collection by Mode</h3>
+      {modes.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">No completed payments.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {modes.map((m) => (
+            <div key={m.mode} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+              <span className="text-xs font-bold uppercase text-muted-foreground">{m.mode}</span>
+              <div className="text-right">
+                <p className="font-semibold">{fmt(m.total)}</p>
+                <p className="text-xs text-muted-foreground">{m.count} payment{m.count !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PaymentStatusCard({ breakdown }: { breakdown: EventReport['paymentStatusBreakdown'] }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <h3 className="font-semibold text-sm mb-4 flex items-center gap-2"><CheckCircle2 className="size-4" /> Payment Status</h3>
+      {breakdown.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">No payments.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {breakdown.map((b) => (
+            <div key={b.status} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+              <StatusBadge status={b.status as 'pending' | 'completed' | 'expired' | 'cancelled'} />
+              <div className="text-right">
+                <p className="font-semibold">{fmt(b.total)}</p>
+                <p className="text-xs text-muted-foreground">{b.count} payment{b.count !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PledgeCard({ pledge, eventId }: { pledge: EventReport['pledgeSummary']; eventId: number }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-sm flex items-center gap-2"><TrendingUp className="size-4" /> Pledge Summary</h3>
+        <Link href={`/pledges?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View</Link>
+      </div>
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <p className="text-xs text-muted-foreground">Total Pledged</p>
+          <p className="font-semibold">{fmt(pledge.totalPledged)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Paid</p>
+          <p className="font-semibold text-green-700">{fmt(pledge.paid)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Outstanding</p>
+          <p className="font-semibold text-yellow-700">{fmt(pledge.outstanding)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Open Pledges</p>
+          <p className="font-semibold">{pledge.openCount}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CollectorBreakdownCard({ collectors }: { collectors: EventReport['collectorBreakdown'] }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <h3 className="font-semibold text-sm mb-4 flex items-center gap-2"><Users className="size-4" /> Collector Breakdown</h3>
+      {collectors.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">No collections recorded.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="pb-2 text-left text-muted-foreground font-semibold">Collector</th>
+                <th className="pb-2 text-right text-muted-foreground font-semibold">UPI</th>
+                <th className="pb-2 text-right text-muted-foreground font-semibold">Cash</th>
+                <th className="pb-2 text-right text-muted-foreground font-semibold">Cheque</th>
+                <th className="pb-2 text-right text-muted-foreground font-semibold">Total</th>
+                <th className="pb-2 text-right text-muted-foreground font-semibold">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {collectors.map((c) => (
+                <tr key={c.collector.id} className="border-b border-border/50 last:border-0">
+                  <td className="py-2.5 font-medium">{c.collector.name}</td>
+                  <td className="py-2.5 text-right text-muted-foreground">{fmt(c.upiTotal)}</td>
+                  <td className="py-2.5 text-right text-muted-foreground">{fmt(c.cashTotal)}</td>
+                  <td className="py-2.5 text-right text-muted-foreground">{fmt(c.chequeTotal)}</td>
+                  <td className="py-2.5 text-right font-semibold">{fmt(c.grandTotal)}</td>
+                  <td className="py-2.5 text-right text-muted-foreground">{c.confirmedCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ExpenseSummaryCard({
+  summary,
+  eventId,
+}: {
+  summary: EventReport['expenseSummary']
+  eventId: number
+}) {
+  const br = summary.budgetReport
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-sm flex items-center gap-2"><Receipt className="size-4" /> Expense Summary</h3>
+        <Link href={`/admin/expenses?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline flex items-center gap-1">
+          Manage Expenses <ExternalLink className="size-3" />
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mb-4">
+        <div>
+          <p className="text-xs text-muted-foreground">Total Expenses</p>
+          <p className="font-semibold text-lg">{fmt(summary.totalExpenses)}</p>
+        </div>
+        {br && (
+          <>
+            <div>
+              <p className="text-xs text-muted-foreground">Total Planned</p>
+              <p className="font-semibold text-lg">{fmt(br.totals.totalPlanned)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">{br.totals.overBudget ? 'Over Budget' : 'Remaining'}</p>
+              <p className={`font-semibold text-lg ${br.totals.overBudget ? 'text-destructive' : 'text-green-700'}`}>
+                {fmt(Math.abs(Number(br.totals.remaining)))}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Utilization</p>
+              <p className="font-semibold text-lg">{br.totals.utilizationPct.toFixed(1)}%</p>
+            </div>
+          </>
+        )}
+      </div>
+      {summary.modeBreakdown.length > 0 && (
+        <div className="border-t border-border pt-3">
+          <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">By Mode</p>
+          <div className="flex flex-wrap gap-4">
+            {summary.modeBreakdown.map((m) => (
+              <div key={m.mode} className="text-sm">
+                <span className="text-xs text-muted-foreground uppercase font-semibold mr-1">{m.mode}</span>
+                <span className="font-semibold">{fmt(m.total)}</span>
+                <span className="text-xs text-muted-foreground ml-1">({m.count})</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NON-ADMIN / COLLECTOR DASHBOARD — unchanged from original
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function CollectorDashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [collectors, setCollectors] = useState<CollectorBreakdown[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,8 +593,6 @@ function DashboardContent() {
   const [eventStats, setEventStats] = useState<EventStats[]>([])
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
 
-  // Use getDashboardEvents() for ALL roles — it uses dashboard.view permission
-  // and returns all events (including archived) for historical reporting.
   useEffect(() => {
     getDashboardEvents().then((data) => setEventStats(data ?? [])).catch(() => {})
   }, [])
@@ -90,7 +634,6 @@ function DashboardContent() {
         subtitle={eventLabel ? `Showing data for ${eventLabel}` : 'Overall collection overview across all events.'}
       />
 
-      {/* Event scope chips — uses full event list (including historical/archived) */}
       {eventStats.length > 0 && (
         <div className="flex flex-wrap gap-2 -mt-4 overflow-x-auto pb-1">
           <button
@@ -112,7 +655,6 @@ function DashboardContent() {
         </div>
       )}
 
-      {/* Context banner — shown when a specific event is selected */}
       {eventLabel && (
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-orange/10 border border-brand-orange/20 text-sm text-brand-orange font-medium -mt-4">
           <Calendar className="size-4 shrink-0" />
@@ -120,7 +662,6 @@ function DashboardContent() {
         </div>
       )}
 
-      {/* Summary cards */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
@@ -164,9 +705,7 @@ function DashboardContent() {
         </>
       )}
 
-      {/* Charts / event comparison */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left column: event comparison table (All Events) or collector bar chart (specific event) */}
         {selectedEventId === null ? (
           <EventComparisonTable eventStats={eventStats} loading={loading} />
         ) : (
@@ -192,7 +731,6 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Right column: collector breakdown table */}
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="font-semibold text-sm mb-4 flex items-center gap-2">
             <Users className="size-4" />
@@ -232,13 +770,10 @@ function DashboardContent() {
         </div>
       </div>
 
-      {/* Recent payment history — event selection passed from top-level, no second event selector */}
       <DashboardPaymentsSection collectors={collectors} selectedEventId={selectedEventId} eventLabel={eventLabel} />
     </div>
   )
 }
-
-// ── Event comparison table for "All Events" view ───────────────────────────
 
 function EventComparisonTable({ eventStats, loading }: { eventStats: EventStats[]; loading: boolean }) {
   return (
@@ -274,7 +809,7 @@ function EventComparisonTable({ eventStats, loading }: { eventStats: EventStats[
                       <EventStatusBadge status={s.event.status as 'draft' | 'published' | 'archived'} />
                     </div>
                   </td>
-                  <td className="py-2.5 text-right font-semibold">{fmt(s.grandTotal)}</td>
+                  <td className="py-2.5 text-right font-semibold">{fmt(s.totalReceived)}</td>
                   <td className="py-2.5 text-right text-muted-foreground hidden sm:table-cell">{s.paymentCount}</td>
                   <td className="py-2.5 text-right text-muted-foreground hidden md:table-cell">{fmt(s.totalPledged)}</td>
                 </tr>
@@ -287,7 +822,7 @@ function EventComparisonTable({ eventStats, loading }: { eventStats: EventStats[
   )
 }
 
-// ── Dashboard payments section ─────────────────────────────────────────────
+// ── Dashboard payments section (unchanged) ─────────────────────────────────────
 
 interface DashboardPaymentsSectionProps {
   collectors: CollectorBreakdown[]
@@ -305,11 +840,8 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
 
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 350)
-
   const [method, setMethod] = useState<'upi' | 'cash' | 'cheque' | ''>('')
   const [status, setStatus] = useState<'pending' | 'completed' | 'expired' | 'cancelled' | ''>('')
-
-  // Advanced filter state (no event filter — the top-level chip handles event selection)
   const [collectorId, setCollectorId] = useState('')
   const [donorType, setDonorType] = useState('')
   const [dateFrom, setDateFrom] = useState('')
@@ -323,10 +855,7 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
   const reqRef = useRef(0)
   const hasDataRef = useRef(false)
 
-  // Reset page when top-level event changes
-  useEffect(() => {
-    setPage(1)
-  }, [selectedEventId])
+  useEffect(() => { setPage(1) }, [selectedEventId])
 
   const searchSyncedRef = useRef(false)
   useEffect(() => {
@@ -341,8 +870,7 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
     setError(null)
 
     const query: DashboardPaymentsQuery = {
-      page,
-      perPage: 10,
+      page, perPage: 10,
       search: debouncedSearch || undefined,
       method: method || undefined,
       status: status || undefined,
@@ -356,21 +884,13 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
     getDashboardPayments(query)
       .then((result) => { if (req === reqRef.current) { hasDataRef.current = true; setPayments(result) } })
       .catch((err: ApiError) => { if (req === reqRef.current) setError(err.message ?? 'Failed to load payments.') })
-      .finally(() => {
-        if (req === reqRef.current) {
-          setLoading(false)
-          setIsFetching(false)
-        }
-      })
+      .finally(() => { if (req === reqRef.current) { setLoading(false); setIsFetching(false) } })
   }, [page, debouncedSearch, method, status, collectorId, donorType, dateFrom, dateTo, selectedEventId])
 
   function applyAdvanced() {
-    setCollectorId(draftCollectorId)
-    setDonorType(draftDonorType)
-    setDateFrom(draftDateFrom)
-    setDateTo(draftDateTo)
-    setPage(1)
-    setSheetOpen(false)
+    setCollectorId(draftCollectorId); setDonorType(draftDonorType)
+    setDateFrom(draftDateFrom); setDateTo(draftDateTo)
+    setPage(1); setSheetOpen(false)
   }
 
   function resetAdvanced() {
@@ -396,23 +916,12 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
         </Link>
       </div>
 
-      {/* Compact filter row — no event selector here; event is set by top-level chips */}
       <div className="px-5 py-3 border-b border-border flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[160px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search donor, collector…"
-            className="pl-8 h-8 text-xs"
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <X className="size-3.5" />
-            </button>
-          )}
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search donor, collector…" className="pl-8 h-8 text-xs" />
+          {search && <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="size-3.5" /></button>}
         </div>
-
         <div className="flex items-center gap-1">
           <span className="text-xs text-muted-foreground">Mode:</span>
           {(['', 'upi', 'cash', 'cheque'] as const).map((m) => (
@@ -422,7 +931,6 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
             </button>
           ))}
         </div>
-
         <div className="flex items-center gap-1">
           <span className="text-xs text-muted-foreground">Status:</span>
           {(['', 'pending', 'completed', 'cancelled', 'expired'] as const).map((s) => (
@@ -432,36 +940,17 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
             </button>
           ))}
         </div>
-
-        <FilterButton
-          onClick={() => {
-            setDraftCollectorId(collectorId); setDraftDonorType(donorType)
-            setDraftDateFrom(dateFrom); setDraftDateTo(dateTo)
-            setSheetOpen(true)
-          }}
-          activeCount={advancedActiveCount}
-          className="ml-auto h-8 text-xs"
-        />
-
-        <FilterModal
-          open={sheetOpen}
-          onOpenChange={setSheetOpen}
-          title="Payment Filters"
-          onApply={applyAdvanced}
-          onReset={resetAdvanced}
-        >
+        <FilterButton onClick={() => { setDraftCollectorId(collectorId); setDraftDonorType(donorType); setDraftDateFrom(dateFrom); setDraftDateTo(dateTo); setSheetOpen(true) }} activeCount={advancedActiveCount} className="ml-auto h-8 text-xs" />
+        <FilterModal open={sheetOpen} onOpenChange={setSheetOpen} title="Payment Filters" onApply={applyAdvanced} onReset={resetAdvanced}>
           {collectors.length > 0 && (
             <FilterField label="Collector" wide>
               <select value={draftCollectorId} onChange={(e) => setDraftCollectorId(e.target.value)}
                 className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
                 <option value="">All Collectors</option>
-                {collectors.map((c) => (
-                  <option key={c.collector.id} value={String(c.collector.id)}>{c.collector.name}</option>
-                ))}
+                {collectors.map((c) => <option key={c.collector.id} value={String(c.collector.id)}>{c.collector.name}</option>)}
               </select>
             </FilterField>
           )}
-
           <FilterField label="Donor Type" wide>
             <select value={draftDonorType} onChange={(e) => setDraftDonorType(e.target.value)}
               className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
@@ -469,17 +958,11 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
               {DONOR_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </FilterField>
-
-          <FilterField label="Date from">
-            <Input type="date" value={draftDateFrom} onChange={(e) => setDraftDateFrom(e.target.value)} className="h-8 text-sm" />
-          </FilterField>
-          <FilterField label="Date to">
-            <Input type="date" value={draftDateTo} onChange={(e) => setDraftDateTo(e.target.value)} className="h-8 text-sm" />
-          </FilterField>
+          <FilterField label="Date from"><Input type="date" value={draftDateFrom} onChange={(e) => setDraftDateFrom(e.target.value)} className="h-8 text-sm" /></FilterField>
+          <FilterField label="Date to"><Input type="date" value={draftDateTo} onChange={(e) => setDraftDateTo(e.target.value)} className="h-8 text-sm" /></FilterField>
         </FilterModal>
       </div>
 
-      {/* Active filter chips */}
       {(collectorId || donorType || dateFrom || dateTo) && (
         <div className="px-5 py-2 flex flex-wrap gap-2 border-b border-border bg-muted/10">
           {collectorId && <FilterChip label={`Collector: ${collectorName ?? collectorId}`} onRemove={() => { setCollectorId(''); setDraftCollectorId(''); setPage(1) }} />}
@@ -489,13 +972,10 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
         </div>
       )}
 
-      {/* Table */}
       {error ? (
         <div className="p-6 text-sm text-destructive">{error}</div>
       ) : loading ? (
-        <div className="p-4 flex flex-col gap-3">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14" />)}
-        </div>
+        <div className="p-4 flex flex-col gap-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14" />)}</div>
       ) : !payments || payments.payments.length === 0 ? (
         <div className="p-12 text-center text-sm text-muted-foreground">No payments match the current filters.</div>
       ) : (
@@ -505,9 +985,7 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
               <thead>
                 <tr className="border-b border-border bg-muted/20">
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Donor</th>
-                  {selectedEventId === null && (
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Event</th>
-                  )}
+                  {selectedEventId === null && <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Event</th>}
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Collector</th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount</th>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Mode</th>
@@ -519,31 +997,19 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
                 {payments.payments.map((p) => (
                   <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                     <td className="px-5 py-3">
-                      <button
-                        onClick={() => setSelectedPayment(p)}
-                        className="font-medium text-left hover:text-brand-orange transition-colors cursor-pointer"
-                      >
+                      <button onClick={() => setSelectedPayment(p)} className="font-medium text-left hover:text-brand-orange transition-colors cursor-pointer">
                         {p.donor.name}
                       </button>
                       {p.donor.phone && <p className="text-xs text-muted-foreground">{p.donor.phone}</p>}
                     </td>
-                    {selectedEventId === null && (
-                      <td className="px-5 py-3 text-xs text-muted-foreground">{p.event?.name ?? <span className="text-muted-foreground/40">—</span>}</td>
-                    )}
+                    {selectedEventId === null && <td className="px-5 py-3 text-xs text-muted-foreground">{p.event?.name ?? <span className="text-muted-foreground/40">—</span>}</td>}
                     <td className="px-5 py-3 text-muted-foreground">{p.collector.name}</td>
                     <td className="px-5 py-3 font-semibold">{fmt(p.amount)}</td>
-                    <td className="px-5 py-3">
-                      <span className="text-xs font-bold uppercase">{p.method}</span>
-                    </td>
+                    <td className="px-5 py-3"><span className="text-xs font-bold uppercase">{p.method}</span></td>
                     <td className="px-5 py-3"><StatusBadge status={p.status} /></td>
                     <td className="px-5 py-3">
                       {p.receiptNo ? (
-                        <a
-                          href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id)}?from=dashboard`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-brand-orange hover:underline font-medium"
-                        >
+                        <a href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id)}?from=dashboard`} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-orange hover:underline font-medium">
                           {p.receiptNo}
                         </a>
                       ) : <span className="text-muted-foreground/50">—</span>}
@@ -553,30 +1019,18 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
               </tbody>
             </table>
           </div>
-
           {payments.pages > 1 && (
             <div className="flex items-center justify-between px-5 py-4 border-t border-border">
-              <p className="text-xs text-muted-foreground">
-                Page {payments.page} of {payments.pages} · {payments.total} payments
-              </p>
+              <p className="text-xs text-muted-foreground">Page {payments.page} of {payments.pages} · {payments.total} payments</p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <Button variant="outline" size="sm" disabled={page >= payments.pages} onClick={() => setPage(p => p + 1)}>
-                  <ChevronRight className="size-4" />
-                </Button>
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}><ChevronLeft className="size-4" /></Button>
+                <Button variant="outline" size="sm" disabled={page >= payments.pages} onClick={() => setPage(p => p + 1)}><ChevronRight className="size-4" /></Button>
               </div>
             </div>
           )}
         </>
       )}
-
-      <PaymentDetailDialog
-        payment={selectedPayment}
-        open={!!selectedPayment}
-        onOpenChange={(o) => { if (!o) setSelectedPayment(null) }}
-      />
+      <PaymentDetailDialog payment={selectedPayment} open={!!selectedPayment} onOpenChange={(o) => { if (!o) setSelectedPayment(null) }} />
     </div>
   )
 }

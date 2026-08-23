@@ -34,6 +34,7 @@ export const apiConfig = {
       collectors: '/api/dashboard/collectors',
       payments: '/api/dashboard/payments',
       events: '/api/dashboard/events',
+      eventReport: (id: number) => `/api/dashboard/event-report/${id}`,
     },
     pledge: {
       list: '/api/pledge/',
@@ -57,6 +58,16 @@ export const apiConfig = {
       gallery:       (id: number) => `/api/events/${id}/gallery`,
       galleryReorder:(id: number) => `/api/events/${id}/gallery/reorder`,
       summary:       (id: number) => `/api/events/${id}/summary`,
+    },
+    expenses: {
+      list:   '/api/expenses/',
+      detail: (id: number) => `/api/expenses/${id}`,
+    },
+    budgets: {
+      list:    '/api/budgets/',
+      report:  '/api/budgets/report',
+      detail:  (id: number) => `/api/budgets/${id}`,
+      reorder: '/api/budgets/reorder',
     },
     media: {
       delete: (id: number) => `/api/media/${id}`,

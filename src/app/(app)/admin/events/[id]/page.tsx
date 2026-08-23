@@ -28,6 +28,7 @@ import {
   getEvent, updateEvent, setEventDays, getEventSummary,
   uploadEventCover, uploadEventGallery, deleteEventMedia, reorderEventGallery,
 } from '@/lib/api/events'
+import type { UpdateEventInput } from '@/lib/api/events'
 import { apiConfig } from '@/config/api'
 import type { Event, EventDay, DashboardSummary, ApiError } from '@/types'
 
@@ -262,6 +263,7 @@ function EventDetailContent({ params }: { params: Promise<{ id: string }> }) {
           <TabsTrigger value="schedule">Schedule</TabsTrigger>
           <TabsTrigger value="media">Cover & Gallery</TabsTrigger>
           <TabsTrigger value="summary">Summary</TabsTrigger>
+          <TabsTrigger value="budget">Budget & Expenses</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -296,6 +298,10 @@ function EventDetailContent({ params }: { params: Promise<{ id: string }> }) {
 
         <TabsContent value="summary">
           <SummaryTab eventId={eventId} />
+        </TabsContent>
+
+        <TabsContent value="budget">
+          <BudgetTab ev={ev} eventId={eventId} onSaved={(updated) => setEv((prev) => ({ ...updated, gallery: prev?.gallery }))} />
         </TabsContent>
       </Tabs>
 
@@ -536,6 +542,84 @@ function SummaryTab({ eventId }: { eventId: number }) {
         These totals use the same business rules as the dashboard — only completed and confirmed payments are counted.
         They reflect all data associated with this event, regardless of any dashboard filters.
       </p>
+    </div>
+  )
+}
+
+// ── Budget Tab ───────────────────────────────────────────────────────────────
+
+function BudgetTab({ eventId }: { ev: EventDetail; eventId: number; onSaved: (ev: EventDetail) => void }) {
+  const [report, setReport] = useState<import('@/types').BudgetReport | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    import('@/lib/api/budgets').then(({ getBudgetReport }) =>
+      getBudgetReport(eventId)
+        .then(setReport)
+        .catch(() => {})
+        .finally(() => setLoading(false)),
+    )
+  }, [eventId])
+
+  const fmt = (v: string | number | null | undefined) =>
+    v === null || v === undefined ? '—' : `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Summary cards */}
+      {loading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />)}
+        </div>
+      ) : report ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard label="Total Planned"   value={fmt(report.totals.totalPlanned)} icon={TrendingUp} variant="primary" />
+          <StatCard label="Total Actual"    value={fmt(report.totals.totalActual)}  icon={IndianRupee} />
+          <div className={`rounded-xl border p-4 ${report.totals.overBudget ? 'border-destructive/30 bg-destructive/5' : 'border-green-600/20 bg-green-50 dark:bg-green-950/20'}`}>
+            <p className="text-xs text-muted-foreground mb-1">{report.totals.overBudget ? 'Over Budget' : 'Remaining'}</p>
+            <p className={`font-semibold text-xl tabular-nums ${report.totals.overBudget ? 'text-destructive' : 'text-green-700 dark:text-green-400'}`}>
+              {fmt(Math.abs(Number(report.totals.remaining)))}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground mb-1">Utilization</p>
+            <p className="font-semibold text-xl tabular-nums">{report.totals.utilizationPct.toFixed(1)}%</p>
+            <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className={`h-full rounded-full ${report.totals.overBudget ? 'bg-destructive' : 'bg-green-600'}`}
+                style={{ width: `${Math.min(report.totals.utilizationPct, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-border p-10 text-center">
+          <p className="text-sm text-muted-foreground">No budget categories set up yet for this event.</p>
+        </div>
+      )}
+
+      {/* Category count info */}
+      {report && (
+        <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+          {report.categories.length} budget {report.categories.length === 1 ? 'category' : 'categories'} · {report.unallocated.expenseCount} unallocated expense{report.unallocated.expenseCount !== 1 ? 's' : ''}
+        </div>
+      )}
+
+      {/* Action links */}
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href={`/admin/budgets?eventId=${eventId}`}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted transition-colors"
+        >
+          <TrendingUp className="size-4" /> Manage Budget Categories
+        </Link>
+        <Link
+          href={`/admin/expenses?eventId=${eventId}`}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-muted transition-colors"
+        >
+          <IndianRupee className="size-4" /> View &amp; Manage Expenses
+        </Link>
+      </div>
     </div>
   )
 }

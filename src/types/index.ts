@@ -45,14 +45,178 @@ export interface Event extends EventSummary {
   createdAt: string
   updatedAt: string | null
   days?: EventDay[]
+  budget?: string | null
+  budgetNotes?: string | null
 }
 
 export interface EventStats {
-  event: { id: number; name: string; year: number | null; status: EventStatus }
-  grandTotal: string
+  event: {
+    id: number
+    name: string
+    year: number | null
+    status: EventStatus
+    startDate: string | null
+    endDate: string | null
+  }
+  // collection totals
+  donorCount: number
+  totalReceived: string
   paymentCount: number
   totalPledged: string
   pledgeOutstanding: string
+  // expense & budget (requires event.manage; present when expenses table exists)
+  expensesPaid: string
+  balanceInHand: string
+  budget: string | null
+  budgetRemaining: string | null
+  overBudget: boolean
+}
+
+// ── Budget Categories ─────────────────────────────────────────────────────────
+
+export interface BudgetCategory {
+  id: number
+  eventId: number
+  title: string
+  plannedAmount: string
+  notes: string | null
+  sortOrder: number
+  createdBy: { id: number; name: string } | null
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface BudgetCategoryRow extends BudgetCategory {
+  actualExpenses: string
+  expenseCount: number
+  remaining: string
+  overBudget: boolean
+  utilizationPct: number
+}
+
+export interface BudgetReport {
+  categories: BudgetCategoryRow[]
+  unallocated: { actualExpenses: string; expenseCount: number }
+  totals: {
+    totalPlanned: string
+    totalActual: string
+    remaining: string
+    overBudget: boolean
+    utilizationPct: number
+  }
+}
+
+export interface PaginatedBudgetCategories {
+  categories: BudgetCategory[]
+  page: number
+  perPage: number
+  total: number
+  pages: number
+}
+
+export interface CreateBudgetCategoryInput {
+  eventId: number
+  title: string
+  plannedAmount: string
+  notes?: string | null
+  sortOrder?: number
+}
+
+export interface UpdateBudgetCategoryInput {
+  title?: string
+  plannedAmount?: string
+  notes?: string | null
+  sortOrder?: number
+}
+
+// ── Expense / Budget ──────────────────────────────────────────────────────────
+
+export interface Expense {
+  id: number
+  eventId: number
+  budgetCategoryId: number | null
+  budgetCategory: { id: number; title: string } | null
+  purpose: string
+  mode: PaymentMethod
+  amount: string
+  expenseDate: string
+  notes: string | null
+  createdBy: { id: number; name: string } | null
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface ExpenseSummary {
+  totalExpenses: string
+  expenseCount: number
+  modeBreakdown: { mode: PaymentMethod; total: string; count: number }[]
+}
+
+export interface PaginatedExpenses {
+  expenses: Expense[]
+  page: number
+  perPage: number
+  total: number
+  pages: number
+  summary: ExpenseSummary
+}
+
+export interface CreateExpenseInput {
+  eventId: number
+  budgetCategoryId?: number | null
+  purpose: string
+  mode: PaymentMethod
+  amount: string
+  expenseDate: string
+  notes?: string | null
+}
+
+export interface UpdateExpenseInput {
+  budgetCategoryId?: number | null
+  purpose?: string
+  mode?: PaymentMethod
+  amount?: string
+  expenseDate?: string
+  notes?: string | null
+}
+
+// ── Event Report ──────────────────────────────────────────────────────────────
+
+export interface EventReportSummary {
+  donorCount: number
+  totalPledged: string
+  totalReceived: string
+  pendingAmount: string
+  cancelledAmount: string
+  budget: string | null
+  expensesPaid: string
+  balanceInHand: string
+  budgetRemaining: string | null
+  overBudget: boolean
+  completedCount: number
+  pendingCount: number
+  openPledgeCount: number
+  pledgeOutstanding: string
+  pledgePaid: string
+}
+
+export interface EventReport {
+  event: Event
+  summary: EventReportSummary
+  paymentModes: { mode: PaymentMethod; count: number; total: string }[]
+  paymentStatusBreakdown: { status: PaymentStatus | 'completed'; count: number; total: string }[]
+  collectorBreakdown: CollectorBreakdown[]
+  pledgeSummary: {
+    totalPledged: string
+    paid: string
+    outstanding: string
+    openCount: number
+  }
+  expenseSummary: {
+    totalExpenses: string
+    modeBreakdown: { mode: PaymentMethod; total: string; count: number }[]
+    budgetReport: BudgetReport | null
+  }
 }
 
 export interface PaginatedEvents {

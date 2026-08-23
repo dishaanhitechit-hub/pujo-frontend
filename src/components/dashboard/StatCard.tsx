@@ -26,15 +26,15 @@ const iconStyles = {
 
 export function StatCard({ label, value, icon: Icon, trend, variant = 'default', className }: StatCardProps) {
   return (
-    <div className={cn('rounded-xl border p-5 flex items-start gap-4', variantStyles[variant], className)}>
-      <div className={cn('size-10 rounded-xl flex items-center justify-center shrink-0', iconStyles[variant])}>
-        <Icon className="size-5" />
+    <div className={cn('rounded-xl border p-4 sm:p-5 flex items-start gap-3 sm:gap-4', variantStyles[variant], className)}>
+      <div className={cn('size-8 sm:size-10 rounded-xl flex items-center justify-center shrink-0', iconStyles[variant])}>
+        <Icon className="size-4 sm:size-5" />
       </div>
-      <div className="min-w-0">
-        <p className={cn('text-xs font-medium uppercase tracking-wider', variant === 'primary' ? 'text-white/70' : 'text-muted-foreground')}>
+      <div className="min-w-0 flex-1">
+        <p className={cn('text-[11px] sm:text-xs font-medium uppercase tracking-wider leading-tight', variant === 'primary' ? 'text-white/70' : 'text-muted-foreground')}>
           {label}
         </p>
-        <p className={cn('font-heading font-bold text-2xl mt-0.5 truncate', variant === 'primary' ? 'text-white' : 'text-foreground')}>
+        <p className={cn('font-heading font-bold text-lg sm:text-2xl mt-0.5 break-words leading-tight', variant === 'primary' ? 'text-white' : 'text-foreground')}>
           {value}
         </p>
         {trend && (
