@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { SectionHeading } from '@/components/public/SectionHeading'
+import { ContactQueryForm } from '@/components/public/ContactQueryForm'
 import { siteConfig } from '@/config/site'
 import { festivalConfig } from '@/config/festival'
 import { getFeaturedEvent, getSiteConfig } from '@/lib/api/public'
@@ -16,6 +17,7 @@ export default async function ContactPage() {
   const phone    = apiConfig?.contact.phone    ?? siteConfig.contact.phone
   const email    = apiConfig?.contact.email    ?? siteConfig.contact.email
   const whatsapp = apiConfig?.contact.whatsapp ?? siteConfig.contact.whatsapp
+  const address  = apiConfig?.contact.address  ?? siteConfig.contact.address
 
   // Derive festival dates from featured event or fall back to festivalConfig
   const firstDate = featured?.days[0]?.date ?? featured?.startDate ?? festivalConfig.days[0].date
@@ -42,7 +44,7 @@ export default async function ContactPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-12">
             <ContactCard icon={MapPin} title="Address">
-              <p>{siteConfig.contact.address}</p>
+              <p>{address}</p>
             </ContactCard>
 
             <ContactCard icon={Clock} title="Visit Us During Puja">
@@ -88,7 +90,9 @@ export default async function ContactPage() {
             )}
           </div>
 
-          <div className="rounded-2xl bg-gradient-to-br from-brand-orange/5 to-brand-pink/5 border border-brand-orange/15 p-8 text-center">
+          <ContactQueryForm />
+
+          <div className="mt-5 rounded-2xl bg-gradient-to-br from-brand-orange/5 to-brand-pink/5 border border-brand-orange/15 p-8 text-center">
             <h3 className="font-heading font-bold text-brand-navy text-xl mb-3">Support Our Puja</h3>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
               Want to contribute to Shatadal Durga Puja? Contact us for details about donations,

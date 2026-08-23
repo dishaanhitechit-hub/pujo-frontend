@@ -229,13 +229,46 @@ export interface TokenConfig {
 }
 
 export interface AdminConfig {
-  upi_id: string
-  org_name: string
+  upiId: string
+  orgName: string
+  contactPhone?: string
+  contactEmail?: string
+  contactWhatsapp?: string
+  contactAddress?: string
+  socialFacebook?: string
+  socialInstagram?: string
+  socialYoutube?: string
 }
 
 export interface AdminConfigResponse {
-  config: AdminConfig
+  config: Record<string, string>
   allowedKeys: Record<string, string>
+}
+
+// ── Admin Announcement ────────────────────────────────────────────────────────
+
+export interface AdminAnnouncement {
+  id: number
+  title: string
+  body: string
+  event: { id: number; name: string } | null
+  isPublished: boolean
+  publishedAt: string | null
+  createdBy: { id: number; name: string } | null
+  createdAt: string | null
+}
+
+// ── Admin Committee Member ────────────────────────────────────────────────────
+
+export interface AdminCommitteeMember {
+  id: number
+  event: { id: number; name: string } | null
+  name: string
+  roleTitle: string
+  phone: string | null
+  photoPath: string | null
+  sortOrder: number
+  isActive: boolean
 }
 
 // ── Public API types (no auth, no admin fields) ─────────────────────────────
@@ -308,12 +341,42 @@ export interface PublicSiteConfig {
     phone: string | null
     email: string | null
     whatsapp: string | null
+    address: string | null
   }
   social: {
     facebook: string | null
     instagram: string | null
     youtube: string | null
   }
+}
+
+// ── Contact Queries ───────────────────────────────────────────────────────────
+
+export type ContactQueryStatus = 'new' | 'read' | 'resolved'
+
+export interface ContactQuery {
+  id: number
+  name: string
+  phone: string
+  location: string | null
+  message: string
+  status: ContactQueryStatus
+  createdAt: string
+}
+
+export interface ContactQueryInput {
+  name: string
+  phone: string
+  location?: string
+  message: string
+}
+
+export interface ContactQueryList {
+  queries: ContactQuery[]
+  page: number
+  perPage: number
+  total: number
+  pages: number
 }
 
 // ── Shared ────────────────────────────────────────────────────────────────────

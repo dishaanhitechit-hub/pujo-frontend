@@ -55,6 +55,12 @@ export function getDashboardNav(role: Role): DashboardNavItem[] {
     items.push({ label: 'Events', href: '/admin/events', iconName: 'Calendar' })
   }
 
+  if (can(role, 'content.manage')) {
+    items.push({ label: 'Announcements', href: '/admin/announcements', iconName: 'Megaphone' })
+    items.push({ label: 'Committee', href: '/admin/committee', iconName: 'Users2' })
+    items.push({ label: 'Contact Queries', href: '/admin/contact-queries', iconName: 'MessageSquare' })
+  }
+
   if (can(role, 'users.manage')) {
     items.push({ label: 'Users', href: '/admin/users', iconName: 'Users' })
     items.push({ label: 'Token Config', href: '/admin/token-config', iconName: 'SlidersHorizontal' })

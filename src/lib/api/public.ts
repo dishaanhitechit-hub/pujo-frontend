@@ -5,6 +5,8 @@ import type {
   PublicCommitteeMember,
   PublicAnnouncement,
   PublicSiteConfig,
+  ContactQueryInput,
+  ContactQuery,
 } from '@/types'
 
 const BASE = apiConfig.baseUrl
@@ -70,4 +72,16 @@ export async function getPublicAnnouncements(eventId?: number): Promise<PublicAn
 
 export async function getSiteConfig(): Promise<PublicSiteConfig | null> {
   return publicGet<PublicSiteConfig>(apiConfig.endpoints.public.siteConfig, 3600)
+}
+
+export async function submitContactQuery(input: ContactQueryInput): Promise<ContactQuery> {
+  const res = await fetch(`${BASE}${apiConfig.endpoints.contact.submit}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    cache: 'no-store',
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.message ?? 'Submission failed. Please try again.')
+  return json.data as ContactQuery
 }

@@ -119,7 +119,7 @@ export function HeroSection({ eventName, year, startDate, endDate }: HeroSection
                 className="font-heading font-bold text-white leading-tight mb-1.5"
                 style={{ fontSize: 'clamp(1.2rem, 2.4vw, 1.6rem)' }}
               >
-                {displayName} {displayYear}
+                {displayName}{!String(displayName).includes(String(displayYear)) ? ` ${displayYear}` : ''}
               </p>
               <p className="text-[12px] text-white/42 tracking-wide">
                 {displayStart} – {displayEnd}

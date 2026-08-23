@@ -68,6 +68,27 @@ export const apiConfig = {
       announcements: '/api/public/announcements',
       committee:     '/api/public/committee',
     },
+    contact: {
+      submit:       '/api/contact/submit',
+      queries:      '/api/contact/queries',
+      queryDetail:  (id: number) => `/api/contact/queries/${id}`,
+      queryStatus:  (id: number) => `/api/contact/queries/${id}/status`,
+    },
+    announcements: {
+      list:   '/api/announcements/',
+      create: '/api/announcements/',
+      get:    (id: number) => `/api/announcements/${id}`,
+      update: (id: number) => `/api/announcements/${id}`,
+      delete: (id: number) => `/api/announcements/${id}`,
+    },
+    committee: {
+      list:   '/api/committee/',
+      create: '/api/committee/',
+      get:    (id: number) => `/api/committee/${id}`,
+      update: (id: number) => `/api/committee/${id}`,
+      delete: (id: number) => `/api/committee/${id}`,
+      photo:  (id: number) => `/api/committee/${id}/photo`,
+    },
     token: {
       generate: '/api/token/generate',
       bulk: '/api/token/bulk',
