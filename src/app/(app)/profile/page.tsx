@@ -40,7 +40,7 @@ export default function ProfilePage() {
   ] as const
 
   function handleDownload() {
-    if (!qrUrl) return
+    if (!qrUrl || !user) return
     const a = document.createElement('a')
     a.href = qrUrl
     a.download = `login-qr-${user.name.replace(/\s+/g, '-').toLowerCase()}.png`
@@ -48,7 +48,7 @@ export default function ProfilePage() {
   }
 
   function handlePrint() {
-    if (!qrUrl) return
+    if (!qrUrl || !user) return
     const win = window.open('', '_blank')
     if (!win) return
     win.document.write(`
