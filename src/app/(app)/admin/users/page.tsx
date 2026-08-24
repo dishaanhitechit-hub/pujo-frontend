@@ -5,7 +5,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Plus, UserX, Pencil, X } from 'lucide-react'
+import { Loader2, Plus, UserX, Pencil, X, QrCode, Download, Printer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { ActiveBadge } from '@/components/shared/StatusBadge'
 import { RoleGuard } from '@/lib/auth/role-guard'
-import { getUsers, createUser, updateUser, deactivateUser } from '@/lib/api/users'
+import { getUsers, createUser, updateUser, deactivateUser, getUserLoginQr } from '@/lib/api/users'
 import { ROLE_LABELS, SELECTABLE_ROLES } from '@/config/roles'
 import type { User, Role, ApiError, UpdateUserInput } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -112,6 +112,7 @@ function UsersContent() {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deactivating, setDeactivating] = useState<number | null>(null)
   const [pendingDeactivate, setPendingDeactivate] = useState<User | null>(null)
+  const [qrUser, setQrUser] = useState<User | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   async function loadUsers() {
@@ -201,6 +202,16 @@ function UsersContent() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => setQrUser(u)}
+                        className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        title="Show login QR"
+                      >
+                        <QrCode className="size-3" />
+                        QR
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setEditingUser(u)}
                         className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
                       >
@@ -252,6 +263,10 @@ function UsersContent() {
         />
       )}
 
+      {qrUser && (
+        <LoginQrModal user={qrUser} onClose={() => setQrUser(null)} />
+      )}
+
       <ConfirmDialog
         open={!!pendingDeactivate}
         onOpenChange={(o) => { if (!o) setPendingDeactivate(null) }}
@@ -261,6 +276,100 @@ function UsersContent() {
         cancelLabel="Keep active"
         onConfirm={confirmDeactivate}
       />
+    </div>
+  )
+}
+
+function LoginQrModal({ user, onClose }: { user: User; onClose: () => void }) {
+  const [qrUrl, setQrUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let objectUrl: string
+    getUserLoginQr(user.id)
+      .then((url) => { objectUrl = url; setQrUrl(url) })
+      .catch(() => setError('Failed to load QR code'))
+      .finally(() => setLoading(false))
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
+  }, [user.id])
+
+  function handleDownload() {
+    if (!qrUrl) return
+    const a = document.createElement('a')
+    a.href = qrUrl
+    a.download = `login-qr-${user.name.replace(/\s+/g, '-').toLowerCase()}.png`
+    a.click()
+  }
+
+  function handlePrint() {
+    if (!qrUrl) return
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(`
+      <html><body style="display:flex;flex-direction:column;align-items:center;padding:48px;font-family:sans-serif;text-align:center">
+        <h2 style="margin:0 0 4px">${user.name}</h2>
+        <p style="margin:0 0 24px;color:#666;font-size:14px">${user.email ?? ''}</p>
+        <img src="${qrUrl}" style="width:240px;height:240px" />
+        <p style="margin-top:20px;color:#999;font-size:12px">PujoPay Login QR — scan with the PujoPay mobile app</p>
+      </body></html>
+    `)
+    win.document.close()
+    win.focus()
+    win.print()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-card rounded-2xl shadow-xl w-full max-w-xs border border-border">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div>
+            <h2 className="font-heading font-bold text-base">Login QR Code</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{user.name}</p>
+          </div>
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
+            <X className="size-4" />
+          </Button>
+        </div>
+
+        <div className="p-6 flex flex-col items-center gap-4">
+          {loading && (
+            <div className="size-[200px] flex items-center justify-center">
+              <Loader2 className="size-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          {qrUrl && (
+            <>
+              <img
+                src={qrUrl}
+                alt="Login QR"
+                className="size-[200px] rounded-xl border border-border"
+              />
+              <div className="text-center">
+                <p className="text-sm font-medium">{user.email ?? '—'}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Scan with PujoPay app to auto-fill email
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+
+        {qrUrl && (
+          <div className="flex gap-3 px-5 pb-5">
+            <Button variant="outline" className="flex-1 gap-2" onClick={handlePrint}>
+              <Printer className="size-4" /> Print
+            </Button>
+            <Button
+              className="flex-1 gap-2 bg-brand-orange hover:bg-brand-orange/90 text-white"
+              onClick={handleDownload}
+            >
+              <Download className="size-4" /> Download
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

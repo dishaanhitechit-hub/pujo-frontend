@@ -25,3 +25,8 @@ export async function updateUser(id: number, input: UpdateUserInput): Promise<Us
 export async function deactivateUser(id: number): Promise<void> {
   await apiClient.delete(apiConfig.endpoints.users.deactivate(id))
 }
+
+export async function getUserLoginQr(id: number): Promise<string> {
+  const res = await apiClient.get(apiConfig.endpoints.users.loginQr(id), { responseType: 'blob' })
+  return URL.createObjectURL(res.data)
+}

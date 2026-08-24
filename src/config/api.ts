@@ -13,6 +13,7 @@ export const apiConfig = {
       get: (id: number) => `/api/users/${id}`,
       update: (id: number) => `/api/users/${id}`,
       deactivate: (id: number) => `/api/users/${id}`,
+      loginQr: (id: number) => `/api/users/${id}/login-qr`,
     },
     admin: {
       config: '/api/admin/config',
