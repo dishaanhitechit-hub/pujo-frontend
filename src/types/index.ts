@@ -116,6 +116,18 @@ export interface BudgetReport {
   }
 }
 
+export interface EventBudgetSummaryRow {
+  eventId: number
+  eventName: string
+  eventYear: number | null
+  totalPlanned: string
+  totalCollected: string
+  totalSpent: string
+  remaining: string
+  overBudget: boolean
+  utilizationPct: number
+}
+
 export interface PaginatedBudgetCategories {
   categories: BudgetCategory[]
   page: number

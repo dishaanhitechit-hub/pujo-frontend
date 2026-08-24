@@ -65,10 +65,11 @@ export const apiConfig = {
       detail: (id: number) => `/api/expenses/${id}`,
     },
     budgets: {
-      list:    '/api/budgets/',
-      report:  '/api/budgets/report',
-      detail:  (id: number) => `/api/budgets/${id}`,
-      reorder: '/api/budgets/reorder',
+      list:       '/api/budgets/',
+      report:     '/api/budgets/report',
+      allSummary: '/api/budgets/all-summary',
+      detail:     (id: number) => `/api/budgets/${id}`,
+      reorder:    '/api/budgets/reorder',
     },
     media: {
       delete: (id: number) => `/api/media/${id}`,

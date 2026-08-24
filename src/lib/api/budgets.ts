@@ -1,7 +1,7 @@
 import apiClient from './client'
 import { apiConfig } from '@/config/api'
 import type {
-  ApiResponse, BudgetCategory, BudgetReport,
+  ApiResponse, BudgetCategory, BudgetReport, EventBudgetSummaryRow,
   PaginatedBudgetCategories, CreateBudgetCategoryInput, UpdateBudgetCategoryInput,
 } from '@/types'
 
@@ -16,6 +16,13 @@ export async function getBudgetCategories(query: BudgetCategoriesQuery = {}): Pr
   const res = await apiClient.get<ApiResponse<PaginatedBudgetCategories>>(
     apiConfig.endpoints.budgets.list,
     { params: query },
+  )
+  return res.data.data
+}
+
+export async function getAllEventsBudgetSummary(): Promise<EventBudgetSummaryRow[]> {
+  const res = await apiClient.get<ApiResponse<EventBudgetSummaryRow[]>>(
+    apiConfig.endpoints.budgets.allSummary,
   )
   return res.data.data
 }

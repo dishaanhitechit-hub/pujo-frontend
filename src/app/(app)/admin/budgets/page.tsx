@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
 import {
-  getBudgetCategories, getBudgetReport,
+  getBudgetCategories, getBudgetReport, getAllEventsBudgetSummary,
   createBudgetCategory, updateBudgetCategory, deleteBudgetCategory, reorderBudgetCategories,
 } from '@/lib/api/budgets'
 import { getDashboardEvents } from '@/lib/api/dashboard'
@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import type { BudgetCategory, BudgetReport, EventStats, ApiError } from '@/types'
+import type { BudgetCategory, BudgetReport, EventBudgetSummaryRow, EventStats, ApiError } from '@/types'
 import {
   Plus, Pencil, Trash2, Loader2, Wallet, TrendingUp, AlertTriangle,
   ChevronUp, ChevronDown, ExternalLink, Search, X, CircleDollarSign,
@@ -40,6 +40,140 @@ const categorySchema = z.object({
   notes:         z.string().optional(),
 })
 type CategoryForm = z.infer<typeof categorySchema>
+
+// ── All-events overview table ──────────────────────────────────────────────────
+
+function AllEventsSummary() {
+  const [rows, setRows]       = useState<EventBudgetSummaryRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getAllEventsBudgetSummary()
+      .then(setRows)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-3">
+        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+      </div>
+    )
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border p-12 sm:p-16 text-center">
+        <Wallet className="size-10 text-muted-foreground/30 mx-auto mb-3" />
+        <p className="text-sm text-muted-foreground">No budget data found across any event.</p>
+      </div>
+    )
+  }
+
+  // column colour helpers
+  function spentColor(u: number) {
+    if (u < 75)  return 'text-red-400'
+    if (u < 100) return 'text-red-500 font-semibold'
+    return 'text-red-700 font-bold'
+  }
+  function balanceColor(row: EventBudgetSummaryRow) {
+    if (!row.overBudget) return 'text-green-700 dark:text-green-400'
+    if (row.utilizationPct > 125) return 'text-red-800 dark:text-red-300 font-bold'
+    return 'text-red-600 font-semibold'
+  }
+  function barColor(u: number) {
+    if (u > 100) return 'bg-red-600'
+    if (u > 75)  return 'bg-amber-500'
+    return 'bg-green-600'
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="px-4 sm:px-5 py-3 border-b border-border">
+        <h3 className="font-semibold text-sm">All Events — Budget Overview</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Select an event above to manage its categories.</p>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="sm:hidden divide-y divide-border">
+        {rows.map((row) => (
+          <div key={row.eventId} className="p-4 flex flex-col gap-3">
+            <p className="font-semibold text-sm">
+              {row.eventName}{row.eventYear ? ` ${row.eventYear}` : ''}
+              {row.overBudget && (
+                <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">OVER</span>
+              )}
+            </p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              <div>
+                <p className="text-muted-foreground mb-0.5">Budget Planned</p>
+                <p className="font-semibold text-brand-orange tabular-nums">{fmt(row.totalPlanned)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-0.5">Total Collected</p>
+                <p className="font-semibold text-amber-600 tabular-nums">{fmt(row.totalCollected)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-0.5">Total Spent</p>
+                <p className={`tabular-nums ${spentColor(row.utilizationPct)}`}>{fmt(row.totalSpent)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-0.5">Budget Balance</p>
+                <p className={`tabular-nums ${balanceColor(row)}`}>{fmt(Math.abs(Number(row.remaining)))}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className={`h-full rounded-full ${barColor(row.utilizationPct)}`} style={{ width: `${Math.min(row.utilizationPct, 100)}%` }} />
+              </div>
+              <span className="text-xs text-muted-foreground shrink-0">{row.utilizationPct.toFixed(1)}%</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full text-sm min-w-[700px]">
+          <thead>
+            <tr className="border-b border-border bg-muted/20">
+              {['Event', 'Budget Planned', 'Total Collected', 'Total Spent', 'Budget Balance', 'Utilization'].map((h) => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.eventId} className="border-b border-border/50 last:border-0 hover:bg-muted/10 transition-colors">
+                <td className="px-4 py-3 font-semibold whitespace-nowrap">
+                  {row.eventName}{row.eventYear ? ` ${row.eventYear}` : ''}
+                  {row.overBudget && (
+                    <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 align-middle">OVER</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 tabular-nums font-semibold text-brand-orange whitespace-nowrap">{fmt(row.totalPlanned)}</td>
+                <td className="px-4 py-3 tabular-nums font-semibold text-amber-600 whitespace-nowrap">{fmt(row.totalCollected)}</td>
+                <td className={`px-4 py-3 tabular-nums whitespace-nowrap ${spentColor(row.utilizationPct)}`}>{fmt(row.totalSpent)}</td>
+                <td className={`px-4 py-3 tabular-nums whitespace-nowrap ${balanceColor(row)}`}>
+                  {row.overBudget ? '-' : ''}{fmt(Math.abs(Number(row.remaining)))}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden shrink-0">
+                      <div className={`h-full rounded-full ${barColor(row.utilizationPct)}`} style={{ width: `${Math.min(row.utilizationPct, 100)}%` }} />
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{row.utilizationPct.toFixed(1)}%</span>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
 
 // ── Budget stat cards (dynamic colour) ────────────────────────────────────────
 
@@ -225,10 +359,7 @@ function BudgetsContent() {
       </div>
 
       {!selectedEventId ? (
-        <div className="rounded-xl border border-dashed border-border p-12 sm:p-16 text-center">
-          <Wallet className="size-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Select an event to view and manage its budget.</p>
-        </div>
+        <AllEventsSummary />
       ) : (
         <>
           {/* Summary cards */}
