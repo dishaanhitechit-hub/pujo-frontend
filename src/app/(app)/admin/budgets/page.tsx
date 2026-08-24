@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -12,7 +12,6 @@ import {
 import { getDashboardEvents } from '@/lib/api/dashboard'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
-import { StatCard } from '@/components/dashboard/StatCard'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -41,6 +40,96 @@ const categorySchema = z.object({
   notes:         z.string().optional(),
 })
 type CategoryForm = z.infer<typeof categorySchema>
+
+// ── Budget stat cards (dynamic colour) ────────────────────────────────────────
+
+function BudgetStatCards({ report }: { report: BudgetReport }) {
+  const u = report.totals.utilizationPct
+
+  // Budget Planned — soft orange tint
+  const plannedCard = {
+    bg:     'bg-orange-50 dark:bg-orange-950/20',
+    border: 'border-orange-200 dark:border-orange-800/40',
+    icon:   'bg-orange-100 dark:bg-orange-900/40 text-brand-orange',
+    label:  'text-orange-600/80 dark:text-orange-400/70',
+    value:  'text-brand-orange',
+  }
+
+  // Total Collected — amber/yellow
+  const collectedCard = {
+    bg:     'bg-amber-50 dark:bg-amber-950/20',
+    border: 'border-amber-200 dark:border-amber-800/40',
+    icon:   'bg-amber-100 dark:bg-amber-900/40 text-amber-600',
+    label:  'text-amber-600/80 dark:text-amber-400/70',
+    value:  'text-amber-700 dark:text-amber-400',
+  }
+
+  // Total Spent — intensity grows with utilisation
+  const spentCard = u < 75
+    ? { bg: 'bg-red-50 dark:bg-red-950/20',   border: 'border-red-100 dark:border-red-900/30',  icon: 'bg-red-100 dark:bg-red-900/30 text-red-400',  label: 'text-red-400/80',  value: 'text-red-400' }
+    : u < 100
+    ? { bg: 'bg-red-100 dark:bg-red-950/30',  border: 'border-red-200 dark:border-red-800/40',  icon: 'bg-red-200 dark:bg-red-900/40 text-red-500',  label: 'text-red-500/80',  value: 'text-red-500' }
+    : { bg: 'bg-red-200 dark:bg-red-950/50',  border: 'border-red-400 dark:border-red-700/60',  icon: 'bg-red-300 dark:bg-red-800/60 text-red-700',  label: 'text-red-700/90',  value: 'text-red-700 font-extrabold' }
+
+  // Budget Balance — green → red → deep red
+  const balanceOver = report.totals.overBudget
+  const balanceDeep = u > 125
+  const balanceCard = !balanceOver
+    ? { bg: 'bg-green-50 dark:bg-green-950/20',  border: 'border-green-200 dark:border-green-800/40', icon: 'bg-green-100 dark:bg-green-900/30 text-green-600', label: 'text-green-600/80', value: 'text-green-700 dark:text-green-400' }
+    : balanceDeep
+    ? { bg: 'bg-red-200 dark:bg-red-950/60',     border: 'border-red-600 dark:border-red-700',         icon: 'bg-red-400 dark:bg-red-800 text-white',           label: 'text-red-800/90 dark:text-red-300', value: 'text-red-900 dark:text-red-300 font-extrabold' }
+    : { bg: 'bg-red-100 dark:bg-red-950/40',     border: 'border-red-300 dark:border-red-800/60',      icon: 'bg-red-200 dark:bg-red-900/40 text-red-600',      label: 'text-red-600/80',  value: 'text-red-600' }
+
+  function Card({
+    label, value, icon: Icon, card, sub,
+  }: {
+    label: string
+    value: string
+    icon: React.ElementType
+    card: { bg: string; border: string; icon: string; label: string; value: string }
+    sub?: React.ReactNode
+  }) {
+    return (
+      <div className={`rounded-xl border p-4 sm:p-5 flex items-start gap-3 sm:gap-4 ${card.bg} ${card.border}`}>
+        <div className={`size-8 sm:size-10 rounded-xl flex items-center justify-center shrink-0 ${card.icon}`}>
+          <Icon className="size-4 sm:size-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`text-[11px] sm:text-xs font-medium uppercase tracking-wider leading-tight ${card.label}`}>{label}</p>
+          <p className={`font-heading font-bold text-lg sm:text-2xl mt-0.5 break-words leading-tight tabular-nums ${card.value}`}>{value}</p>
+          {sub}
+        </div>
+      </div>
+    )
+  }
+
+  // Utilisation bar colour
+  const barColor = u > 100 ? 'bg-red-600' : u > 75 ? 'bg-amber-500' : 'bg-green-600'
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+      <Card label="Budget Planned"  value={fmt(report.totals.totalPlanned)}   icon={Wallet}           card={plannedCard}  />
+      <Card label="Total Collected" value={fmt(report.totals.totalCollected)} icon={CircleDollarSign} card={collectedCard} />
+      <Card label="Total Spent"     value={fmt(report.totals.totalActual)}    icon={TrendingUp}       card={spentCard}
+        sub={u >= 100 && <p className="text-[10px] mt-1 flex items-center gap-0.5 text-red-600 font-semibold"><AlertTriangle className="size-3 shrink-0" />Over budget</p>}
+      />
+      <Card
+        label={balanceOver ? (balanceDeep ? 'Way Over Budget' : 'Over Budget') : 'Budget Balance'}
+        value={fmt(Math.abs(Number(report.totals.remaining)))}
+        icon={balanceOver ? AlertTriangle : Wallet}
+        card={balanceCard}
+      />
+      {/* Utilization */}
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <p className="text-[11px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1 leading-tight">Utilization</p>
+        <p className="font-heading font-bold text-lg sm:text-2xl tabular-nums leading-tight">{pct(u)}</p>
+        <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(u, 100)}%` }} />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function BudgetsPage() {
   return (
@@ -148,34 +237,7 @@ function BudgetsContent() {
               {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
             </div>
           ) : report && (
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-              <StatCard label="Budget Planned"   value={fmt(report.totals.totalPlanned)}    icon={Wallet}             variant="primary" />
-              <StatCard label="Total Collected"  value={fmt(report.totals.totalCollected)}  icon={CircleDollarSign} />
-              <StatCard label="Total Spent"      value={fmt(report.totals.totalActual)}     icon={TrendingUp} />
-
-              <div className={`rounded-xl border p-4 ${report.totals.overBudget ? 'border-destructive/30 bg-destructive/5' : 'border-green-600/20 bg-green-50 dark:bg-green-950/20'}`}>
-                <p className="text-[11px] sm:text-xs text-muted-foreground mb-1 leading-tight">{report.totals.overBudget ? 'Over Budget' : 'Budget Balance'}</p>
-                <p className={`font-semibold text-base sm:text-xl tabular-nums break-words leading-tight ${report.totals.overBudget ? 'text-destructive' : 'text-green-700 dark:text-green-400'}`}>
-                  {fmt(Math.abs(Number(report.totals.remaining)))}
-                </p>
-                {report.totals.overBudget && (
-                  <p className="text-[11px] text-destructive mt-1 flex items-center gap-0.5">
-                    <AlertTriangle className="size-3 shrink-0" />Over budget
-                  </p>
-                )}
-              </div>
-
-              <div className="rounded-xl border border-border bg-card p-4">
-                <p className="text-[11px] sm:text-xs text-muted-foreground mb-1 leading-tight">Utilization</p>
-                <p className="font-semibold text-base sm:text-xl tabular-nums leading-tight">{pct(report.totals.utilizationPct)}</p>
-                <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${report.totals.utilizationPct > 100 ? 'bg-destructive' : 'bg-green-600'}`}
-                    style={{ width: `${Math.min(report.totals.utilizationPct, 100)}%` }}
-                  />
-                </div>
-              </div>
-            </div>
+            <BudgetStatCards report={report} />
           )}
 
           {/* Budget vs Actual */}
