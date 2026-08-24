@@ -149,12 +149,12 @@ function BudgetsContent() {
             </div>
           ) : report && (
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-              <StatCard label="Total Planned"    value={fmt(report.totals.totalPlanned)}    icon={Wallet}             variant="primary" />
+              <StatCard label="Budget Planned"   value={fmt(report.totals.totalPlanned)}    icon={Wallet}             variant="primary" />
               <StatCard label="Total Collected"  value={fmt(report.totals.totalCollected)}  icon={CircleDollarSign} />
               <StatCard label="Total Spent"      value={fmt(report.totals.totalActual)}     icon={TrendingUp} />
 
               <div className={`rounded-xl border p-4 ${report.totals.overBudget ? 'border-destructive/30 bg-destructive/5' : 'border-green-600/20 bg-green-50 dark:bg-green-950/20'}`}>
-                <p className="text-[11px] sm:text-xs text-muted-foreground mb-1 leading-tight">{report.totals.overBudget ? 'Over Budget' : 'Remaining'}</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground mb-1 leading-tight">{report.totals.overBudget ? 'Over Budget' : 'Budget Balance'}</p>
                 <p className={`font-semibold text-base sm:text-xl tabular-nums break-words leading-tight ${report.totals.overBudget ? 'text-destructive' : 'text-green-700 dark:text-green-400'}`}>
                   {fmt(Math.abs(Number(report.totals.remaining)))}
                 </p>
