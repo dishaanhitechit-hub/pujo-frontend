@@ -23,7 +23,7 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import type { BudgetCategory, BudgetReport, EventStats, ApiError } from '@/types'
 import {
   Plus, Pencil, Trash2, Loader2, Wallet, TrendingUp, AlertTriangle,
-  ChevronUp, ChevronDown, ExternalLink, Search, X,
+  ChevronUp, ChevronDown, ExternalLink, Search, X, CircleDollarSign,
 } from 'lucide-react'
 
 function fmt(v: string | number | null | undefined) {
@@ -144,13 +144,14 @@ function BudgetsContent() {
         <>
           {/* Summary cards */}
           {loadingReport ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
             </div>
           ) : report && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <StatCard label="Total Planned" value={fmt(report.totals.totalPlanned)} icon={Wallet} variant="primary" />
-              <StatCard label="Total Actual"  value={fmt(report.totals.totalActual)}  icon={TrendingUp} />
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+              <StatCard label="Total Planned"    value={fmt(report.totals.totalPlanned)}    icon={Wallet}             variant="primary" />
+              <StatCard label="Total Collected"  value={fmt(report.totals.totalCollected)}  icon={CircleDollarSign} />
+              <StatCard label="Total Spent"      value={fmt(report.totals.totalActual)}     icon={TrendingUp} />
 
               <div className={`rounded-xl border p-4 ${report.totals.overBudget ? 'border-destructive/30 bg-destructive/5' : 'border-green-600/20 bg-green-50 dark:bg-green-950/20'}`}>
                 <p className="text-[11px] sm:text-xs text-muted-foreground mb-1 leading-tight">{report.totals.overBudget ? 'Over Budget' : 'Remaining'}</p>

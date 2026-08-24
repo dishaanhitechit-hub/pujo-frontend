@@ -108,6 +108,7 @@ export interface BudgetReport {
   unallocated: { actualExpenses: string; expenseCount: number }
   totals: {
     totalPlanned: string
+    totalCollected: string
     totalActual: string
     remaining: string
     overBudget: boolean
