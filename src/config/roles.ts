@@ -108,10 +108,6 @@ export function hasPermission(role: Role, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false
 }
 
-/** Check against the live permissions array from the API (preferred over role-based lookup). */
-export function perm(permissions: string[], key: Permission | string): boolean {
-  return permissions.includes(key)
-}
 
 export function hasRole(userRole: Role, requiredRole: Role): boolean {
   const hierarchy: Role[] = ['general', 'collector', 'committee', 'cashier', 'core_committee', 'executive', 'managing_committee', 'admin']

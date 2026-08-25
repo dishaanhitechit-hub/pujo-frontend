@@ -49,7 +49,7 @@ export function AppSidebar() {
   if (!user) return null
 
   const canCollect = userCanCollect(user)
-  const navItems = getDashboardNav(user.role, canCollect, user.permissions ?? [])
+  const navItems = getDashboardNav(user.role, canCollect)
 
   async function handleLogout() {
     await logout()

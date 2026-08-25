@@ -4,11 +4,13 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from './auth-provider'
 import type { Role } from '@/types'
-import { userCanCollect } from '@/config/roles'
+import { hasPermission, userCanCollect } from '@/config/roles'
+
+type Permission = Parameters<typeof hasPermission>[1]
 
 interface RoleGuardProps {
   children: React.ReactNode
-  permission?: string
+  permission?: Permission
   requiredRole?: Role
   /** When true, requires the user to have collection capability (canCollect). */
   requireCanCollect?: boolean
@@ -21,7 +23,7 @@ export function RoleGuard({ children, permission, requiredRole, requireCanCollec
 
   const permitted =
     !!user &&
-    (!permission || (user.permissions ?? []).includes(permission)) &&
+    (!permission || hasPermission(user.role, permission)) &&
     (!requiredRole || user.role === requiredRole || user.role === 'admin') &&
     (!requireCanCollect || userCanCollect(user))
 
