@@ -32,8 +32,8 @@ export function getDashboardNav(role: Role, canCollect?: boolean): DashboardNavI
     items.push({ label: 'Dashboard', href: '/dashboard', iconName: 'LayoutDashboard' })
   }
 
-  // Collection navigation: oversight roles never collect regardless of canCollect flag
-  if (!isOversight && canCollect) {
+  // Collection navigation: gated by canCollect flag (oversight roles check DB, admin never)
+  if (canCollect) {
     items.push({ label: 'Collect Payment', href: '/collect', iconName: 'IndianRupee' })
     items.push({ label: 'My Collections', href: '/my-collections', iconName: 'ClipboardList' })
   }

@@ -123,19 +123,18 @@ export function getDefaultRoute(role: Role): string {
   return '/collect'
 }
 
-// Oversight roles — attend meetings / review reports, never handle collections
+// Oversight roles — attend meetings / review reports, but can collect if DB flag is set
 const OVERSIGHT_ROLES: Role[] = ['managing_committee', 'executive', 'core_committee']
 
 /**
  * Whether a user has collection capability.
- * - admin / oversight roles: never
- * - collector: always
- * - cashier + others: only when canCollect flag is explicitly true
+ * - admin: never
+ * - collector / committee / general: always
+ * - oversight / cashier / others: only when canCollect flag is explicitly true in DB
  */
 export function userCanCollect(user: { role: Role; canCollect?: boolean }): boolean {
   if (user.role === 'admin') return false
-  if (OVERSIGHT_ROLES.includes(user.role)) return false
-  if (user.role === 'collector') return true
+  if (user.role === 'collector' || user.role === 'committee' || user.role === 'general') return true
   return user.canCollect === true
 }
 
