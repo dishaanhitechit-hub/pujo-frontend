@@ -273,6 +273,7 @@ export interface User {
   role: Role
   isActive: boolean
   canCollect: boolean
+  permissions: string[]
   createdAt: string
 }
 

@@ -11,7 +11,6 @@ import { getUsers } from '@/lib/api/users'
 import type { PaginatedPledges, User, ApiError } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { useAuth } from '@/lib/auth/auth-provider'
-import { can } from '@/lib/auth/permissions'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { PledgeStatusBadge } from '@/components/shared/StatusBadge'
 import { FilterChip } from '@/components/shared/FilterChip'
@@ -40,7 +39,7 @@ function PledgesContent() {
   const params = useSearchParams()
   const { user } = useAuth()
 
-  const canViewAll = user ? can(user.role, 'dashboard.view') : false
+  const canViewAll = user ? (user.permissions ?? []).includes('dashboard.view') : false
 
   const [search, setSearch] = useState(params.get('search') ?? '')
   const debouncedSearch = useDebouncedValue(search, 350)
