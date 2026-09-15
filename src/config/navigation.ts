@@ -64,17 +64,29 @@ export function getDashboardNav(role: Role, canCollect?: boolean): DashboardNavI
     items.push({ label: 'Expenses', href: '/admin/expenses', iconName: 'Receipt' })
   }
 
+  // Admin: meetings and action-plan management
+  if (can(role, 'meeting.manage')) {
+    items.push({ label: 'Meetings',     href: '/admin/meetings',     iconName: 'Users2' })
+    items.push({ label: 'Action Plans', href: '/admin/action-plans', iconName: 'ClipboardList' })
+  }
+
   if (!can(role, 'content.manage')) {
-    items.push({ label: 'Announcements', href: '/announcements', iconName: 'Megaphone' })
+    items.push({ label: 'Circulars', href: '/circulars', iconName: 'ScrollText' })
+  }
+
+  // Non-admin members: meetings and action plans
+  if (role !== 'admin') {
+    items.push({ label: 'Meetings',           href: '/meetings',     iconName: 'CalendarCheck' })
+    items.push({ label: 'My Responsibilities', href: '/action-plan', iconName: 'ClipboardList' })
   }
 
   // All non-admin members can submit contributions and view their history
   if (role !== 'admin') {
-    items.push({ label: 'Contribute', href: '/contribute', iconName: 'HeartHandshake' })
-    items.push({ label: 'My Contributions', href: '/my-contributions', iconName: 'BadgeIndianRupee' })
+    items.push({ label: 'My Contributions', href: '/my-contributions', iconName: 'HeartHandshake' })
   }
 
   if (can(role, 'content.manage')) {
+    items.push({ label: 'Circulars',     href: '/admin/circulars',     iconName: 'ScrollText' })
     items.push({ label: 'Announcements', href: '/admin/announcements', iconName: 'Megaphone' })
     items.push({ label: 'Committee', href: '/admin/committee', iconName: 'Users2' })
     items.push({ label: 'Contributions', href: '/admin/contributions', iconName: 'HeartHandshake' })

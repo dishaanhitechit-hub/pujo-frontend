@@ -477,6 +477,29 @@ export interface AdminAnnouncement {
   createdAt: string | null
 }
 
+// ── Circular ──────────────────────────────────────────────────────────────────
+
+export interface Circular {
+  id: number
+  title: string
+  body: string
+  circularNo: string | null
+  event: { id: number; name: string } | null
+  isPublished: boolean
+  publishedAt: string | null
+  createdBy: { id: number; name: string } | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export interface PaginatedCirculars {
+  circulars: Circular[]
+  page: number
+  pages: number
+  total: number
+  perPage: number
+}
+
 // ── Admin Committee Member ────────────────────────────────────────────────────
 
 export interface AdminCommitteeMember {
@@ -622,6 +645,113 @@ export interface ContactQueryList {
   perPage: number
   total: number
   pages: number
+}
+
+// ── Meetings ──────────────────────────────────────────────────────────────────
+
+export type MeetingType      = 'general' | 'emergency' | 'committee' | 'agm' | 'other'
+export type MeetingStatus    = 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+export type AgendaItemStatus = 'open' | 'closed' | 'tabled'
+
+export interface Meeting {
+  id:          number
+  title:       string
+  description: string | null
+  date:        string        // YYYY-MM-DD
+  startTime:   string        // HH:MM
+  endTime:     string        // HH:MM
+  venue:       string | null
+  meetingType: MeetingType
+  status:      MeetingStatus
+  event:       { id: number; name: string } | null
+  createdBy:   { id: number; name: string } | null
+  createdAt:   string
+  updatedAt:   string | null
+  invitees?:   MeetingInvitee[]
+}
+
+export interface MeetingInvitee {
+  id:             number
+  meetingId:      number
+  user:           { id: number; name: string; role: string } | null
+  invitationType: string
+  createdAt:      string | null
+}
+
+export interface PaginatedMeetings {
+  meetings: Meeting[]
+  page:     number
+  perPage:  number
+  total:    number
+  pages:    number
+}
+
+export interface MeetingAgendaItem {
+  id:          number
+  meetingId:   number
+  title:       string
+  description: string | null
+  sortOrder:   number
+  owner:       { id: number; name: string } | null
+  status:      AgendaItemStatus
+  createdAt:   string | null
+  updatedAt:   string | null
+}
+
+export interface MeetingDiscussion {
+  id:                 number
+  meetingId:          number
+  agendaItemId:       number | null
+  content:            string
+  isVisibleToMembers: boolean
+  createdBy:          { id: number; name: string } | null
+  createdAt:          string | null
+  updatedAt:          string | null
+}
+
+export interface AttendanceStatus {
+  phase:     'before' | 'open' | 'marked' | 'closed'
+  startTime: string
+  endTime:   string
+  markedAt:  string | null
+}
+
+// ── Action Plans ──────────────────────────────────────────────────────────────
+
+export type ActionPlanPriority = 'low' | 'medium' | 'high' | 'urgent'
+export type ActionPlanStatus   = 'not_started' | 'in_progress' | 'completed' | 'on_hold' | 'cancelled'
+
+export interface ActionPlan {
+  id:          number
+  title:       string
+  description: string | null
+  event:       { id: number; name: string } | null
+  meeting:     { id: number; title: string } | null
+  startDate:   string | null
+  dueDate:     string | null
+  priority:    ActionPlanPriority
+  status:      ActionPlanStatus
+  notes:       string | null
+  createdBy:   { id: number; name: string } | null
+  createdAt:   string | null
+  updatedAt:   string | null
+  assignees:   ActionPlanAssignee[]
+}
+
+export interface ActionPlanAssignee {
+  id:           number
+  actionPlanId: number
+  user:         { id: number; name: string; role: string } | null
+  assignedAt:   string | null
+  assignedBy:   { id: number; name: string } | null
+}
+
+export interface PaginatedActionPlans {
+  actionPlans: ActionPlan[]
+  page:        number
+  perPage:     number
+  total:       number
+  pages:       number
 }
 
 // ── Shared ────────────────────────────────────────────────────────────────────

@@ -107,6 +107,17 @@ export const apiConfig = {
       update: (id: number) => `/api/announcements/${id}`,
       delete: (id: number) => `/api/announcements/${id}`,
     },
+    circulars: {
+      // Admin
+      list:   '/api/circulars/',
+      create: '/api/circulars/',
+      get:    (id: number) => `/api/circulars/${id}`,
+      update: (id: number) => `/api/circulars/${id}`,
+      delete: (id: number) => `/api/circulars/${id}`,
+      // Member
+      published:       '/api/circulars/published',
+      publishedDetail: (id: number) => `/api/circulars/published/${id}`,
+    },
     committee: {
       list:    '/api/committee/',
       create:  '/api/committee/',
@@ -122,6 +133,40 @@ export const apiConfig = {
       list: '/api/token/list',
       get: (tokenNo: string) => `/api/token/${tokenNo}`,
       void: (tokenNo: string) => `/api/token/${tokenNo}/void`,
+    },
+    meetings: {
+      // Admin
+      list:            '/api/meetings/',
+      create:          '/api/meetings/',
+      get:             (id: number) => `/api/meetings/${id}`,
+      update:          (id: number) => `/api/meetings/${id}`,
+      delete:          (id: number) => `/api/meetings/${id}`,
+      invitees:        (id: number) => `/api/meetings/${id}/invitees`,
+      removeInvitee:   (id: number, uid: number) => `/api/meetings/${id}/invitees/${uid}`,
+      adminAttendance: (id: number) => `/api/meetings/${id}/attendance`,
+      agenda:          (id: number) => `/api/meetings/${id}/agenda`,
+      agendaItem:      (itemId: number) => `/api/meetings/agenda/${itemId}`,
+      discussions:     (id: number) => `/api/meetings/${id}/discussions`,
+      discussion:      (discId: number) => `/api/meetings/discussions/${discId}`,
+      // Member
+      myList:              '/api/meetings/me',
+      myDetail:            (id: number) => `/api/meetings/me/${id}`,
+      myAgenda:            (id: number) => `/api/meetings/me/${id}/agenda`,
+      myDiscussions:       (id: number) => `/api/meetings/me/${id}/discussions`,
+      myAttendanceStatus:  (id: number) => `/api/meetings/me/${id}/attendance/status`,
+      myMarkAttendance:    (id: number) => `/api/meetings/me/${id}/attendance`,
+    },
+    actionPlans: {
+      // Admin
+      list:           '/api/action-plans/',
+      create:         '/api/action-plans/',
+      get:            (id: number) => `/api/action-plans/${id}`,
+      update:         (id: number) => `/api/action-plans/${id}`,
+      delete:         (id: number) => `/api/action-plans/${id}`,
+      assignees:      (id: number) => `/api/action-plans/${id}/assignees`,
+      removeAssignee: (id: number, uid: number) => `/api/action-plans/${id}/assignees/${uid}`,
+      // Member
+      myList: '/api/action-plans/me',
     },
   },
   backendPages: {
