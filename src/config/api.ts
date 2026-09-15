@@ -64,6 +64,16 @@ export const apiConfig = {
       list:   '/api/expenses/',
       detail: (id: number) => `/api/expenses/${id}`,
     },
+    contributions: {
+      submit:        '/api/contributions/',
+      myList:        '/api/contributions/me',
+      myStats:       '/api/contributions/me/stats',
+      paymentInfo:   '/api/contributions/payment-info',
+      screenshot:    (id: number) => `/api/contributions/screenshot/${id}`,
+      adminList:     '/api/contributions/admin',
+      adminStats:    '/api/contributions/admin/stats',
+      adminReview:   (id: number) => `/api/contributions/admin/${id}/review`,
+    },
     budgets: {
       list:       '/api/budgets/',
       report:     '/api/budgets/report',

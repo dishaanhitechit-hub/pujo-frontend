@@ -1,19 +1,25 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ActiveBadge } from '@/components/shared/StatusBadge'
 import { ROLE_LABELS } from '@/config/roles'
 import { getUserLoginQr } from '@/lib/api/users'
-import { Loader2, Download, Printer } from 'lucide-react'
+import { Loader2, Download, Printer, HeartHandshake, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { apiConfig } from '@/config/api'
+import type { ContributionStats } from '@/types'
+
+const BASE = apiConfig.baseUrl
 
 export default function ProfilePage() {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const [qrUrl, setQrUrl] = useState<string | null>(null)
   const [qrLoading, setQrLoading] = useState(true)
+  const [contribStats, setContribStats] = useState<ContributionStats | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -24,6 +30,16 @@ export default function ProfilePage() {
       .finally(() => setQrLoading(false))
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
   }, [user?.id])
+
+  useEffect(() => {
+    if (!token || !user || user.role === 'admin') return
+    fetch(`${BASE}${apiConfig.endpoints.contributions.myStats}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(json => { if (json?.data) setContribStats(json.data) })
+      .catch(() => {})
+  }, [token, user?.id])
 
   if (!user) return null
 
@@ -90,6 +106,41 @@ export default function ProfilePage() {
           ))}
         </div>
       </div>
+
+      {/* Contribution summary — non-admin only */}
+      {user.role !== 'admin' && (
+        <div className="mt-6 rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <HeartHandshake className="size-4 text-brand-orange" />
+              <p className="font-heading font-bold text-base">My Contributions</p>
+            </div>
+            <Link href="/my-contributions" className="text-xs text-brand-orange flex items-center gap-0.5 hover:underline">
+              View all <ChevronRight className="size-3" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-border">
+            <div className="px-5 py-4 text-center">
+              <p className="font-heading font-bold text-lg text-green-700">
+                ₹{contribStats ? contribStats.totalApproved.toLocaleString('en-IN') : '—'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Total approved</p>
+            </div>
+            <div className="px-5 py-4 text-center">
+              <p className="font-heading font-bold text-lg text-amber-700">
+                {contribStats ? contribStats.pendingCount : '—'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Pending review</p>
+            </div>
+            <div className="px-5 py-4 text-center">
+              <p className="font-heading font-bold text-lg text-brand-navy">
+                {contribStats ? contribStats.approvedCount : '—'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Approved payments</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Login QR Card */}
       <div className="mt-6 rounded-2xl border border-border bg-card overflow-hidden">

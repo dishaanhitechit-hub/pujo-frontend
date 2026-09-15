@@ -68,9 +68,16 @@ export function getDashboardNav(role: Role, canCollect?: boolean): DashboardNavI
     items.push({ label: 'Announcements', href: '/announcements', iconName: 'Megaphone' })
   }
 
+  // All non-admin members can submit contributions and view their history
+  if (role !== 'admin') {
+    items.push({ label: 'Contribute', href: '/contribute', iconName: 'HeartHandshake' })
+    items.push({ label: 'My Contributions', href: '/my-contributions', iconName: 'BadgeIndianRupee' })
+  }
+
   if (can(role, 'content.manage')) {
     items.push({ label: 'Announcements', href: '/admin/announcements', iconName: 'Megaphone' })
     items.push({ label: 'Committee', href: '/admin/committee', iconName: 'Users2' })
+    items.push({ label: 'Contributions', href: '/admin/contributions', iconName: 'HeartHandshake' })
     items.push({ label: 'Contact Queries', href: '/admin/contact-queries', iconName: 'MessageSquare' })
   }
 

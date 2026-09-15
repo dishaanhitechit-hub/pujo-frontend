@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Settings, Phone, Mail, MapPin, Globe, Save, Heart } from 'lucide-react'
+import { Loader2, Settings, Phone, Mail, MapPin, Globe, Save, Heart, HeartHandshake } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -37,6 +37,13 @@ const schema = z.object({
   socialFacebook:         z.string().max(300).optional(),
   socialInstagram:        z.string().max(300).optional(),
   socialYoutube:          z.string().max(300).optional(),
+  // Contribution payment details
+  contributionUpiId:      z.string().max(100).optional(),
+  contributionBankName:   z.string().max(100).optional(),
+  contributionAccountName:   z.string().max(100).optional(),
+  contributionAccountNumber: z.string().max(50).optional(),
+  contributionIfsc:       z.string().max(20).optional(),
+  contributionBankBranch: z.string().max(100).optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -77,6 +84,12 @@ function ConfigContent() {
           socialFacebook:         c['social.facebook']          ?? '',
           socialInstagram:        c['social.instagram']         ?? '',
           socialYoutube:          c['social.youtube']           ?? '',
+          contributionUpiId:         c['contribution.upi_id']        ?? '',
+          contributionBankName:      c['contribution.bank_name']     ?? '',
+          contributionAccountName:   c['contribution.account_name']  ?? '',
+          contributionAccountNumber: c['contribution.account_number'] ?? '',
+          contributionIfsc:          c['contribution.ifsc']          ?? '',
+          contributionBankBranch:    c['contribution.bank_branch']   ?? '',
         })
       })
       .catch((err: ApiError) => setError(err.message ?? 'Failed to load configuration.'))
@@ -89,6 +102,12 @@ function ConfigContent() {
         ...data,
         contactPhone:    withDialCode(data.contactPhone),
         contactWhatsapp: withDialCode(data.contactWhatsapp),
+        contributionUpiId:         data.contributionUpiId         ?? '',
+        contributionBankName:      data.contributionBankName      ?? '',
+        contributionAccountName:   data.contributionAccountName   ?? '',
+        contributionAccountNumber: data.contributionAccountNumber ?? '',
+        contributionIfsc:          data.contributionIfsc          ?? '',
+        contributionBankBranch:    data.contributionBankBranch    ?? '',
       })
       reset(data)
       toast.success('Configuration saved successfully.')
@@ -176,6 +195,30 @@ function ConfigContent() {
             </Field>
             <Field label="YouTube URL" error={errors.socialYoutube?.message}>
               <Input id="s-yt" placeholder="https://youtube.com/@yourchannel" {...register('socialYoutube')} />
+            </Field>
+          </Section>
+
+          {/* Contribution payment details */}
+          <Section icon={<HeartHandshake className="size-4 text-brand-orange" />} title="Member Contribution Details"
+            hint="Shown to members when they submit a contribution. Leave blank to hide a payment method.">
+            <Field label="Contribution UPI ID" error={errors.contributionUpiId?.message}
+              hint="UPI ID for members to send contributions to.">
+              <Input id="contrib-upi" placeholder="contributions@upi" {...register('contributionUpiId')} />
+            </Field>
+            <Field label="Bank Name" error={errors.contributionBankName?.message}>
+              <Input id="contrib-bank-name" placeholder="State Bank of India" {...register('contributionBankName')} />
+            </Field>
+            <Field label="Account Holder Name" error={errors.contributionAccountName?.message}>
+              <Input id="contrib-acc-name" placeholder="Shatadal Durga Puja Committee" {...register('contributionAccountName')} />
+            </Field>
+            <Field label="Account Number" error={errors.contributionAccountNumber?.message}>
+              <Input id="contrib-acc-no" placeholder="00000000000" {...register('contributionAccountNumber')} />
+            </Field>
+            <Field label="IFSC Code" error={errors.contributionIfsc?.message}>
+              <Input id="contrib-ifsc" placeholder="SBIN0000000" {...register('contributionIfsc')} />
+            </Field>
+            <Field label="Branch" error={errors.contributionBankBranch?.message}>
+              <Input id="contrib-branch" placeholder="Kolkata Main Branch" {...register('contributionBankBranch')} />
             </Field>
           </Section>
 

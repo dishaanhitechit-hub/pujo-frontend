@@ -13,6 +13,7 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
+  token: string | null
   login: (input: LoginInput) => Promise<void>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
@@ -69,8 +70,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(user)
   }, [])
 
+  const token = typeof window !== 'undefined' ? getStoredToken() : null
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ ...state, token, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

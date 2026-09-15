@@ -451,6 +451,12 @@ export interface AdminConfig {
   socialFacebook?: string
   socialInstagram?: string
   socialYoutube?: string
+  contributionUpiId?: string
+  contributionBankName?: string
+  contributionAccountName?: string
+  contributionAccountNumber?: string
+  contributionIfsc?: string
+  contributionBankBranch?: string
 }
 
 export interface AdminConfigResponse {
@@ -703,4 +709,52 @@ export interface UpdateUserInput {
   password?: string
   isActive?: boolean
   canCollect?: boolean
+}
+
+// ── Self Contributions ─────────────────────────────────────────────────────
+
+export type ContributionPaymentMethod = 'cash' | 'upi' | 'bank_transfer'
+export type ContributionStatus = 'pending' | 'approved' | 'rejected'
+
+export interface Contribution {
+  id: number
+  amount: number
+  paymentMethod: ContributionPaymentMethod
+  paymentDate: string
+  paymentTime: string | null
+  note: string | null
+  status: ContributionStatus
+  adminNote: string | null
+  hasScreenshot: boolean
+  screenshotUrl: string | null
+  event: { id: number; name: string; slug: string } | null
+  user: { id: number; name: string; role: string } | null
+  reviewer: { id: number; name: string } | null
+  reviewedAt: string | null
+  createdAt: string
+}
+
+export interface ContributionList {
+  contributions: Contribution[]
+  page: number
+  pages: number
+  total: number
+  perPage: number
+}
+
+export interface ContributionStats {
+  totalApproved: number
+  approvedCount: number
+  pendingCount: number
+}
+
+export interface PaymentInfo {
+  upi: { id: string | null; qrUrl: string | null }
+  bank: {
+    bankName: string | null
+    accountName: string | null
+    accountNumber: string | null
+    ifsc: string | null
+    branch: string | null
+  }
 }

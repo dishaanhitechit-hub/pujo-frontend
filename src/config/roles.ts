@@ -48,6 +48,7 @@ type Permission =
   | 'event.manage'
   | 'content.manage'
   | 'expense.manage'
+  | 'contribution.manage'
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   admin: [
@@ -62,6 +63,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'event.manage',
     'content.manage',
     'expense.manage',
+    'contribution.manage',
   ],
   managing_committee: [
     'dashboard.view',
