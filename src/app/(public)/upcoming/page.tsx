@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { SectionHeading } from '@/components/public/SectionHeading'
-import { getFeaturedEvent, getPublicAnnouncements, mediaUrl } from '@/lib/api/public'
+import { getFeaturedEvent, mediaUrl } from '@/lib/api/public'
 import { MapPin, Calendar, ChevronLeft } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'Upcoming' }
@@ -31,10 +31,7 @@ function fmtTime(t: string): string {
 }
 
 export default async function UpcomingPage() {
-  const [event, announcements] = await Promise.all([
-    getFeaturedEvent(),
-    getPublicAnnouncements(),
-  ])
+  const event = await getFeaturedEvent()
 
   // No featured event — placeholder
   if (!event) {
@@ -65,10 +62,6 @@ export default async function UpcomingPage() {
   const startStr = fmtDate(event.startDate, { day: 'numeric', month: 'long' })
   const endStr   = fmtDate(event.endDate,   { day: 'numeric', month: 'long', year: 'numeric' })
   const dateRange = startStr && endStr ? `${startStr} – ${endStr}` : startStr || endStr || null
-
-  const eventAnnouncements = announcements.filter(
-    (a) => a.event?.id === event.id || !a.event,
-  )
 
   return (
     <>
@@ -231,29 +224,6 @@ export default async function UpcomingPage() {
                   </div>
                 )
               })}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Announcements */}
-      {eventAnnouncements.length > 0 && (
-        <section className="py-16 bg-white">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6">
-            <SectionHeading label="Updates" title="Announcements" className="mb-8" />
-
-            <div className="flex flex-col gap-4">
-              {eventAnnouncements.map((ann) => (
-                <div key={ann.id} className="p-5 rounded-xl border border-border bg-white hover:border-brand-orange/20 transition-colors">
-                  <h3 className="font-semibold text-brand-navy mb-1">{ann.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{ann.body}</p>
-                  {ann.publishedAt && (
-                    <p className="text-[11px] text-muted-foreground/60 mt-2">
-                      {new Date(ann.publishedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
-                  )}
-                </div>
-              ))}
             </div>
           </div>
         </section>

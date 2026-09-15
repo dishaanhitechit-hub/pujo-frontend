@@ -12,8 +12,9 @@ export const publicNav: NavItem[] = [
   { label: 'About', href: '/about' },
   { label: 'Upcoming', href: '/upcoming' },
   { label: 'Events', href: '/events' },
+  { label: 'Announcements', href: '/announcements-to-all' },
   { label: 'Gallery', href: '/gallery' },
-  { label: 'Committee', href: '/committee' },
+  { label: 'Our Team', href: '/our-team' },
   { label: 'Contact', href: '/contact' },
 ]
 

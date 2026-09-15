@@ -47,21 +47,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EventDetailPage({ params }: Props) {
   const { slug } = await params
-  const [event, announcements] = await Promise.all([
-    getPublicEventBySlug(slug),
-    getPublicAnnouncements(),
-  ])
-
+  const event = await getPublicEventBySlug(slug)
   if (!event) notFound()
+
+  const announcements = await getPublicAnnouncements(event.id)
 
   const cover = mediaUrl(event.coverImageUrl)
   const startStr = fmtDate(event.startDate, { day: 'numeric', month: 'long' })
   const endStr   = fmtDate(event.endDate,   { day: 'numeric', month: 'long', year: 'numeric' })
   const dateRange = startStr && endStr ? `${startStr} – ${endStr}` : startStr || endStr || null
-
-  const eventAnnouncements = announcements.filter(
-    (a) => a.event?.id === event.id || !a.event,
-  )
 
   return (
     <>
@@ -232,13 +226,13 @@ export default async function EventDetailPage({ params }: Props) {
       )}
 
       {/* Announcements */}
-      {eventAnnouncements.length > 0 && (
+      {announcements.length > 0 && (
         <section className="py-16 bg-white">
           <div className="mx-auto max-w-4xl px-4 sm:px-6">
             <SectionHeading label="Updates" title="Announcements" className="mb-8" />
 
             <div className="flex flex-col gap-4">
-              {eventAnnouncements.map((ann) => (
+              {announcements.map((ann) => (
                 <div key={ann.id} className="p-5 rounded-xl border border-border bg-white hover:border-brand-orange/20 transition-colors">
                   <h3 className="font-semibold text-brand-navy mb-1">{ann.title}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">{ann.body}</p>

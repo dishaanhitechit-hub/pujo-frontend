@@ -4,22 +4,22 @@ import { SectionHeading } from '@/components/public/SectionHeading'
 import { getPublicCommittee, mediaUrl } from '@/lib/api/public'
 import { User, Phone } from 'lucide-react'
 
-export const metadata: Metadata = { title: 'Committee' }
+export const metadata: Metadata = { title: 'Our Team' }
 
-export default async function CommitteePage() {
+export default async function OurTeamPage() {
   const members = await getPublicCommittee()
 
   return (
     <>
       <div className="pt-32 pb-16 bg-gradient-to-br from-brand-navy to-[oklch(0.28_0.1_264.5)] text-center px-4">
         <p className="text-brand-orange/80 text-xs uppercase tracking-widest font-semibold mb-3">The People Behind It</p>
-        <h1 className="font-heading font-bold text-4xl sm:text-5xl text-white">Our Committee</h1>
+        <h1 className="font-heading font-bold text-4xl sm:text-5xl text-white">Our Team</h1>
         <p className="text-white/60 mt-4 max-w-xl mx-auto">The dedicated volunteers who plan, organise, and bring every Shatadal event to life.</p>
       </div>
 
       <section className="py-20 bg-white">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <SectionHeading label="Committee" title="Meet the Team" className="mb-12" />
+          <SectionHeading label="Our Team" title="Meet the Team" className="mb-12" />
 
           {members.length === 0 ? (
             <>
@@ -27,7 +27,7 @@ export default async function CommitteePage() {
                 <div className="size-16 mx-auto rounded-full bg-brand-orange/10 flex items-center justify-center mb-4">
                   <User className="size-8 text-brand-orange/50" />
                 </div>
-                <h3 className="font-heading font-bold text-brand-navy text-lg mb-2">Committee Details Coming Soon</h3>
+                <h3 className="font-heading font-bold text-brand-navy text-lg mb-2">Team Details Coming Soon</h3>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                   Our committee members will be listed here shortly. Please check back soon.
                 </p>
