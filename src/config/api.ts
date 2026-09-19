@@ -134,6 +134,10 @@ export const apiConfig = {
       get: (tokenNo: string) => `/api/token/${tokenNo}`,
       void: (tokenNo: string) => `/api/token/${tokenNo}/void`,
     },
+    org: {
+      register: '/api/org/register',
+      me:       '/api/org/me',
+    },
     meetings: {
       // Admin
       list:            '/api/meetings/',

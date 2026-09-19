@@ -10,7 +10,7 @@ import {
   Users, Settings, User, LogOut, Menu, X, ChevronRight,
   Handshake, UserSearch, Ticket, SlidersHorizontal, Calendar, MessageSquare,
   Megaphone, Users2, Wallet, Receipt, CalendarCheck, HeartHandshake, BadgeIndianRupee,
-  ScrollText,
+  ScrollText, Building2,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { getDashboardNav } from '@/config/navigation'
@@ -42,6 +42,7 @@ const ICON_MAP = {
   HeartHandshake,
   BadgeIndianRupee,
   ScrollText,
+  Building2,
 } as const
 
 type IconName = keyof typeof ICON_MAP

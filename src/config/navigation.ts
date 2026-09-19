@@ -97,6 +97,7 @@ export function getDashboardNav(role: Role, canCollect?: boolean): DashboardNavI
     items.push({ label: 'Users', href: '/admin/users', iconName: 'Users' })
     items.push({ label: 'Token Config', href: '/admin/token-config', iconName: 'SlidersHorizontal' })
     items.push({ label: 'Settings', href: '/admin/config', iconName: 'Settings' })
+    items.push({ label: 'Organisation', href: '/admin/org-settings', iconName: 'Building2' })
   }
 
   items.push({ label: 'Profile', href: '/profile', iconName: 'User' })

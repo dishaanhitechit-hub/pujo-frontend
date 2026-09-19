@@ -169,8 +169,14 @@ function LoginContent() {
             </Button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-border">
-            <Link href="/" className="text-xs text-muted-foreground hover:text-brand-orange transition-colors">
+          <div className="mt-8 pt-6 border-t border-border space-y-4">
+            <Link
+              href="/register-org"
+              className="flex items-center justify-center gap-2 w-full h-10 rounded-md border border-brand-orange text-brand-orange text-sm font-semibold hover:bg-brand-orange/5 transition-colors"
+            >
+              Register new organisation
+            </Link>
+            <Link href="/" className="block text-xs text-muted-foreground hover:text-brand-orange transition-colors">
               ← Back to public website
             </Link>
           </div>
