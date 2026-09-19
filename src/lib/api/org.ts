@@ -13,9 +13,9 @@ export interface OrgInfo {
 export interface RegisterOrgInput {
   orgName: string
   adminName: string
-  email: string
-  phone: string
-  password: string
+  adminEmail: string
+  adminPhone: string
+  adminPassword: string
 }
 
 export interface RegisterOrgResponse {

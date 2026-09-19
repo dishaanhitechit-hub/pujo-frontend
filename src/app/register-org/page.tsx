@@ -47,11 +47,11 @@ export default function RegisterOrgPage() {
   async function onSubmit(data: FormData) {
     try {
       const result = await registerOrg({
-        orgName:   data.orgName,
-        adminName: data.adminName,
-        email:     data.email,
-        phone:     data.phone,
-        password:  data.password,
+        orgName:       data.orgName,
+        adminName:     data.adminName,
+        adminEmail:    data.email,
+        adminPhone:    data.phone,
+        adminPassword: data.password,
       })
       saveAuth(result.accessToken, result.user)
       toast.success(`Welcome! ${result.org.name} is ready.`)
