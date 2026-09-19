@@ -19,5 +19,6 @@ jobs:
             cd /srv/pujo-frontend
             git pull origin main
             npm install --production=false
+            rm -rf .next
             npm run build
             sudo systemctl restart pujo-frontend.service
