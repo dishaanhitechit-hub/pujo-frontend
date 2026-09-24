@@ -94,6 +94,9 @@ export const apiConfig = {
       stats:         '/api/public/stats',
       announcements: '/api/public/announcements',
       committee:     '/api/public/committee',
+      platformUpi:   '/api/public/platform-upi',
+      platformUpiQr: '/api/public/platform-upi-qr',
+      orgRequest:    '/api/public/org-request',
     },
     contact: {
       submit:       '/api/contact/submit',

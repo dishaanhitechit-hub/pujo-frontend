@@ -1,42 +1,37 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Eye, EyeOff, Building2 } from 'lucide-react'
+import { Loader2, Building2, CheckCircle2, QrCode } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { registerOrg } from '@/lib/api/org'
-import { saveAuth } from '@/lib/storage'
+import { submitOrgRequest } from '@/lib/api/public'
+import { apiConfig } from '@/config/api'
 import { siteConfig } from '@/config/site'
 import type { ApiError } from '@/types'
 
 const IN_MOBILE_RE = /^[6-9]\d{9}$/
 
 const schema = z.object({
-  orgName:         z.string().min(2, 'Organisation name must be at least 2 characters'),
-  adminName:       z.string().min(2, 'Admin name is required'),
-  email:           z.string().email('Enter a valid email'),
-  phone:           z.string().regex(IN_MOBILE_RE, 'Enter a valid 10-digit Indian mobile number'),
-  password:        z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string(),
-}).refine((d) => d.password === d.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'],
+  orgName:     z.string().min(2, 'Organisation name must be at least 2 characters'),
+  adminName:   z.string().min(2, 'Contact name is required'),
+  email:       z.string().email('Enter a valid email'),
+  phone:       z.string().regex(IN_MOBILE_RE, 'Enter a valid 10-digit Indian mobile number'),
 })
 
 type FormData = z.infer<typeof schema>
 
+const QR_URL = `${apiConfig.baseUrl}${apiConfig.endpoints.public.platformUpiQr}`
+
 export default function RegisterOrgPage() {
-  const router = useRouter()
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [submittedOrg, setSubmittedOrg] = useState('')
 
   const {
     register,
@@ -46,19 +41,17 @@ export default function RegisterOrgPage() {
 
   async function onSubmit(data: FormData) {
     try {
-      const result = await registerOrg({
-        orgName:       data.orgName,
-        adminName:     data.adminName,
-        adminEmail:    data.email,
-        adminPhone:    data.phone,
-        adminPassword: data.password,
+      await submitOrgRequest({
+        orgName:      data.orgName,
+        contactName:  data.adminName,
+        contactEmail: data.email,
+        contactPhone: data.phone,
       })
-      saveAuth(result.accessToken, result.user)
-      toast.success(`Welcome! ${result.org.name} is ready.`)
-      router.replace('/dashboard')
+      setSubmittedOrg(data.orgName)
+      setSubmitted(true)
     } catch (err) {
       const apiErr = err as ApiError
-      toast.error(apiErr?.message ?? 'Registration failed. Please try again.')
+      toast.error(apiErr?.message ?? 'Submission failed. Please try again.')
     }
   }
 
@@ -85,8 +78,8 @@ export default function RegisterOrgPage() {
             Register your organisation
           </h1>
           <p className="text-white/60 text-base leading-relaxed">
-            Set up your club or committee on PujoPay. Once registered you get your own isolated
-            workspace — events, donors, tokens, and members are all kept separate.
+            Fill in your details and complete the one-time payment. Once we confirm,
+            your admin credentials will be sent to your email within 24 hours.
           </p>
         </div>
         <p className="relative text-white/25 text-xs">
@@ -103,138 +96,133 @@ export default function RegisterOrgPage() {
             <p className="font-bengali font-bold text-brand-navy">{siteConfig.name}</p>
           </Link>
 
-          <div className="mb-8 flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-brand-orange/10 flex items-center justify-center shrink-0">
-              <Building2 className="size-5 text-brand-orange" />
-            </div>
-            <div>
-              <h2 className="font-heading font-bold text-2xl text-brand-navy">New organisation</h2>
-              <p className="text-muted-foreground text-sm">Create your workspace and admin account</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
-            {/* Org name */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="orgName">Organisation name</Label>
-              <Input
-                id="orgName"
-                placeholder="e.g. Kalaghat Sarbojanin Durgotsav"
-                aria-invalid={!!errors.orgName}
-                {...register('orgName')}
-              />
-              {errors.orgName && <p className="text-xs text-destructive" role="alert">{errors.orgName.message}</p>}
-            </div>
-
-            <div className="border-t border-border pt-4 mt-1">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Admin account</p>
-            </div>
-
-            {/* Admin name */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="adminName">Full name</Label>
-              <Input
-                id="adminName"
-                placeholder="Your name"
-                aria-invalid={!!errors.adminName}
-                {...register('adminName')}
-              />
-              {errors.adminName && <p className="text-xs text-destructive" role="alert">{errors.adminName.message}</p>}
-            </div>
-
-            {/* Email */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">Email address</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                aria-invalid={!!errors.email}
-                {...register('email')}
-              />
-              {errors.email && <p className="text-xs text-destructive" role="alert">{errors.email.message}</p>}
-            </div>
-
-            {/* Phone */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="phone">Mobile number</Label>
-              <Input
-                id="phone"
-                type="tel"
-                inputMode="numeric"
-                placeholder="10-digit number"
-                aria-invalid={!!errors.phone}
-                {...register('phone')}
-              />
-              {errors.phone && <p className="text-xs text-destructive" role="alert">{errors.phone.message}</p>}
-            </div>
-
-            {/* Password */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  placeholder="Min. 8 characters"
-                  className="pr-10"
-                  aria-invalid={!!errors.password}
-                  {...register('password')}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </button>
+          {submitted ? (
+            <div className="flex flex-col items-center text-center gap-5 py-8">
+              <div className="size-16 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle2 className="size-8 text-green-600" />
               </div>
-              {errors.password && <p className="text-xs text-destructive" role="alert">{errors.password.message}</p>}
-            </div>
-
-            {/* Confirm password */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="confirmPassword">Confirm password</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  type={showConfirm ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  placeholder="Repeat password"
-                  className="pr-10"
-                  aria-invalid={!!errors.confirmPassword}
-                  {...register('confirmPassword')}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label={showConfirm ? 'Hide password' : 'Show password'}
-                >
-                  {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </button>
+              <div>
+                <h2 className="font-heading font-bold text-2xl text-brand-navy mb-2">Request submitted!</h2>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Your request for <span className="font-semibold text-foreground">{submittedOrg}</span> has been received.
+                  Once we confirm your payment, we will send your admin credentials to your email.
+                </p>
               </div>
-              {errors.confirmPassword && <p className="text-xs text-destructive" role="alert">{errors.confirmPassword.message}</p>}
+              <Link
+                href="/login"
+                className="mt-2 text-sm font-semibold text-brand-orange hover:underline"
+              >
+                Back to sign in
+              </Link>
             </div>
+          ) : (
+            <>
+              <div className="mb-6 flex items-center gap-3">
+                <div className="size-10 rounded-xl bg-brand-orange/10 flex items-center justify-center shrink-0">
+                  <Building2 className="size-5 text-brand-orange" />
+                </div>
+                <div>
+                  <h2 className="font-heading font-bold text-2xl text-brand-navy">New organisation</h2>
+                  <p className="text-muted-foreground text-sm">Submit your details and pay the registration fee</p>
+                </div>
+              </div>
 
-            <Button
-              type="submit"
-              className="w-full bg-brand-orange hover:bg-brand-orange/90 text-white h-10 font-semibold mt-2"
-              disabled={isSubmitting}
-            >
-              {isSubmitting && <Loader2 className="size-4 animate-spin mr-2" />}
-              {isSubmitting ? 'Creating…' : 'Create organisation'}
-            </Button>
-          </form>
+              {/* Payment QR */}
+              <div className="mb-6 rounded-xl border border-border bg-muted/30 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <QrCode className="size-4 text-brand-orange" />
+                  <p className="text-sm font-semibold text-foreground">Pay registration fee via UPI</p>
+                </div>
+                <div className="flex flex-col items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={QR_URL}
+                    alt="Payment QR code"
+                    width={180}
+                    height={180}
+                    className="rounded-lg border border-border bg-white p-2"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                  />
+                  <p className="text-xs text-muted-foreground text-center">
+                    Scan the QR code to pay. After payment, submit the form and we will verify and activate your account.
+                  </p>
+                </div>
+              </div>
 
-          <div className="mt-6 pt-6 border-t border-border flex items-center justify-between">
-            <Link href="/login" className="text-xs text-muted-foreground hover:text-brand-orange transition-colors">
-              ← Back to sign in
-            </Link>
-          </div>
+              <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+                {/* Org name */}
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="orgName">Organisation name</Label>
+                  <Input
+                    id="orgName"
+                    placeholder="e.g. Kalaghat Sarbojanin Durgotsav"
+                    aria-invalid={!!errors.orgName}
+                    {...register('orgName')}
+                  />
+                  {errors.orgName && <p className="text-xs text-destructive" role="alert">{errors.orgName.message}</p>}
+                </div>
+
+                <div className="border-t border-border pt-4 mt-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Contact details</p>
+                </div>
+
+                {/* Contact name */}
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="adminName">Full name</Label>
+                  <Input
+                    id="adminName"
+                    placeholder="Your name"
+                    aria-invalid={!!errors.adminName}
+                    {...register('adminName')}
+                  />
+                  {errors.adminName && <p className="text-xs text-destructive" role="alert">{errors.adminName.message}</p>}
+                </div>
+
+                {/* Email */}
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="email">Email address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    aria-invalid={!!errors.email}
+                    {...register('email')}
+                  />
+                  {errors.email && <p className="text-xs text-destructive" role="alert">{errors.email.message}</p>}
+                </div>
+
+                {/* Phone */}
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="phone">Mobile number</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="10-digit number"
+                    aria-invalid={!!errors.phone}
+                    {...register('phone')}
+                  />
+                  {errors.phone && <p className="text-xs text-destructive" role="alert">{errors.phone.message}</p>}
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full bg-brand-orange hover:bg-brand-orange/90 text-white h-10 font-semibold mt-2"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting && <Loader2 className="size-4 animate-spin mr-2" />}
+                  {isSubmitting ? 'Submitting…' : 'Submit registration request'}
+                </Button>
+              </form>
+
+              <div className="mt-6 pt-6 border-t border-border">
+                <Link href="/login" className="text-xs text-muted-foreground hover:text-brand-orange transition-colors">
+                  ← Back to sign in
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

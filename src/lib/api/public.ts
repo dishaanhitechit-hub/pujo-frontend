@@ -85,6 +85,24 @@ export async function getPublicStats(): Promise<PublicStats | null> {
   return publicGet<PublicStats>(apiConfig.endpoints.public.stats, 3600)
 }
 
+export interface OrgRequestInput {
+  orgName: string
+  contactName: string
+  contactEmail: string
+  contactPhone?: string
+}
+
+export async function submitOrgRequest(input: OrgRequestInput): Promise<void> {
+  const res = await fetch(`${BASE}${apiConfig.endpoints.public.orgRequest}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    cache: 'no-store',
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.message ?? 'Submission failed. Please try again.')
+}
+
 export async function submitContactQuery(input: ContactQueryInput): Promise<ContactQuery> {
   const res = await fetch(`${BASE}${apiConfig.endpoints.contact.submit}`, {
     method: 'POST',
