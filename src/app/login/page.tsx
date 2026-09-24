@@ -67,6 +67,10 @@ function LoginContent() {
       router.replace(redirect)
     } catch (err) {
       const apiErr = err as ApiError
+      if (apiErr?.fieldErrors?.code === 'SETUP_REQUIRED') {
+        router.replace(`/first-setup?email=${encodeURIComponent(data.email)}`)
+        return
+      }
       toast.error(apiErr?.message ?? 'Login failed. Please try again.')
     }
   }

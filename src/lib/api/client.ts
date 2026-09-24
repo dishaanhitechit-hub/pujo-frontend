@@ -45,8 +45,11 @@ apiClient.interceptors.response.use(
 function normalizeError(error: AxiosError<ApiResponse<unknown>>): ApiError {
   if (error.response) {
     const { status, data } = error.response
-    const message = (data as ApiResponse<unknown>)?.message ?? httpMessage(status)
-    return { status, message }
+    const body = data as ApiResponse<{ code?: string; email?: string }>
+    const message = body?.message ?? httpMessage(status)
+    const code = body?.data?.code
+    const fieldErrors = code ? { code } : undefined
+    return { status, message, ...(fieldErrors && { fieldErrors }) }
   }
   if (error.request) {
     return { status: 0, message: 'Network error — please check your connection.' }

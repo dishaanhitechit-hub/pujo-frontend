@@ -6,6 +6,7 @@ export const apiConfig = {
       login: '/api/auth/login',
       logout: '/api/auth/logout',
       me: '/api/auth/me',
+      firstSetup: '/api/auth/first-setup',
     },
     users: {
       list: '/api/users/',

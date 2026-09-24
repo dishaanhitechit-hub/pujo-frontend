@@ -25,3 +25,15 @@ export async function getMe(): Promise<User> {
   const res = await apiClient.get<ApiResponse<User>>(apiConfig.endpoints.auth.me)
   return res.data.data
 }
+
+export interface FirstSetupInput {
+  email: string
+  password: string
+  otpCode: string
+  newPassword: string
+}
+
+export async function firstSetup(input: FirstSetupInput): Promise<LoginResponse> {
+  const res = await apiClient.post<ApiResponse<LoginResponse>>(apiConfig.endpoints.auth.firstSetup, input)
+  return res.data.data
+}
