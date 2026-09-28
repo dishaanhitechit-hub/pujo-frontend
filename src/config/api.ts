@@ -142,6 +142,13 @@ export const apiConfig = {
       register: '/api/org/register',
       me:       '/api/org/me',
     },
+    contactDiary: {
+      list:   '/api/contact-diary/',
+      create: '/api/contact-diary/',
+      get:    (id: number) => `/api/contact-diary/${id}`,
+      update: (id: number) => `/api/contact-diary/${id}`,
+      delete: (id: number) => `/api/contact-diary/${id}`,
+    },
     meetings: {
       // Admin
       list:            '/api/meetings/',

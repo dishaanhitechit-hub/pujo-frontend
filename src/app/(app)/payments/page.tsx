@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getDashboardPayments, getDashboardEvents } from '@/lib/api/dashboard'
 import { getUsers } from '@/lib/api/users'
+import { userCanCollect } from '@/config/roles'
 import type { PaginatedPayments, Payment, User, EventStats, ApiError } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
@@ -85,7 +86,7 @@ function PaymentsContent() {
   }, [debouncedSearch, method, status, eventId, donorType, collectorId, dateFrom, dateTo, minAmount, maxAmount, page, router])
 
   useEffect(() => {
-    getUsers().then(setCollectors).catch(() => {})
+    getUsers().then(all => setCollectors(all.filter(u => userCanCollect(u) && u.isActive))).catch(() => {})
     // Use getDashboardEvents (all events including archived) — not listActiveEvents —
     // so historical events remain filterable in the payment ledger.
     getDashboardEvents().then((data) => setEvents(data ?? [])).catch(() => {})

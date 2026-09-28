@@ -888,3 +888,22 @@ export interface PaymentInfo {
     branch: string | null
   }
 }
+
+export interface ContactDiaryEntry {
+  id: number
+  name: string
+  phone: string
+  address?: string | null
+  occupation?: string | null
+  notes?: string | null
+  createdAt: string
+  updatedAt: string
+  createdBy?: { id: number; name: string } | null
+}
+
+export interface PaginatedContactDiary {
+  entries: ContactDiaryEntry[]
+  total: number
+  page: number
+  perPage: number
+}
