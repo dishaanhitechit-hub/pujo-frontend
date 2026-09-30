@@ -6,6 +6,7 @@ export interface OrgInfo {
   id: number
   name: string
   slug: string
+  orgCode: string | null
   isActive: boolean
   createdAt: string
 }

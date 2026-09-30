@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -15,26 +15,29 @@ import { Label } from '@/components/ui/label'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { getDefaultRoute } from '@/config/roles'
 import { siteConfig } from '@/config/site'
-import { firstSetup } from '@/lib/api/auth'
+import { firstSetup, getOrgsByEmail, type OrgOption } from '@/lib/api/auth'
 import { saveAuth } from '@/lib/storage'
 import type { ApiError } from '@/types'
 
-// ── Step 1: email + password ──────────────────────────────────────────────────
+// ── Step 1: email + orgCode + password ───────────────────────────────────────
 const loginSchema = z.object({
-  email: z.string().email('Enter a valid email'),
+  email:    z.string().email('Enter a valid email'),
+  orgCode:  z.string().min(1, 'Select or enter your organisation code'),
   password: z.string().min(1, 'Password is required'),
 })
 type LoginData = z.infer<typeof loginSchema>
 
-// ── Step 2: OTP + new password ────────────────────────────────────────────────
-const setupSchema = z.object({
-  otp: z.string().length(6, 'OTP must be 6 digits').regex(/^\d+$/, 'Digits only'),
-  newPassword: z.string().min(8, 'New password must be at least 8 characters'),
-  confirmPassword: z.string(),
-}).refine((d) => d.newPassword === d.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'],
-})
+// ── Step 2: OTP + new password (SETUP_REQUIRED flow) ─────────────────────────
+const setupSchema = z
+  .object({
+    otp:             z.string().length(6, 'OTP must be 6 digits').regex(/^\d+$/, 'Digits only'),
+    newPassword:     z.string().min(8, 'New password must be at least 8 characters'),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  })
 type SetupData = z.infer<typeof setupSchema>
 
 export default function LoginPage() {
@@ -47,15 +50,21 @@ export default function LoginPage() {
 
 function LoginContent() {
   const { login, isAuthenticated, isLoading, user } = useAuth()
-  const router = useRouter()
+  const router      = useRouter()
   const searchParams = useSearchParams()
-  const [showPassword, setShowPassword] = useState(false)
-  const [showNew, setShowNew] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
 
-  // When SETUP_REQUIRED, we hold the credentials from step 1 and show setup fields
-  const [step, setStep] = useState<'login' | 'setup'>('login')
-  const [tempCreds, setTempCreds] = useState<{ email: string; password: string } | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showNew, setShowNew]           = useState(false)
+  const [showConfirm, setShowConfirm]   = useState(false)
+
+  const [step, setStep]           = useState<'login' | 'setup'>('login')
+  const [tempCreds, setTempCreds] = useState<{ email: string; password: string; orgCode: string } | null>(null)
+
+  // Org-code dropdown state
+  const [orgOptions, setOrgOptions]       = useState<OrgOption[]>([])
+  const [dropdownOpen, setDropdownOpen]   = useState(false)
+  const [fetchingOrgs, setFetchingOrgs]   = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const loginForm = useForm<LoginData>({ resolver: zodResolver(loginSchema) })
   const setupForm = useForm<SetupData>({ resolver: zodResolver(setupSchema) })
@@ -68,21 +77,55 @@ function LoginContent() {
     }
   }, [isAuthenticated, isLoading, user, router, searchParams])
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
   if (isLoading || isAuthenticated) return null
+
+  async function onEmailBlur() {
+    const email = loginForm.getValues('email').trim().toLowerCase()
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
+    setFetchingOrgs(true)
+    try {
+      const orgs = await getOrgsByEmail(email)
+      setOrgOptions(orgs)
+      if (orgs.length === 1) {
+        loginForm.setValue('orgCode', orgs[0].orgCode, { shouldValidate: true })
+      } else if (orgs.length > 1) {
+        setDropdownOpen(true)
+      }
+    } catch {
+      // silently ignore — user can type manually
+    } finally {
+      setFetchingOrgs(false)
+    }
+  }
+
+  function selectOrg(opt: OrgOption) {
+    loginForm.setValue('orgCode', opt.orgCode, { shouldValidate: true })
+    setDropdownOpen(false)
+  }
 
   async function onLoginSubmit(data: LoginData) {
     try {
-      await login(data)
+      await login({ email: data.email, password: data.password, orgCode: data.orgCode })
       const { getStoredUser } = await import('@/lib/storage')
       const loggedInUser = getStoredUser()
       const from = searchParams.get('from')
       const isValidFrom = from && from.startsWith('/') && from !== '/login'
-      const redirect = isValidFrom ? from : (loggedInUser ? getDefaultRoute(loggedInUser.role) : '/collect')
-      router.replace(redirect)
+      router.replace(isValidFrom ? from : (loggedInUser ? getDefaultRoute(loggedInUser.role) : '/collect'))
     } catch (err) {
       const apiErr = err as ApiError
       if (apiErr?.fieldErrors?.code === 'SETUP_REQUIRED') {
-        setTempCreds({ email: data.email, password: data.password })
+        setTempCreds({ email: data.email, password: data.password, orgCode: data.orgCode })
         setStep('setup')
         return
       }
@@ -94,9 +137,10 @@ function LoginContent() {
     if (!tempCreds) return
     try {
       const result = await firstSetup({
-        email: tempCreds.email,
-        password: tempCreds.password,
-        otpCode: data.otp,
+        email:       tempCreds.email,
+        password:    tempCreds.password,
+        orgCode:     tempCreds.orgCode,
+        otpCode:     data.otp,
         newPassword: data.newPassword,
       })
       saveAuth(result.accessToken, result.user)
@@ -108,6 +152,11 @@ function LoginContent() {
       const apiErr = err as ApiError
       toast.error(apiErr?.message ?? 'Setup failed. Please check your OTP and try again.')
     }
+  }
+
+  const ROLE_LABEL: Record<string, string> = {
+    admin: 'Admin', collector: 'Collector', member: 'Member',
+    managing_committee: 'Managing Committee', core_committee: 'Core Committee', cashier: 'Cashier',
   }
 
   return (
@@ -159,6 +208,8 @@ function LoginContent() {
               </div>
 
               <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} noValidate className="flex flex-col gap-5">
+
+                {/* Email */}
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="email">Email address</Label>
                   <Input
@@ -167,13 +218,74 @@ function LoginContent() {
                     autoComplete="email"
                     placeholder="you@example.com"
                     aria-invalid={!!loginForm.formState.errors.email}
-                    {...loginForm.register('email')}
+                    {...loginForm.register('email', { onBlur: onEmailBlur })}
                   />
                   {loginForm.formState.errors.email && (
                     <p className="text-xs text-destructive" role="alert">{loginForm.formState.errors.email.message}</p>
                   )}
                 </div>
 
+                {/* Org code + dropdown */}
+                <div className="flex flex-col gap-1.5" ref={dropdownRef}>
+                  <Label htmlFor="orgCode">
+                    Organisation code
+                    {fetchingOrgs && <span className="ml-2 text-xs text-muted-foreground animate-pulse">fetching…</span>}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="orgCode"
+                      type="text"
+                      autoComplete="off"
+                      maxLength={20}
+                      placeholder="e.g. PUJA3847"
+                      className="font-mono uppercase tracking-widest pr-8"
+                      aria-invalid={!!loginForm.formState.errors.orgCode}
+                      {...loginForm.register('orgCode', {
+                        onChange: () => setDropdownOpen(false),
+                      })}
+                      onFocus={() => orgOptions.length > 1 && setDropdownOpen(true)}
+                    />
+                    {orgOptions.length > 1 && (
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setDropdownOpen(v => !v)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                        aria-label="Show organisations"
+                      >
+                        ▾
+                      </button>
+                    )}
+
+                    {/* Dropdown */}
+                    {dropdownOpen && orgOptions.length > 0 && (
+                      <div className="absolute z-50 top-full mt-1 w-full rounded-md border border-border bg-white shadow-lg overflow-hidden">
+                        {orgOptions.map((opt) => (
+                          <button
+                            key={opt.orgCode}
+                            type="button"
+                            onClick={() => selectOrg(opt)}
+                            className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-muted transition-colors"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{opt.orgName}</p>
+                              <p className="text-xs text-muted-foreground font-mono">{opt.orgCode}</p>
+                            </div>
+                            <span className="text-xs bg-muted text-muted-foreground rounded px-1.5 py-0.5 shrink-0">
+                              {ROLE_LABEL[opt.role] ?? opt.role}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {loginForm.formState.errors.orgCode && (
+                    <p className="text-xs text-destructive" role="alert">{loginForm.formState.errors.orgCode.message}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">Found in your welcome email. Enter your email above to auto-fill.</p>
+                </div>
+
+                {/* Password */}
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="password">Password</Label>
                   <div className="relative">
@@ -226,6 +338,9 @@ function LoginContent() {
 
               <div className="mb-5 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
                 Signing in as <span className="font-semibold">{tempCreds?.email}</span>
+                {tempCreds?.orgCode && (
+                  <span className="ml-1">· <span className="font-mono font-semibold">{tempCreds.orgCode}</span></span>
+                )}
               </div>
 
               <form onSubmit={setupForm.handleSubmit(onSetupSubmit)} noValidate className="flex flex-col gap-5">

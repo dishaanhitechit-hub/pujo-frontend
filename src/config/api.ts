@@ -4,6 +4,7 @@ export const apiConfig = {
   endpoints: {
     auth: {
       login: '/api/auth/login',
+      orgsByEmail: '/api/auth/orgs-by-email',
       logout: '/api/auth/logout',
       me: '/api/auth/me',
       firstSetup: '/api/auth/first-setup',

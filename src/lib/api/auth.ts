@@ -2,9 +2,23 @@ import apiClient from './client'
 import { apiConfig } from '@/config/api'
 import type { ApiResponse, User } from '@/types'
 
+export interface OrgOption {
+  orgCode: string
+  orgName: string
+  role: string
+}
+
+export async function getOrgsByEmail(email: string): Promise<OrgOption[]> {
+  const res = await apiClient.get<ApiResponse<OrgOption[]>>(
+    `${apiConfig.endpoints.auth.orgsByEmail}?email=${encodeURIComponent(email)}`,
+  )
+  return res.data.data ?? []
+}
+
 export interface LoginInput {
   email: string
   password: string
+  orgCode: string
 }
 
 export interface LoginResponse {
@@ -30,6 +44,7 @@ export interface FirstSetupInput {
   email: string
   password: string
   otpCode: string
+  orgCode: string
   newPassword: string
 }
 
