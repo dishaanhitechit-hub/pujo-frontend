@@ -204,12 +204,13 @@ function UsersContent() {
   }
 
   const q = search.trim().toLowerCase()
-  const filteredUsers = q
+  const filteredUsers = (q
     ? users.filter((u) =>
         [u.name, u.phone, u.whatsappNo, u.address, u.email]
           .some((v) => v?.toLowerCase().includes(q)),
       )
     : users
+  ).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
 
   return (
     <div className="p-6 lg:p-8">
