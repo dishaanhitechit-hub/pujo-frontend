@@ -223,7 +223,7 @@ function ExpensesContent() {
               <option value="">All Events</option>
               {events.map((s) => (
                 <option key={s.event.id} value={s.event.id}>
-                  {s.event.name}{s.event.year ? ` ${s.event.year}` : ''}
+                  {s.event.name}
                 </option>
               ))}
             </select>
@@ -415,7 +415,7 @@ function ExpensesContent() {
 function EventName({ events, eventId }: { events: EventStats[]; eventId: number }) {
   const ev = events.find((s) => s.event.id === eventId)
   if (!ev) return <span>{eventId}</span>
-  return <span>{ev.event.name}{ev.event.year ? ` ${ev.event.year}` : ''}</span>
+  return <span>{ev.event.name}</span>
 }
 
 // ── Expense Modal ─────────────────────────────────────────────────────────────
@@ -547,7 +547,7 @@ function ExpenseModal({
                 <option value="">Select event…</option>
                 {events.map((s) => (
                   <option key={s.event.id} value={s.event.id}>
-                    {s.event.name}{s.event.year ? ` ${s.event.year}` : ''}
+                    {s.event.name}
                   </option>
                 ))}
               </select>

@@ -81,11 +81,6 @@ export default async function UpcomingPage() {
           <span className="inline-block mb-3 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-brand-orange/20 text-brand-orange border border-brand-orange/30">
             Featured Event
           </span>
-          {event.year && (
-            <p className="text-brand-orange/80 text-xs uppercase tracking-widest font-semibold mb-3">
-              {event.year}
-            </p>
-          )}
           <h1 className="font-heading font-bold text-4xl sm:text-5xl text-white">{event.name}</h1>
           {event.description && (
             <p className="text-white/60 mt-4 max-w-2xl mx-auto leading-relaxed">{event.description}</p>

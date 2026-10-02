@@ -18,6 +18,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import type { BudgetCategory, BudgetReport, EventBudgetSummaryRow, EventStats, ApiError } from '@/types'
 import {
@@ -101,7 +104,7 @@ function AllEventsSummary() {
         {rows.map((row) => (
           <div key={row.eventId} className="p-4 flex flex-col gap-3">
             <p className="font-semibold text-sm">
-              {row.eventName}{row.eventYear ? ` ${row.eventYear}` : ''}
+              {row.eventName}
               {row.overBudget && (
                 <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">OVER</span>
               )}
@@ -148,7 +151,7 @@ function AllEventsSummary() {
             {rows.map((row) => (
               <tr key={row.eventId} className="border-b border-border/50 last:border-0 hover:bg-muted/10 transition-colors">
                 <td className="px-4 py-3 font-semibold whitespace-nowrap">
-                  {row.eventName}{row.eventYear ? ` ${row.eventYear}` : ''}
+                  {row.eventName}
                   {row.overBudget && (
                     <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 align-middle">OVER</span>
                   )}
@@ -172,6 +175,75 @@ function AllEventsSummary() {
           </tbody>
         </table>
       </div>
+    </div>
+  )
+}
+
+// ── Event selector (recent pills + "More" dropdown) ───────────────────────────
+
+const RECENT_EVENT_LIMIT = 6
+
+function EventSelector({
+  events, selectedEventId, onSelect,
+}: {
+  events: EventStats[]
+  selectedEventId: number | null
+  onSelect: (id: number | null) => void
+}) {
+  const pillBase = 'px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap'
+  const active = 'bg-brand-orange text-white'
+  const idle = 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'
+
+  const visible = events.slice(0, RECENT_EVENT_LIMIT)
+  const overflow = events.slice(RECENT_EVENT_LIMIT)
+  const selectedInOverflow = overflow.find((s) => s.event.id === selectedEventId)
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs text-muted-foreground font-semibold shrink-0">Event:</span>
+
+      <button onClick={() => onSelect(null)} className={`${pillBase} ${selectedEventId === null ? active : idle}`}>
+        All
+      </button>
+
+      {visible.map((s) => (
+        <button
+          key={s.event.id}
+          onClick={() => onSelect(s.event.id)}
+          className={`${pillBase} ${selectedEventId === s.event.id ? active : idle}`}
+        >
+          {s.event.name}
+        </button>
+      ))}
+
+      {/* Selected event that lives in the overflow — surface it as a pill so the active choice is always visible */}
+      {selectedInOverflow && (
+        <button onClick={() => onSelect(selectedInOverflow.event.id)} className={`${pillBase} ${active}`}>
+          {selectedInOverflow.event.name}
+        </button>
+      )}
+
+      {overflow.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className={`${pillBase} ${selectedInOverflow ? 'bg-brand-orange/15 text-brand-orange' : idle} inline-flex items-center gap-1`}>
+              More
+              <ChevronDown className="size-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
+            {overflow.map((s) => (
+              <DropdownMenuItem
+                key={s.event.id}
+                onSelect={() => onSelect(s.event.id)}
+                className={selectedEventId === s.event.id ? 'bg-brand-orange/10 text-brand-orange font-semibold' : ''}
+              >
+                {s.event.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   )
 }
@@ -230,7 +302,7 @@ function BudgetStatCards({ report }: { report: BudgetReport }) {
           <Icon className="size-3.5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className={`text-[10px] font-medium uppercase tracking-wide leading-tight ${card.label}`}>{label}</p>
+          <p className={`text-[11px] sm:text-xs font-semibold uppercase tracking-wide leading-tight ${card.label}`}>{label}</p>
           <p className={`font-bold text-sm sm:text-base mt-0.5 leading-tight tabular-nums whitespace-nowrap ${card.value}`}>{value}</p>
           {sub}
         </div>
@@ -280,7 +352,7 @@ function BudgetStatCards({ report }: { report: BudgetReport }) {
       />
       {/* Utilization */}
       <div className="rounded-lg border border-border bg-card p-3 flex flex-col justify-center">
-        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5 leading-tight">Utilization</p>
+        <p className="text-[11px] sm:text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-0.5 leading-tight">Utilization</p>
         <p className="font-bold text-sm sm:text-base tabular-nums leading-tight whitespace-nowrap">{pct(u)}</p>
         <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
           <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(u, 100)}%` }} />
@@ -371,23 +443,12 @@ function BudgetsContent() {
     <div className="p-4 sm:p-6 lg:p-8 flex flex-col gap-5 sm:gap-6">
       <PageHeader title="Budget" subtitle="Plan and track event budget by category." />
 
-      {/* Event selector */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground font-semibold shrink-0">Event:</span>
-        <button
-          onClick={() => setSelected(null)}
-          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${selectedEventId === null ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}
-        >All</button>
-        {events.map((s) => (
-          <button
-            key={s.event.id}
-            onClick={() => setSelected(s.event.id)}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${selectedEventId === s.event.id ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}
-          >
-            {s.event.name}{s.event.year ? ` ${s.event.year}` : ''}
-          </button>
-        ))}
-      </div>
+      {/* Event selector — recent events as pills, the rest tucked into a "More" dropdown */}
+      <EventSelector
+        events={events}
+        selectedEventId={selectedEventId}
+        onSelect={setSelected}
+      />
 
       {!selectedEventId ? (
         <AllEventsSummary />

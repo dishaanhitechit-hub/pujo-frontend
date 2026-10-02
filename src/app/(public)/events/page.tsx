@@ -62,13 +62,6 @@ function EventCard({ event, featured = false }: { event: PublicEvent; featured?:
         {/* Body */}
         <div className="flex flex-col justify-between p-6 sm:p-8 flex-1">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              {event.year && (
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand-navy/5 text-brand-navy">
-                  {event.year}
-                </span>
-              )}
-            </div>
             <h3 className="font-heading font-bold text-2xl sm:text-3xl text-brand-navy mb-3">{event.name}</h3>
             {event.description && (
               <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{event.description}</p>
@@ -113,13 +106,8 @@ function EventCard({ event, featured = false }: { event: PublicEvent; featured?:
         )}
       </div>
       <div className="flex flex-col flex-1 p-5">
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-3">
           <h3 className="font-heading font-bold text-brand-navy">{event.name}</h3>
-          {event.year && (
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand-navy/5 text-brand-navy">
-              {event.year}
-            </span>
-          )}
         </div>
         {event.description && (
           <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1 line-clamp-3">{event.description}</p>

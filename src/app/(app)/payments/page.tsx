@@ -211,7 +211,7 @@ function PaymentsContent() {
                 <option value="">All Events</option>
                 {events.map((s) => (
                   <option key={s.event.id} value={String(s.event.id)}>
-                    {s.event.name}{s.event.year ? ` (${s.event.year})` : ''}
+                    {s.event.name}
                     {s.event.status === 'archived' ? ' — archived' : ''}
                   </option>
                 ))}

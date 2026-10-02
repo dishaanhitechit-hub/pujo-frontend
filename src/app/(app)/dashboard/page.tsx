@@ -761,7 +761,7 @@ function CollectorDashboard() {
               onClick={() => setSelectedEventId(selectedEventId === s.event.id ? null : s.event.id)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${selectedEventId === s.event.id ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}
             >
-              {s.event.name}{s.event.year ? ` ${s.event.year}` : ''}
+              {s.event.name}
               {s.event.status === 'archived' && <span className="ml-1 opacity-60">·archived</span>}
             </button>
           ))}

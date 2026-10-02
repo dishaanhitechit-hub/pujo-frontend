@@ -465,7 +465,7 @@ function SubmitModal({ token, onClose, onSuccess }: {
                     <optgroup label="Ongoing / Upcoming Events">
                       {events.map(e => (
                         <option key={e.id} value={String(e.id)}>
-                          {e.name}{e.year ? ` (${e.year})` : ''}
+                          {e.name}
                         </option>
                       ))}
                     </optgroup>

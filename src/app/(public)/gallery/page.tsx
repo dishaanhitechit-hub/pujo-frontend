@@ -115,7 +115,6 @@ export default async function GalleryPage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-brand-navy/70 to-transparent" />
                       <div className="absolute bottom-0 left-0 p-3">
                         <p className="text-xs font-semibold text-white leading-snug">{event.name}</p>
-                        {event.year && <p className="text-[10px] text-white/60 mt-0.5">{event.year}</p>}
                       </div>
                     </div>
                   </Link>

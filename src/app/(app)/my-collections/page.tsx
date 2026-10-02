@@ -217,7 +217,7 @@ function MyCollectionsContent() {
                 <option value="">All Events</option>
                 {events.map((e) => (
                   <option key={e.id} value={String(e.id)}>
-                    {e.name}{e.year ? ` (${e.year})` : ''}{e.status === 'archived' ? ' — archived' : ''}
+                    {e.name}{e.status === 'archived' ? ' — archived' : ''}
                   </option>
                 ))}
               </select>
