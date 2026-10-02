@@ -1,6 +1,8 @@
 'use client'
 
 import { use, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { getDonor } from '@/lib/api/donors'
 import type { DonorDetail, ApiError } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
@@ -42,6 +44,9 @@ function DonorDetailContent({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <div className="p-6 lg:p-8 max-w-3xl flex flex-col gap-6">
+      <Link href="/donors" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="size-4" /> Donors
+      </Link>
       <PageHeader title={donor.name} subtitle={`Donor profile — ${donor.donorType ?? 'Type not specified'}`} />
 
       <div className="rounded-xl border border-border bg-card p-5 grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
