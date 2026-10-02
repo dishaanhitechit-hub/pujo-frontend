@@ -8,6 +8,11 @@ export type Role =
   // Legacy values — kept for backward-compat with existing DB records
   | 'committee'
   | 'general'
+export type MemberCategory =
+  | 'lifetime_executive'
+  | 'premium_executive'
+  | 'executive'
+  | 'general'
 export type PaymentMethod = 'upi' | 'cash' | 'cheque'
 export type PaymentStatus = 'pending' | 'completed' | 'expired' | 'cancelled'
 export type PledgeStatus = 'open' | 'complete' | 'cancelled'
@@ -273,6 +278,8 @@ export interface User {
   role: Role
   isActive: boolean
   canCollect: boolean
+  memberCategory: MemberCategory | null
+  memberSince: string | null
   createdAt: string
 }
 
@@ -820,7 +827,9 @@ export interface BulkTokenInput {
 
 export interface CreateUserInput {
   name: string
-  role: Role
+  role?: Role
+  memberCategory: MemberCategory
+  memberSince?: string | null
   phone: string
   whatsappNo?: string | null
   email?: string | null
@@ -832,6 +841,8 @@ export interface CreateUserInput {
 export interface UpdateUserInput {
   name?: string
   role?: Role
+  memberCategory?: MemberCategory
+  memberSince?: string | null
   phone?: string | null
   whatsappNo?: string | null
   email?: string | null

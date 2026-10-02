@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Plus, UserX, Pencil, X, QrCode, Download, Printer } from 'lucide-react'
+import { Loader2, Plus, UserX, Pencil, X, QrCode, Download, Printer, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,11 +14,12 @@ import { PageHeader } from '@/components/dashboard/PageHeader'
 import { ActiveBadge } from '@/components/shared/StatusBadge'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { getUsers, createUser, updateUser, deactivateUser, getUserLoginQr } from '@/lib/api/users'
-import { ROLE_LABELS, SELECTABLE_ROLES } from '@/config/roles'
-import type { User, Role, ApiError, UpdateUserInput } from '@/types'
+import { MEMBER_CATEGORIES, MEMBER_CATEGORY_LABELS } from '@/config/members'
+import type { User, MemberCategory, ApiError, UpdateUserInput } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { cn } from '@/lib/utils'
 
 // Regex: 10-digit Indian mobile starting with 6-9
 const IN_MOBILE_RE = /^[6-9]\d{9}$/
@@ -27,33 +28,30 @@ const phoneRule = z
   .string()
   .regex(IN_MOBILE_RE, 'Enter a valid 10-digit Indian mobile number')
 
+const MEMBER_CATEGORY_VALUES = MEMBER_CATEGORIES as [MemberCategory, ...MemberCategory[]]
+
 const createSchema = z.object({
-  name:       z.string().min(1, 'Name is required'),
-  role:       z.enum(SELECTABLE_ROLES as [Role, ...Role[]]),
-  phone:      phoneRule,
-  whatsappNo: phoneRule.optional().or(z.literal('')),
-  email:      z.string().email('Enter a valid email').optional().or(z.literal('')),
-  address:    z.string().optional(),
-  password:   z.string().min(8, 'Password must be at least 8 characters'),
-  canCollect: z.boolean().optional(),
+  memberCategory: z.enum(MEMBER_CATEGORY_VALUES),
+  name:           z.string().min(1, 'Name is required'),
+  memberSince:    z.string().optional().or(z.literal('')),
+  phone:          phoneRule,
+  whatsappNo:     phoneRule.optional().or(z.literal('')),
+  email:          z.string().email('Enter a valid email').optional().or(z.literal('')),
+  address:        z.string().optional(),
+  password:       z.string().min(8, 'Password must be at least 8 characters'),
 })
 
 type CreateFormData = z.infer<typeof createSchema>
 
-const ALL_EDIT_ROLES: [Role, ...Role[]] = [
-  'admin', 'managing_committee', 'core_committee', 'executive', 'cashier', 'collector',
-  'committee', 'general',
-]
-
 const editSchema = z.object({
-  name:       z.string().min(1, 'Name is required'),
-  role:       z.enum(ALL_EDIT_ROLES),
-  phone:      phoneRule.optional().or(z.literal('')),
-  whatsappNo: phoneRule.optional().or(z.literal('')),
-  email:      z.string().email('Enter a valid email').optional().or(z.literal('')),
-  address:    z.string().optional(),
-  password:   z.string().min(8, 'Password must be at least 8 characters').optional().or(z.literal('')),
-  canCollect: z.boolean().optional(),
+  memberCategory: z.enum(MEMBER_CATEGORY_VALUES),
+  name:           z.string().min(1, 'Name is required'),
+  memberSince:    z.string().optional().or(z.literal('')),
+  phone:          phoneRule.optional().or(z.literal('')),
+  whatsappNo:     phoneRule.optional().or(z.literal('')),
+  email:          z.string().email('Enter a valid email').optional().or(z.literal('')),
+  address:        z.string().optional(),
+  password:       z.string().min(8, 'Password must be at least 8 characters').optional().or(z.literal('')),
 })
 
 type EditFormData = z.infer<typeof editSchema>
@@ -63,6 +61,20 @@ function extractLocalDigits(phone: string | null): string {
   if (!phone) return ''
   const digits = phone.replace(/\D/g, '')
   return digits.length >= 10 ? digits.slice(-10) : digits
+}
+
+/** Format an ISO date (YYYY-MM-DD or full ISO) as "2 Oct 2026". */
+function fmtDate(value: string | null): string {
+  if (!value) return '—'
+  const d = new Date(value.length === 10 ? value + 'T12:00:00' : value)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+/** Normalize a stored memberSince/createdAt to a YYYY-MM-DD value for <input type="date">. */
+function toDateInput(value: string | null): string {
+  if (!value) return ''
+  return value.slice(0, 10)
 }
 
 /** A text input prefixed with a "+91" badge */
@@ -96,6 +108,49 @@ function PhoneInput({
   )
 }
 
+/** Single-select member-category picker rendered as checkboxes (only one can be active). */
+function MemberCategorySelect({
+  value,
+  onChange,
+}: {
+  value: MemberCategory | undefined
+  onChange: (v: MemberCategory) => void
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {MEMBER_CATEGORIES.map((cat) => {
+        const active = value === cat
+        return (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => onChange(cat)}
+            aria-pressed={active}
+            className={cn(
+              'flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors',
+              active
+                ? 'border-brand-orange bg-brand-orange/5'
+                : 'border-border bg-card hover:bg-muted/30',
+            )}
+          >
+            <span
+              className={cn(
+                'flex size-4 items-center justify-center rounded-[4px] border shrink-0 transition-colors',
+                active ? 'border-brand-orange bg-brand-orange text-white' : 'border-input bg-transparent',
+              )}
+            >
+              {active && <Check className="size-3" strokeWidth={3} />}
+            </span>
+            <span className={cn('text-sm', active ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+              {MEMBER_CATEGORY_LABELS[cat]}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function UsersPage() {
   return (
     <RoleGuard permission="users.manage">
@@ -122,7 +177,7 @@ function UsersContent() {
       const data = await getUsers()
       setUsers(data)
     } catch (err) {
-      setError((err as ApiError).message ?? 'Failed to load users.')
+      setError((err as ApiError).message ?? 'Failed to load members.')
     } finally {
       setLoading(false)
     }
@@ -141,7 +196,7 @@ function UsersContent() {
       toast.success(`${u.name} has been deactivated.`)
       await loadUsers()
     } catch (err) {
-      toast.error((err as ApiError).message ?? 'Failed to deactivate user.')
+      toast.error((err as ApiError).message ?? 'Failed to deactivate member.')
     } finally {
       setDeactivating(null)
     }
@@ -149,12 +204,12 @@ function UsersContent() {
 
   return (
     <div className="p-6 lg:p-8">
-      <PageHeader title="Users" subtitle="Manage collector and executive accounts." className="mb-8">
+      <PageHeader title="Members" subtitle="Manage club members and their membership category." className="mb-8">
         <Button
           className="bg-brand-orange hover:bg-brand-orange/90 text-white"
           onClick={() => setShowCreateModal(true)}
         >
-          <Plus className="size-4 mr-2" /> Add User
+          <Plus className="size-4 mr-2" /> Add Member
         </Button>
       </PageHeader>
 
@@ -171,8 +226,8 @@ function UsersContent() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/20">
-                {['Name', 'Email', 'Role', 'Can Collect', 'Status', 'Phone', 'Actions'].map((h) => (
-                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
+                {['Name', 'Email', 'Category', 'Member Since', 'Status', 'Phone', 'Actions'].map((h) => (
+                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -183,18 +238,10 @@ function UsersContent() {
                   <td className="px-5 py-3 text-muted-foreground">{u.email ?? '—'}</td>
                   <td className="px-5 py-3">
                     <span className="text-xs font-semibold text-brand-navy">
-                      {ROLE_LABELS[u.role] ?? u.role}
+                      {u.memberCategory ? MEMBER_CATEGORY_LABELS[u.memberCategory] : '—'}
                     </span>
                   </td>
-                  <td className="px-5 py-3">
-                    {u.role === 'admin' ? (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    ) : u.canCollect ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-medium dark:bg-green-900/30 dark:text-green-400">Yes</span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-medium">No</span>
-                    )}
-                  </td>
+                  <td className="px-5 py-3 text-muted-foreground whitespace-nowrap">{fmtDate(u.memberSince ?? u.createdAt)}</td>
                   <td className="px-5 py-3"><ActiveBadge isActive={u.isActive} /></td>
                   <td className="px-5 py-3 text-muted-foreground">{u.phone ?? '—'}</td>
                   <td className="px-5 py-3">
@@ -237,7 +284,7 @@ function UsersContent() {
             </tbody>
           </table>
           {users.length === 0 && (
-            <div className="p-12 text-center text-sm text-muted-foreground">No users found.</div>
+            <div className="p-12 text-center text-sm text-muted-foreground">No members found.</div>
           )}
         </div>
       )}
@@ -270,7 +317,7 @@ function UsersContent() {
       <ConfirmDialog
         open={!!pendingDeactivate}
         onOpenChange={(o) => { if (!o) setPendingDeactivate(null) }}
-        title={`Deactivate ${pendingDeactivate?.name ?? 'user'}?`}
+        title={`Deactivate ${pendingDeactivate?.name ?? 'member'}?`}
         description="They will no longer be able to sign in. This can be reversed by re-creating their account."
         confirmLabel="Deactivate"
         cancelLabel="Keep active"
@@ -374,28 +421,6 @@ function LoginQrModal({ user, onClose }: { user: User; onClose: () => void }) {
   )
 }
 
-function RoleSelect({
-  id,
-  roles,
-  selectProps,
-}: {
-  id: string
-  roles: Role[]
-  selectProps: React.SelectHTMLAttributes<HTMLSelectElement> & { name: string }
-}) {
-  return (
-    <select
-      id={id}
-      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-all outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-      {...selectProps}
-    >
-      {roles.map((value) => (
-        <option key={value} value={value}>{ROLE_LABELS[value]}</option>
-      ))}
-    </select>
-  )
-}
-
 function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const {
     register,
@@ -404,27 +429,25 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     formState: { errors, isSubmitting },
   } = useForm<CreateFormData>({
     resolver: zodResolver(createSchema),
-    defaultValues: { role: 'collector', canCollect: false },
+    defaultValues: { memberCategory: 'general' },
   })
-
-  const watchedRole = useWatch({ control, name: 'role' })
 
   async function onSubmit(data: CreateFormData) {
     try {
       await createUser({
-        name:       data.name,
-        role:       data.role,
-        phone:      data.phone,
-        whatsappNo: data.whatsappNo || null,
-        email:      data.email || null,
-        address:    data.address || null,
-        password:   data.password,
-        canCollect: data.canCollect,
+        name:           data.name,
+        memberCategory: data.memberCategory,
+        memberSince:    data.memberSince || null,
+        phone:          data.phone,
+        whatsappNo:     data.whatsappNo || null,
+        email:          data.email || null,
+        address:        data.address || null,
+        password:       data.password,
       })
-      toast.success(`User ${data.name} created successfully.`)
+      toast.success(`Member ${data.name} created successfully.`)
       onSuccess()
     } catch (err) {
-      toast.error((err as ApiError).message ?? 'Failed to create user.')
+      toast.error((err as ApiError).message ?? 'Failed to create member.')
     }
   }
 
@@ -432,13 +455,26 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-card rounded-2xl shadow-xl w-full max-w-md border border-border max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
-          <h2 className="font-heading font-bold text-lg">Add New User</h2>
+          <h2 className="font-heading font-bold text-lg">Add Member</h2>
           <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
             <X className="size-4" />
           </Button>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="p-5 flex flex-col gap-4">
+          {/* Member Category */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Member Category <span className="text-destructive">*</span></Label>
+            <Controller
+              control={control}
+              name="memberCategory"
+              render={({ field }) => (
+                <MemberCategorySelect value={field.value} onChange={field.onChange} />
+              )}
+            />
+            {errors.memberCategory && <p className="text-xs text-destructive">{errors.memberCategory.message}</p>}
+          </div>
+
           {/* Name */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="c-name">Full Name <span className="text-destructive">*</span></Label>
@@ -451,41 +487,6 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
-
-          {/* Role */}
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="c-role">Role <span className="text-destructive">*</span></Label>
-            <RoleSelect id="c-role" roles={SELECTABLE_ROLES} selectProps={register('role')} />
-            {errors.role && <p className="text-xs text-destructive">{errors.role.message}</p>}
-          </div>
-
-          {/* Can Collect */}
-          {watchedRole !== 'admin' && (
-            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
-              {watchedRole === 'collector' ? (
-                <>
-                  <input type="checkbox" checked readOnly disabled className="size-4 accent-brand-orange" />
-                  <div>
-                    <p className="text-sm font-medium">Can Collect Payments</p>
-                    <p className="text-xs text-muted-foreground">Always enabled for Collection Representatives</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <input
-                    id="c-canCollect"
-                    type="checkbox"
-                    className="size-4 accent-brand-orange"
-                    {...register('canCollect')}
-                  />
-                  <label htmlFor="c-canCollect" className="cursor-pointer">
-                    <p className="text-sm font-medium">Can Collect Payments</p>
-                    <p className="text-xs text-muted-foreground">Allow this user to initiate collections</p>
-                  </label>
-                </>
-              )}
-            </div>
-          )}
 
           {/* Mobile | WhatsApp */}
           <div className="grid grid-cols-2 gap-4">
@@ -528,6 +529,12 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <Input id="c-address" placeholder="Optional" {...register('address')} />
           </div>
 
+          {/* Member Since */}
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="c-memberSince">Member Since</Label>
+            <Input id="c-memberSince" type="date" {...register('memberSince')} />
+          </div>
+
           {/* Password */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="c-password">Password <span className="text-destructive">*</span></Label>
@@ -545,7 +552,7 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
             <Button type="submit" disabled={isSubmitting} className="flex-1 bg-brand-orange hover:bg-brand-orange/90 text-white">
               {isSubmitting && <Loader2 className="size-4 animate-spin mr-2" />}
-              Create User
+              Create Member
             </Button>
           </div>
         </form>
@@ -563,13 +570,6 @@ function EditUserModal({
   onClose: () => void
   onSuccess: () => void
 }) {
-  // Map legacy role values to their modern equivalents for the dropdown
-  const resolvedRole = ((): Role => {
-    if (user.role === 'committee') return 'core_committee'
-    if (user.role === 'general') return 'collector'
-    return user.role
-  })()
-
   const {
     register,
     handleSubmit,
@@ -578,28 +578,26 @@ function EditUserModal({
   } = useForm<EditFormData>({
     resolver: zodResolver(editSchema),
     defaultValues: {
-      name:       user.name,
-      role:       resolvedRole,
-      phone:      extractLocalDigits(user.phone),
-      whatsappNo: extractLocalDigits(user.whatsappNo),
-      email:      user.email ?? '',
-      address:    user.address ?? '',
-      password:   '',
-      canCollect: user.canCollect,
+      memberCategory: user.memberCategory ?? 'general',
+      name:           user.name,
+      memberSince:    toDateInput(user.memberSince),
+      phone:          extractLocalDigits(user.phone),
+      whatsappNo:     extractLocalDigits(user.whatsappNo),
+      email:          user.email ?? '',
+      address:        user.address ?? '',
+      password:       '',
     },
   })
 
-  const watchedRole = useWatch({ control, name: 'role' })
-
   async function onSubmit(data: EditFormData) {
     const input: UpdateUserInput = {
-      name:       data.name,
-      role:       data.role,
-      phone:      data.phone || null,
-      whatsappNo: data.whatsappNo || null,
-      email:      data.email || null,
-      address:    data.address || null,
-      canCollect: data.canCollect,
+      name:           data.name,
+      memberCategory: data.memberCategory,
+      memberSince:    data.memberSince || null,
+      phone:          data.phone || null,
+      whatsappNo:     data.whatsappNo || null,
+      email:          data.email || null,
+      address:        data.address || null,
     }
     if (data.password) input.password = data.password
 
@@ -608,7 +606,7 @@ function EditUserModal({
       toast.success(`${data.name} updated successfully.`)
       onSuccess()
     } catch (err) {
-      toast.error((err as ApiError).message ?? 'Failed to update user.')
+      toast.error((err as ApiError).message ?? 'Failed to update member.')
     }
   }
 
@@ -616,13 +614,26 @@ function EditUserModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-card rounded-2xl shadow-xl w-full max-w-md border border-border max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
-          <h2 className="font-heading font-bold text-lg">Edit User</h2>
+          <h2 className="font-heading font-bold text-lg">Edit Member</h2>
           <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
             <X className="size-4" />
           </Button>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="p-5 flex flex-col gap-4">
+          {/* Member Category */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Member Category <span className="text-destructive">*</span></Label>
+            <Controller
+              control={control}
+              name="memberCategory"
+              render={({ field }) => (
+                <MemberCategorySelect value={field.value} onChange={field.onChange} />
+              )}
+            />
+            {errors.memberCategory && <p className="text-xs text-destructive">{errors.memberCategory.message}</p>}
+          </div>
+
           {/* Name */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="e-name">Full Name <span className="text-destructive">*</span></Label>
@@ -635,41 +646,6 @@ function EditUserModal({
             />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
-
-          {/* Role */}
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="e-role">Role <span className="text-destructive">*</span></Label>
-            <RoleSelect id="e-role" roles={SELECTABLE_ROLES} selectProps={register('role')} />
-            {errors.role && <p className="text-xs text-destructive">{errors.role.message}</p>}
-          </div>
-
-          {/* Can Collect */}
-          {watchedRole !== 'admin' && (
-            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
-              {watchedRole === 'collector' ? (
-                <>
-                  <input type="checkbox" checked readOnly disabled className="size-4 accent-brand-orange" />
-                  <div>
-                    <p className="text-sm font-medium">Can Collect Payments</p>
-                    <p className="text-xs text-muted-foreground">Always enabled for Collection Representatives</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <input
-                    id="e-canCollect"
-                    type="checkbox"
-                    className="size-4 accent-brand-orange"
-                    {...register('canCollect')}
-                  />
-                  <label htmlFor="e-canCollect" className="cursor-pointer">
-                    <p className="text-sm font-medium">Can Collect Payments</p>
-                    <p className="text-xs text-muted-foreground">Allow this user to initiate collections</p>
-                  </label>
-                </>
-              )}
-            </div>
-          )}
 
           {/* Mobile | WhatsApp */}
           <div className="grid grid-cols-2 gap-4">
@@ -710,6 +686,12 @@ function EditUserModal({
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="e-address">Address</Label>
             <Input id="e-address" placeholder="Optional" {...register('address')} />
+          </div>
+
+          {/* Member Since */}
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="e-memberSince">Member Since</Label>
+            <Input id="e-memberSince" type="date" {...register('memberSince')} />
           </div>
 
           {/* Password */}
