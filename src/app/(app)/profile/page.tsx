@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { ActiveBadge } from '@/components/shared/StatusBadge'
-import { ROLE_LABELS } from '@/config/roles'
+import { MEMBER_CATEGORY_LABELS } from '@/config/members'
 import { getUserLoginQr } from '@/lib/api/users'
 import {
   Loader2, Download, Printer, HeartHandshake, ChevronRight,
-  QrCode, Mail, Phone, MessageCircle, Calendar, ShieldCheck,
-  ArrowUpRight,
+  QrCode, Mail, Phone, MessageCircle, Calendar, BadgeCheck,
+  MapPin, ArrowUpRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { apiConfig } from '@/config/api'
@@ -46,9 +46,24 @@ export default function ProfilePage() {
   if (!user) return null
 
   const initials = user.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
-  const memberSince = new Date(user.createdAt).toLocaleDateString('en-IN', {
+
+  // Admin accounts have no membership tier — show their role instead.
+  // Members show the category assigned at creation (not any year/event role).
+  const isAdmin = user.role === 'admin'
+  const identityLabel = isAdmin ? 'Role' : 'Category'
+  const identityValue = isAdmin
+    ? 'Administrator'
+    : (user.memberCategory ? MEMBER_CATEGORY_LABELS[user.memberCategory] : '—')
+
+  // Manual member-since date; fall back to the account creation date.
+  const memberSinceSource = user.memberSince ?? user.createdAt
+  const memberSinceDate = new Date(
+    memberSinceSource.length === 10 ? memberSinceSource + 'T12:00:00' : memberSinceSource,
+  )
+  const memberSince = memberSinceDate.toLocaleDateString('en-IN', {
     year: 'numeric', month: 'long', day: 'numeric',
   })
+  const memberSinceYear = memberSinceDate.getFullYear()
 
   function handleDownload() {
     if (!qrUrl || !user) return
@@ -108,10 +123,10 @@ export default function ProfilePage() {
 
                   <div className="flex-1 min-w-0">
                     <p className="font-heading font-bold text-white text-lg sm:text-xl leading-snug truncate">{user.name}</p>
-                    <p className="text-white/55 text-sm mt-0.5">{ROLE_LABELS[user.role]}</p>
+                    <p className="text-white/55 text-sm mt-0.5">{identityValue}</p>
                     <div className="mt-2.5 flex items-center gap-2 flex-wrap">
                       <ActiveBadge isActive={user.isActive} />
-                      <span className="text-xs text-white/40">Member since {new Date(user.createdAt).getFullYear()}</span>
+                      <span className="text-xs text-white/40">Member since {memberSinceYear}</span>
                     </div>
                   </div>
                 </div>
@@ -130,9 +145,9 @@ export default function ProfilePage() {
                     mono
                   />
                   <InfoField
-                    icon={<ShieldCheck className="size-3.5" />}
-                    label="Role"
-                    value={ROLE_LABELS[user.role]}
+                    icon={<BadgeCheck className="size-3.5" />}
+                    label={identityLabel}
+                    value={identityValue}
                   />
                   <InfoField
                     icon={<Phone className="size-3.5" />}
@@ -150,7 +165,11 @@ export default function ProfilePage() {
                     icon={<Calendar className="size-3.5" />}
                     label="Member since"
                     value={memberSince}
-                    className="sm:col-span-2"
+                  />
+                  <InfoField
+                    icon={<MapPin className="size-3.5" />}
+                    label="Address"
+                    value={user.address ?? '—'}
                   />
                 </div>
               </div>
