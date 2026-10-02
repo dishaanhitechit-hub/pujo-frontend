@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { ActiveBadge } from '@/components/shared/StatusBadge'
 import { RoleGuard } from '@/lib/auth/role-guard'
-import { getUsers, createUser, updateUser, deactivateUser, getUserLoginQr } from '@/lib/api/users'
+import { getUsers, createUser, updateUser, deactivateUser, getUserLoginQr, getNextMemberId } from '@/lib/api/users'
 import { MEMBER_CATEGORIES, MEMBER_CATEGORY_LABELS } from '@/config/members'
 import type { User, MemberCategory, ApiError, UpdateUserInput } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -32,6 +32,7 @@ const MEMBER_CATEGORY_VALUES = MEMBER_CATEGORIES as [MemberCategory, ...MemberCa
 
 const createSchema = z.object({
   memberCategory: z.enum(MEMBER_CATEGORY_VALUES),
+  memberId:       z.string().max(40).optional().or(z.literal('')),
   name:           z.string().min(1, 'Name is required'),
   memberSince:    z.string().optional().or(z.literal('')),
   phone:          phoneRule,
@@ -45,6 +46,7 @@ type CreateFormData = z.infer<typeof createSchema>
 
 const editSchema = z.object({
   memberCategory: z.enum(MEMBER_CATEGORY_VALUES),
+  memberId:       z.string().max(40).optional().or(z.literal('')),
   name:           z.string().min(1, 'Name is required'),
   memberSince:    z.string().optional().or(z.literal('')),
   phone:          phoneRule.optional().or(z.literal('')),
@@ -205,10 +207,14 @@ function UsersContent() {
 
   const q = search.trim().toLowerCase()
   const filteredUsers = (q
-    ? users.filter((u) =>
-        [u.name, u.phone, u.whatsappNo, u.address, u.email]
-          .some((v) => v?.toLowerCase().includes(q)),
-      )
+    ? users.filter((u) => {
+        const categoryText = u.role === 'admin'
+          ? 'admin administrator'
+          : (u.memberCategory ? MEMBER_CATEGORY_LABELS[u.memberCategory] : '')
+        return [
+          u.name, u.phone, u.whatsappNo, u.address, u.email, u.memberId, categoryText,
+        ].some((v) => v?.toLowerCase().includes(q))
+      })
     : users
   ).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
 
@@ -227,7 +233,7 @@ function UsersContent() {
       <div className="relative max-w-sm mb-5">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
         <Input
-          placeholder="Search name, phone, address…"
+          placeholder="Search name, member ID, category, phone, address…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9 pr-8"
@@ -257,7 +263,7 @@ function UsersContent() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/20">
-                {['Name', 'Address', 'Category', 'Member Since', 'Status', 'Phone', 'Actions'].map((h) => (
+                {['Name', 'Address', 'Category', 'Member ID', 'Member Since', 'Status', 'Phone', 'Actions'].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -276,6 +282,7 @@ function UsersContent() {
                       </span>
                     )}
                   </td>
+                  <td className="px-5 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">{u.memberId ?? '—'}</td>
                   <td className="px-5 py-3 text-muted-foreground whitespace-nowrap">{fmtDate(u.memberSince ?? u.createdAt)}</td>
                   <td className="px-5 py-3"><ActiveBadge isActive={u.isActive} /></td>
                   <td className="px-5 py-3 text-muted-foreground">{u.phone ?? '—'}</td>
@@ -463,17 +470,26 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CreateFormData>({
     resolver: zodResolver(createSchema),
-    defaultValues: { memberCategory: 'general' },
+    defaultValues: { memberCategory: 'general', memberId: '' },
   })
+
+  // Autofill the suggested next member ID (admin can still edit it).
+  useEffect(() => {
+    getNextMemberId()
+      .then((id) => setValue('memberId', id))
+      .catch(() => {})
+  }, [setValue])
 
   async function onSubmit(data: CreateFormData) {
     try {
       await createUser({
         name:           data.name,
         memberCategory: data.memberCategory,
+        memberId:       data.memberId || null,
         memberSince:    data.memberSince || null,
         phone:          data.phone,
         whatsappNo:     data.whatsappNo || null,
@@ -510,6 +526,20 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               )}
             />
             {errors.memberCategory && <p className="text-xs text-destructive">{errors.memberCategory.message}</p>}
+          </div>
+
+          {/* Member ID */}
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="c-memberId">Member ID</Label>
+            <Input
+              id="c-memberId"
+              placeholder="Auto-generated"
+              className="font-mono"
+              aria-invalid={!!errors.memberId}
+              {...register('memberId')}
+            />
+            <p className="text-xs text-muted-foreground">Auto-filled from the next available number. You can change it — must be unique.</p>
+            {errors.memberId && <p className="text-xs text-destructive">{errors.memberId.message}</p>}
           </div>
 
           {/* Name */}
@@ -618,6 +648,7 @@ function EditUserModal({
     resolver: zodResolver(editSchema),
     defaultValues: {
       memberCategory: user.memberCategory ?? 'general',
+      memberId:       user.memberId ?? '',
       name:           user.name,
       memberSince:    toDateInput(user.memberSince),
       phone:          extractLocalDigits(user.phone),
@@ -631,6 +662,7 @@ function EditUserModal({
   async function onSubmit(data: EditFormData) {
     const input: UpdateUserInput = {
       name:           data.name,
+      memberId:       data.memberId || null,
       memberSince:    data.memberSince || null,
       phone:          data.phone || null,
       whatsappNo:     data.whatsappNo || null,
@@ -680,6 +712,22 @@ function EditUserModal({
                 )}
               />
               {errors.memberCategory && <p className="text-xs text-destructive">{errors.memberCategory.message}</p>}
+            </div>
+          )}
+
+          {/* Member ID — not applicable to the admin account */}
+          {!isAdmin && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="e-memberId">Member ID</Label>
+              <Input
+                id="e-memberId"
+                placeholder="e.g. ABC-0001"
+                className="font-mono"
+                aria-invalid={!!errors.memberId}
+                {...register('memberId')}
+              />
+              <p className="text-xs text-muted-foreground">Must be unique within the organisation.</p>
+              {errors.memberId && <p className="text-xs text-destructive">{errors.memberId.message}</p>}
             </div>
           )}
 

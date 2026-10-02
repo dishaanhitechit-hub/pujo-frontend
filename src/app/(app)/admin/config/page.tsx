@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Settings, Phone, Mail, MapPin, Globe, Save, Heart, HeartHandshake } from 'lucide-react'
+import { Loader2, Settings, Phone, Mail, MapPin, Globe, Save, Heart, HeartHandshake, Hash } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -44,6 +44,9 @@ const schema = z.object({
   contributionAccountNumber: z.string().max(50).optional(),
   contributionIfsc:       z.string().max(20).optional(),
   contributionBankBranch: z.string().max(100).optional(),
+  // Member ID format
+  memberIdPrefix:         z.string().max(20).optional(),
+  memberIdDigits:         z.string().optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -90,6 +93,8 @@ function ConfigContent() {
           contributionAccountNumber: c['contribution.account_number'] ?? '',
           contributionIfsc:          c['contribution.ifsc']          ?? '',
           contributionBankBranch:    c['contribution.bank_branch']   ?? '',
+          memberIdPrefix:            c['member_id.prefix']           ?? '',
+          memberIdDigits:            c['member_id.digits']           ?? '4',
         })
       })
       .catch((err: ApiError) => setError(err.message ?? 'Failed to load configuration.'))
@@ -108,6 +113,8 @@ function ConfigContent() {
         contributionAccountNumber: data.contributionAccountNumber ?? '',
         contributionIfsc:          data.contributionIfsc          ?? '',
         contributionBankBranch:    data.contributionBankBranch    ?? '',
+        memberIdPrefix:            data.memberIdPrefix            ?? '',
+        memberIdDigits:            data.memberIdDigits            ?? '4',
       })
       reset(data)
       toast.success('Configuration saved successfully.')
@@ -219,6 +226,27 @@ function ConfigContent() {
             </Field>
             <Field label="Branch" error={errors.contributionBankBranch?.message}>
               <Input id="contrib-branch" placeholder="Kolkata Main Branch" {...register('contributionBankBranch')} />
+            </Field>
+          </Section>
+
+          {/* Member ID format */}
+          <Section icon={<Hash className="size-4 text-brand-orange" />} title="Member ID Format"
+            hint="New members get an auto-generated ID like ABC-0001. You can still edit it per member.">
+            <Field label="Prefix" error={errors.memberIdPrefix?.message}
+              hint="Short text before the number, e.g. ABC. Leave blank for numbers only.">
+              <Input id="member-id-prefix" placeholder="ABC" {...register('memberIdPrefix')} />
+            </Field>
+            <Field label="Number of digits" error={errors.memberIdDigits?.message}
+              hint="Zero-padded sequence length. Default 4 → 0001.">
+              <select
+                id="member-id-digits"
+                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-all outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                {...register('memberIdDigits')}
+              >
+                {['3', '4', '5', '6'].map((d) => (
+                  <option key={d} value={d}>{d} digits</option>
+                ))}
+              </select>
             </Field>
           </Section>
 

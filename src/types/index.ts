@@ -280,6 +280,7 @@ export interface User {
   canCollect: boolean
   memberCategory: MemberCategory | null
   memberSince: string | null
+  memberId: string | null
   createdAt: string
 }
 
@@ -464,6 +465,8 @@ export interface AdminConfig {
   contributionAccountNumber?: string
   contributionIfsc?: string
   contributionBankBranch?: string
+  memberIdPrefix?: string
+  memberIdDigits?: string
 }
 
 export interface AdminConfigResponse {
@@ -830,6 +833,7 @@ export interface CreateUserInput {
   role?: Role
   memberCategory: MemberCategory
   memberSince?: string | null
+  memberId?: string | null
   phone: string
   whatsappNo?: string | null
   email?: string | null
@@ -843,6 +847,7 @@ export interface UpdateUserInput {
   role?: Role
   memberCategory?: MemberCategory
   memberSince?: string | null
+  memberId?: string | null
   phone?: string | null
   whatsappNo?: string | null
   email?: string | null

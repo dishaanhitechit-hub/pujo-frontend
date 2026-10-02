@@ -12,6 +12,7 @@ export const apiConfig = {
     users: {
       list: '/api/users/',
       create: '/api/users/',
+      nextMemberId: '/api/users/next-member-id',
       get: (id: number) => `/api/users/${id}`,
       update: (id: number) => `/api/users/${id}`,
       deactivate: (id: number) => `/api/users/${id}`,

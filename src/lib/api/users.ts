@@ -12,6 +12,11 @@ export async function getUser(id: number): Promise<User> {
   return res.data.data
 }
 
+export async function getNextMemberId(): Promise<string> {
+  const res = await apiClient.get<ApiResponse<{ memberId: string }>>(apiConfig.endpoints.users.nextMemberId)
+  return res.data.data.memberId
+}
+
 export async function createUser(input: CreateUserInput): Promise<User> {
   const res = await apiClient.post<ApiResponse<User>>(apiConfig.endpoints.users.create, input)
   return res.data.data

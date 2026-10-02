@@ -9,7 +9,7 @@ import { getUserLoginQr } from '@/lib/api/users'
 import {
   Loader2, Download, Printer, HeartHandshake, ChevronRight,
   QrCode, Mail, Phone, MessageCircle, Calendar, BadgeCheck,
-  MapPin, ArrowUpRight,
+  MapPin, Hash, ArrowUpRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { apiConfig } from '@/config/api'
@@ -149,6 +149,14 @@ export default function ProfilePage() {
                     label={identityLabel}
                     value={identityValue}
                   />
+                  {!isAdmin && (
+                    <InfoField
+                      icon={<Hash className="size-3.5" />}
+                      label="Member ID"
+                      value={user.memberId ?? '—'}
+                      mono={!!user.memberId}
+                    />
+                  )}
                   <InfoField
                     icon={<Phone className="size-3.5" />}
                     label="Phone"
