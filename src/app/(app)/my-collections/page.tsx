@@ -1,331 +1,157 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { getCollectorSummary, getCollectorPayments, getCollectorEvents, type ReportingEvent } from '@/lib/api/collector'
-import type { CollectorSummary, PaginatedPayments, Payment, ApiError } from '@/types'
-import { StatCard } from '@/components/dashboard/StatCard'
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { toast } from 'sonner'
+import {
+  Plus, Search, X, ChevronLeft, ChevronRight, Receipt, ChevronRight as Arrow,
+} from 'lucide-react'
 import { PageHeader } from '@/components/dashboard/PageHeader'
-import { StatusBadge } from '@/components/shared/StatusBadge'
-import { PaymentDetailDialog } from '@/components/shared/PaymentDetailDialog'
-import { FilterChip } from '@/components/shared/FilterChip'
-import { FilterModal, FilterButton, FilterField } from '@/components/shared/FilterModal'
-import { Skeleton } from '@/components/ui/skeleton'
+import { RoleGuard } from '@/lib/auth/role-guard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  IndianRupee, Banknote, Smartphone, CheckCircle2, FileText,
-  ChevronLeft, ChevronRight, Search, X,
-} from 'lucide-react'
-import { apiConfig } from '@/config/api'
-import { DONOR_TYPES } from '@/constants'
-import { RoleGuard } from '@/lib/auth/role-guard'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { listSlips } from '@/lib/api/slips'
+import { listActiveEvents } from '@/lib/api/events'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { cn } from '@/lib/utils'
+import type { ContributionSlip, EventSummary, ApiError } from '@/types'
 
-function formatCurrency(val: string | number) {
-  return `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+const STATUS_STYLES: Record<string, string> = {
+  open:      'bg-blue-50 text-blue-700 border-blue-200',
+  closed:    'bg-green-50 text-green-700 border-green-200',
+  cancelled: 'bg-slate-100 text-slate-500 border-slate-200',
 }
+const fmt = (v: string | number) => `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`
 
 export default function MyCollectionsPage() {
   return (
     <RoleGuard requireCanCollect>
-      <Suspense>
-        <MyCollectionsContent />
-      </Suspense>
+      <Content />
     </RoleGuard>
   )
 }
 
-function MyCollectionsContent() {
-  const router = useRouter()
-  const params = useSearchParams()
-
-  const [search, setSearch] = useState(params.get('search') ?? '')
-  const debouncedSearch = useDebouncedValue(search, 350)
-
-  const [method, setMethod] = useState<'upi' | 'cash' | 'cheque' | ''>(
-    (params.get('method') as 'upi' | 'cash' | 'cheque' | '') ?? ''
-  )
-  const [status, setStatus] = useState<'pending' | 'completed' | 'expired' | 'cancelled' | ''>(
-    (params.get('status') as 'pending' | 'completed' | 'expired' | 'cancelled' | '') ?? ''
-  )
-  const [page, setPage] = useState(Number(params.get('page') ?? 1))
-
-  const [eventId, setEventId] = useState(params.get('eventId') ?? '')
-  const [donorType, setDonorType] = useState(params.get('donorType') ?? '')
-  const [dateFrom, setDateFrom] = useState(params.get('dateFrom') ?? '')
-  const [dateTo, setDateTo] = useState(params.get('dateTo') ?? '')
-  const [minAmount, setMinAmount] = useState(params.get('minAmount') ?? '')
-  const [maxAmount, setMaxAmount] = useState(params.get('maxAmount') ?? '')
-
-  const [draftEventId, setDraftEventId] = useState(eventId)
-  const [draftDonorType, setDraftDonorType] = useState(donorType)
-  const [draftDateFrom, setDraftDateFrom] = useState(dateFrom)
-  const [draftDateTo, setDraftDateTo] = useState(dateTo)
-  const [draftMinAmount, setDraftMinAmount] = useState(minAmount)
-  const [draftMaxAmount, setDraftMaxAmount] = useState(maxAmount)
-  const [sheetOpen, setSheetOpen] = useState(false)
-
-  const [summary, setSummary] = useState<CollectorSummary | null>(null)
-  const [payments, setPayments] = useState<PaginatedPayments | null>(null)
+function Content() {
+  const [slips, setSlips] = useState<ContributionSlip[]>([])
+  const [events, setEvents] = useState<EventSummary[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
-  const [events, setEvents] = useState<ReportingEvent[]>([])
-  const reqRef = useRef(0)
+  const [total, setTotal] = useState(0)
+  const [pages, setPages] = useState(1)
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 350)
+  const [eventId, setEventId] = useState('')
+  const [status, setStatus] = useState('')
 
-  const pushUrl = useCallback((overrides: Record<string, string> = {}) => {
-    const p = new URLSearchParams()
-    const vals: Record<string, string> = {
-      search: debouncedSearch, method, status, eventId, donorType, dateFrom, dateTo, minAmount, maxAmount, page: String(page), ...overrides,
-    }
-    Object.entries(vals).forEach(([k, v]) => { if (v) p.set(k, v) })
-    router.replace(`?${p.toString()}`, { scroll: false })
-  }, [debouncedSearch, method, status, eventId, donorType, dateFrom, dateTo, minAmount, maxAmount, page, router])
+  useEffect(() => { listActiveEvents().then(setEvents).catch(() => {}) }, [])
 
-  const searchSyncedRef = useRef(false)
-  useEffect(() => {
-    if (!searchSyncedRef.current) { searchSyncedRef.current = true; return }
-    setPage(1)
-    pushUrl({ search: debouncedSearch, page: '1' })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch])
-
-  useEffect(() => {
-    // Use all events (including historical) so collectors can filter their own records by past events.
-    getCollectorEvents().then((data) => setEvents(data ?? [])).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    const req = ++reqRef.current
+  const load = useCallback(async () => {
     setLoading(true)
-    setError(null)
-    Promise.all([
-      getCollectorSummary(eventId ? Number(eventId) : undefined),
-      getCollectorPayments({
-        page, perPage: 20,
-        method: method || undefined,
-        status: status || undefined,
-        eventId: eventId ? Number(eventId) : undefined,
-        donorType: donorType || undefined,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-        minAmount: minAmount || undefined,
-        maxAmount: maxAmount || undefined,
+    try {
+      const res = await listSlips({
+        mine: true, page, perPage: 20,
         search: debouncedSearch || undefined,
-      }),
-    ])
-      .then(([s, p]) => { if (req === reqRef.current) { setSummary(s); setPayments(p) } })
-      .catch((err: ApiError) => { if (req === reqRef.current) setError(err.message ?? 'Failed to load data.') })
-      .finally(() => { if (req === reqRef.current) setLoading(false) })
-  }, [page, method, status, eventId, donorType, dateFrom, dateTo, minAmount, maxAmount, debouncedSearch])
+        eventId: eventId ? Number(eventId) : undefined,
+        status: (status || undefined) as 'open' | 'closed' | 'cancelled' | undefined,
+      })
+      setSlips(res.slips); setTotal(res.total); setPages(res.pages)
+    } catch (err) {
+      toast.error((err as ApiError).message ?? 'Failed to load slips.')
+    } finally { setLoading(false) }
+  }, [page, debouncedSearch, eventId, status])
 
-  function setMethodFilter(m: typeof method) { setMethod(m); setPage(1); pushUrl({ method: m, page: '1' }) }
-  function setStatusFilter(s: typeof status) { setStatus(s); setPage(1); pushUrl({ status: s, page: '1' }) }
-
-  function applyAdvanced() {
-    setEventId(draftEventId); setDonorType(draftDonorType); setDateFrom(draftDateFrom); setDateTo(draftDateTo)
-    setMinAmount(draftMinAmount); setMaxAmount(draftMaxAmount)
-    setPage(1)
-    pushUrl({ eventId: draftEventId, donorType: draftDonorType, dateFrom: draftDateFrom, dateTo: draftDateTo, minAmount: draftMinAmount, maxAmount: draftMaxAmount, page: '1' })
-    setSheetOpen(false)
-  }
-
-  function resetAdvanced() {
-    setDraftEventId(''); setDraftDonorType(''); setDraftDateFrom(''); setDraftDateTo(''); setDraftMinAmount(''); setDraftMaxAmount('')
-    setEventId(''); setDonorType(''); setDateFrom(''); setDateTo(''); setMinAmount(''); setMaxAmount('')
-    setPage(1)
-    pushUrl({ eventId: '', donorType: '', dateFrom: '', dateTo: '', minAmount: '', maxAmount: '', page: '1' })
-  }
-
-  const advancedActiveCount = [eventId, donorType, dateFrom, dateTo, minAmount, maxAmount].filter(Boolean).length
-  const eventName = events.find(e => String(e.id) === eventId)?.name ?? undefined
+  useEffect(() => { load() }, [load])
+  useEffect(() => { setPage(1) }, [debouncedSearch, eventId, status])
 
   return (
-    <div className="p-6 lg:p-8">
-      <PageHeader title="My Collections" subtitle="Your personal collection summary and payment history." className="mb-6" />
+    <div className="p-4 sm:p-6 lg:p-8 flex flex-col gap-5">
+      <PageHeader title="My Collections" subtitle="Your contribution slips and their payments.">
+        <Button asChild className="bg-brand-orange hover:bg-brand-orange/90 text-white">
+          <Link href="/collect"><Plus className="size-4 mr-1.5" /> New Slip</Link>
+        </Button>
+      </PageHeader>
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
-        </div>
-      ) : summary ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
-          <div className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
-            <StatCard label="Grand Total" value={formatCurrency(summary.grandTotal)} icon={IndianRupee} variant="primary" />
-          </div>
-          <StatCard label="UPI Collections" value={formatCurrency(summary.upiTotal)} icon={Smartphone} />
-          <StatCard label="Cash Collections" value={formatCurrency(summary.cashTotal)} icon={Banknote} />
-          <StatCard label="Cheque Collections" value={formatCurrency(summary.chequeTotal)} icon={FileText} />
-          <StatCard label="Completed Payments" value={summary.confirmedCount} icon={CheckCircle2} variant="success" />
-        </div>
-      ) : null}
-
-      {/* Filter row */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[180px] max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search donor or receipt…" className="pl-8 h-8 text-sm" />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <X className="size-3.5" />
-            </button>
-          )}
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          <Input placeholder="Search slip no, donor, phone…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 pr-8" />
+          {search && <button className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSearch('')}><X className="size-3.5" /></button>}
         </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs text-muted-foreground">Mode:</span>
-          {(['', 'upi', 'cash', 'cheque'] as const).map((m) => (
-            <button key={m} onClick={() => setMethodFilter(m)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${method === m ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange'}`}>
-              {m === '' ? 'All' : m.toUpperCase()}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs text-muted-foreground">Status:</span>
-          {(['', 'pending', 'completed', 'expired', 'cancelled'] as const).map((s) => (
-            <button key={s} onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${status === s ? 'bg-brand-navy text-white' : 'bg-muted text-muted-foreground hover:bg-brand-navy/10 hover:text-brand-navy'}`}>
-              {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        <FilterButton
-          onClick={() => {
-            setDraftEventId(eventId); setDraftDonorType(donorType); setDraftDateFrom(dateFrom); setDraftDateTo(dateTo)
-            setDraftMinAmount(minAmount); setDraftMaxAmount(maxAmount)
-            setSheetOpen(true)
-          }}
-          activeCount={advancedActiveCount}
-          className="ml-auto"
-        />
-        <FilterModal
-          open={sheetOpen}
-          onOpenChange={setSheetOpen}
-          title="Advanced Filters"
-          onApply={applyAdvanced}
-          onReset={resetAdvanced}
-        >
-          {events.length > 0 && (
-            <FilterField label="Event" wide>
-              <select value={draftEventId} onChange={(e) => setDraftEventId(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="">All Events</option>
-                {events.map((e) => (
-                  <option key={e.id} value={String(e.id)}>
-                    {e.name}{e.status === 'archived' ? ' — archived' : ''}
-                  </option>
-                ))}
-              </select>
-            </FilterField>
-          )}
-
-          <FilterField label="Donor Type" wide>
-            <select value={draftDonorType} onChange={(e) => setDraftDonorType(e.target.value)}
-              className="flex h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-              <option value="">All Types</option>
-              {DONOR_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </FilterField>
-
-          <FilterField label="Date from">
-            <Input type="date" value={draftDateFrom} onChange={(e) => setDraftDateFrom(e.target.value)} className="h-8 text-sm" />
-          </FilterField>
-          <FilterField label="Date to">
-            <Input type="date" value={draftDateTo} onChange={(e) => setDraftDateTo(e.target.value)} className="h-8 text-sm" />
-          </FilterField>
-
-          <FilterField label="Min amount (₹)">
-            <Input type="number" min={0} placeholder="0" value={draftMinAmount} onChange={(e) => setDraftMinAmount(e.target.value)} className="h-8 text-sm" />
-          </FilterField>
-          <FilterField label="Max amount (₹)">
-            <Input type="number" min={0} placeholder="∞" value={draftMaxAmount} onChange={(e) => setDraftMaxAmount(e.target.value)} className="h-8 text-sm" />
-          </FilterField>
-        </FilterModal>
+        <Select value={eventId || 'all'} onValueChange={(v) => setEventId(v === 'all' ? '' : v)}>
+          <SelectTrigger className="w-auto min-w-[140px]"><SelectValue placeholder="All events" /></SelectTrigger>
+          <SelectContent position="popper">
+            <SelectItem value="all">All events</SelectItem>
+            {events.map((e) => <SelectItem key={e.id} value={String(e.id)}>{e.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={status || 'all'} onValueChange={(v) => setStatus(v === 'all' ? '' : v)}>
+          <SelectTrigger className="w-auto min-w-[120px]"><SelectValue placeholder="All status" /></SelectTrigger>
+          <SelectContent position="popper">
+            <SelectItem value="all">All status</SelectItem>
+            <SelectItem value="open">Open</SelectItem>
+            <SelectItem value="closed">Closed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Active chips */}
-      {(eventId || donorType || dateFrom || dateTo || minAmount || maxAmount) && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          {eventId && <FilterChip label={`Event: ${eventName ?? eventId}`} onRemove={() => { setEventId(''); setDraftEventId(''); setPage(1); pushUrl({ eventId: '', page: '1' }) }} />}
-          {donorType && <FilterChip label={`Type: ${donorType}`} onRemove={() => { setDonorType(''); setDraftDonorType(''); setPage(1); pushUrl({ donorType: '', page: '1' }) }} />}
-          {dateFrom && <FilterChip label={`From: ${dateFrom}`} onRemove={() => { setDateFrom(''); setDraftDateFrom(''); setPage(1); pushUrl({ dateFrom: '', page: '1' }) }} />}
-          {dateTo && <FilterChip label={`To: ${dateTo}`} onRemove={() => { setDateTo(''); setDraftDateTo(''); setPage(1); pushUrl({ dateTo: '', page: '1' }) }} />}
-          {minAmount && <FilterChip label={`Min: ₹${minAmount}`} onRemove={() => { setMinAmount(''); setDraftMinAmount(''); setPage(1); pushUrl({ minAmount: '', page: '1' }) }} />}
-          {maxAmount && <FilterChip label={`Max: ₹${maxAmount}`} onRemove={() => { setMaxAmount(''); setDraftMaxAmount(''); setPage(1); pushUrl({ maxAmount: '', page: '1' }) }} />}
-        </div>
-      )}
-
-      {error ? (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">{error}</div>
-      ) : loading ? (
-        <div className="flex flex-col gap-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
-      ) : !payments || payments.payments.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-border p-12 text-center">
-          <p className="text-2xl mb-3">📋</p>
-          <p className="font-semibold text-foreground">No payments found</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            {method ? `No ${method.toUpperCase()} payments match the current filters.` : 'No payments match the current filters.'}
-          </p>
+      {loading ? (
+        <div className="flex flex-col gap-2">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
+      ) : slips.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card py-16 text-muted-foreground">
+          <Receipt className="size-10 opacity-20" />
+          <p className="text-sm">{search || eventId || status ? 'No slips match your filters.' : 'No slips yet.'}</p>
+          {!search && !eventId && !status && (
+            <Button asChild className="bg-brand-orange hover:bg-brand-orange/90 text-white"><Link href="/collect">Create first slip</Link></Button>
+          )}
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-xl border border-border bg-card">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  {['Donor', 'Event', 'Amount', 'Mode', 'Status', 'Date', 'Receipt'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {payments.payments.map((p) => (
-                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3">
-                      <button onClick={() => setSelectedPayment(p)} className="font-medium text-foreground text-left hover:text-brand-orange transition-colors cursor-pointer">
-                        {p.donor.name}
-                      </button>
-                      {p.donor.phone && <p className="text-xs text-muted-foreground">{p.donor.phone}</p>}
-                      <p className="text-xs text-muted-foreground/60">{p.donor.donorType ?? 'Not specified'}</p>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{p.event?.name ?? <span className="text-muted-foreground/40">—</span>}</td>
-                    <td className="px-4 py-3 font-semibold text-foreground">{formatCurrency(p.amount)}</td>
-                    <td className="px-4 py-3"><span className="text-xs font-bold uppercase">{p.method}</span></td>
-                    <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {new Date(p.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </td>
-                    <td className="px-4 py-3">
-                      {p.receiptNo ? (
-                        <a href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id)}?from=my-collections`} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-brand-orange hover:underline font-medium">{p.receiptNo}</a>
-                      ) : (
-                        <span className="text-xs text-muted-foreground/50">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <p className="text-xs text-muted-foreground">{total} slip{total !== 1 ? 's' : ''}</p>
+          <div className="flex flex-col gap-2">
+            {slips.map((s) => {
+              const donorName = s.donorKind === 'member' ? (s.memberName ?? s.donor?.name) : s.donor?.name
+              const pct = Math.min(100, Math.round((Number(s.paidAmount) / Number(s.totalAmount)) * 100))
+              return (
+                <Link key={s.id} href={`/collect/${s.id}`}
+                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:bg-muted/10 transition-colors">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs text-muted-foreground">{s.slipNumber}</span>
+                      <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize', STATUS_STYLES[s.status])}>{s.status}</span>
+                    </div>
+                    <p className="text-sm font-medium truncate mt-0.5">{donorName ?? '—'}</p>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div className="h-1.5 w-24 rounded-full bg-muted overflow-hidden">
+                        <div className={cn('h-full rounded-full', pct >= 100 ? 'bg-green-600' : 'bg-brand-orange')} style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs text-muted-foreground tabular-nums">{fmt(s.paidAmount)} / {fmt(s.totalAmount)}</span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Outstanding</p>
+                    <p className="text-sm font-bold tabular-nums text-brand-navy">{fmt(s.outstanding)}</p>
+                  </div>
+                  <Arrow className="size-4 text-muted-foreground shrink-0" />
+                </Link>
+              )
+            })}
           </div>
-          {payments.pages > 1 && (
-            <div className="flex items-center justify-between mt-5">
-              <p className="text-xs text-muted-foreground">Page {payments.page} of {payments.pages} · {payments.total} total</p>
+
+          {pages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Page {page} of {pages}</p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => { setPage(p => p - 1); pushUrl({ page: String(page - 1) }) }}><ChevronLeft className="size-4" /></Button>
-                <Button variant="outline" size="sm" disabled={page >= payments.pages} onClick={() => { setPage(p => p + 1); pushUrl({ page: String(page + 1) }) }}><ChevronRight className="size-4" /></Button>
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="size-4" /></Button>
+                <Button variant="outline" size="sm" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}><ChevronRight className="size-4" /></Button>
               </div>
             </div>
           )}
         </>
       )}
-
-      <PaymentDetailDialog payment={selectedPayment} open={!!selectedPayment} onOpenChange={(o) => { if (!o) setSelectedPayment(null) }} />
     </div>
   )
 }

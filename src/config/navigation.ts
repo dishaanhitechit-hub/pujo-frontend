@@ -96,7 +96,6 @@ export function buildDashboardNav(role: Role, canCollect?: boolean): DashboardNa
 
   if (can(role, 'dashboard.view') && !isOversight && isAdmin) {
     eventItems.push({ label: 'All Payments', href: '/payments', iconName: 'CreditCard' })
-    eventItems.push({ label: 'Pledges',      href: '/pledges',  iconName: 'Handshake' })
     eventItems.push({ label: 'Donors',       href: '/donors',   iconName: 'UserSearch' })
   }
 
@@ -133,10 +132,7 @@ export function buildDashboardNav(role: Role, canCollect?: boolean): DashboardNa
 
     if (!isOversight && can(role, 'dashboard.view')) {
       paymentItems.push({ label: 'All Payments', href: '/payments', iconName: 'CreditCard' })
-      paymentItems.push({ label: 'Pledges',      href: '/pledges',  iconName: 'Handshake' })
       paymentItems.push({ label: 'Donors',       href: '/donors',   iconName: 'UserSearch' })
-    } else if (!isOversight && can(role, 'payment.view_receipt')) {
-      paymentItems.push({ label: 'Pledges', href: '/pledges', iconName: 'Handshake' })
     }
 
     if (can(role, 'token.view') || can(role, 'token.generate')) {

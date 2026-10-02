@@ -14,7 +14,8 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { buildDashboardNav } from '@/config/navigation'
-import { ROLE_LABELS, userCanCollect } from '@/config/roles'
+import { userCanCollect } from '@/config/roles'
+import { MEMBER_CATEGORY_LABELS } from '@/config/members'
 import { siteConfig } from '@/config/site'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -79,6 +80,11 @@ export function AppSidebar() {
     .slice(0, 2)
     .join('')
     .toUpperCase()
+
+  // Show membership category (admin has none — label them specifically). Not the permission role.
+  const identityLabel = user.role === 'admin'
+    ? 'Administrator'
+    : (user.memberCategory ? MEMBER_CATEGORY_LABELS[user.memberCategory] : 'Member')
 
   function isActive(href: string) {
     return pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
@@ -205,7 +211,7 @@ export function AppSidebar() {
           </Avatar>
           <div className="min-w-0 flex-1">
             <p className="text-sidebar-foreground text-xs font-semibold truncate">{user.name}</p>
-            <p className="text-sidebar-foreground/40 text-[10px] truncate">{ROLE_LABELS[user.role]}</p>
+            <p className="text-sidebar-foreground/40 text-[10px] truncate">{identityLabel}</p>
           </div>
         </div>
         <button

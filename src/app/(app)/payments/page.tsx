@@ -279,7 +279,7 @@ function PaymentsContent() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/20">
-                  {['Donor', 'Event', 'Type', 'Collector', 'Amount', 'Mode', 'Status', 'Date', 'Receipt'].map((h) => (
+                  {['Donor', 'Slip', 'Event', 'Type', 'Collector', 'Amount', 'Mode', 'Status', 'Date', 'Receipt'].map((h) => (
                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -293,6 +293,7 @@ function PaymentsContent() {
                       </button>
                       {p.donor.phone && <p className="text-xs text-muted-foreground">{p.donor.phone}</p>}
                     </td>
+                    <td className="px-5 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">{p.slipNumber ?? <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="px-5 py-3 text-xs text-muted-foreground">{p.event?.name ?? <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="px-5 py-3 text-xs text-muted-foreground">{p.donor.donorType ?? <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="px-5 py-3 text-muted-foreground">{p.collector.name}</td>

@@ -5,23 +5,23 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { ActiveBadge } from '@/components/shared/StatusBadge'
 import { MEMBER_CATEGORY_LABELS } from '@/config/members'
+import { COMMITTEE_ROLE_LABELS } from '@/config/committee-roles'
 import { getUserLoginQr } from '@/lib/api/users'
+import { getMyProfileExtras } from '@/lib/api/role-assignments'
 import {
   Loader2, Download, Printer, HeartHandshake, ChevronRight,
   QrCode, Mail, Phone, MessageCircle, Calendar, BadgeCheck,
-  MapPin, Hash, ArrowUpRight,
+  MapPin, Hash, Users, ArrowUpRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { apiConfig } from '@/config/api'
-import type { ContributionStats } from '@/types'
-
-const BASE = apiConfig.baseUrl
+import type { ContributionStats, MyRoles } from '@/types'
 
 export default function ProfilePage() {
-  const { user, token } = useAuth()
+  const { user } = useAuth()
   const [qrUrl, setQrUrl] = useState<string | null>(null)
   const [qrLoading, setQrLoading] = useState(true)
   const [contribStats, setContribStats] = useState<ContributionStats | null>(null)
+  const [myRoles, setMyRoles] = useState<MyRoles | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -33,15 +33,13 @@ export default function ProfilePage() {
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
   }, [user?.id])
 
+  // One request for both committee roles and contribution stats.
   useEffect(() => {
-    if (!token || !user || user.role === 'admin') return
-    fetch(`${BASE}${apiConfig.endpoints.contributions.myStats}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(json => { if (json?.data) setContribStats(json.data) })
+    if (!user || user.role === 'admin') return
+    getMyProfileExtras()
+      .then((extras) => { setMyRoles(extras.roles); setContribStats(extras.contributionStats) })
       .catch(() => {})
-  }, [token, user?.id])
+  }, [user?.id])
 
   if (!user) return null
 
@@ -155,6 +153,15 @@ export default function ProfilePage() {
                       label="Member ID"
                       value={user.memberId ?? '—'}
                       mono={!!user.memberId}
+                    />
+                  )}
+                  {!isAdmin && (
+                    <InfoField
+                      icon={<Users className="size-3.5" />}
+                      label="Committee Role"
+                      value={myRoles?.yearRole
+                        ? `${COMMITTEE_ROLE_LABELS[myRoles.yearRole.role]} · ${myRoles.yearRole.yearLabel}`
+                        : '—'}
                     />
                   )}
                   <InfoField

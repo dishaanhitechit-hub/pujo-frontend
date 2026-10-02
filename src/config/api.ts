@@ -40,13 +40,6 @@ export const apiConfig = {
       events: '/api/dashboard/events',
       eventReport: (id: number) => `/api/dashboard/event-report/${id}`,
     },
-    pledge: {
-      list: '/api/pledge/',
-      create: '/api/pledge/',
-      get: (id: number) => `/api/pledge/${id}`,
-      pay: (id: number) => `/api/pledge/${id}/pay`,
-      cancel: (id: number) => `/api/pledge/${id}/cancel`,
-    },
     donor: {
       list: '/api/donor/',
       get: (id: number) => `/api/donor/${id}`,
@@ -144,12 +137,33 @@ export const apiConfig = {
       register: '/api/org/register',
       me:       '/api/org/me',
     },
+    slip: {
+      list:       '/api/slip/',
+      create:     '/api/slip/',
+      get:        (id: number) => `/api/slip/${id}`,
+      donorTypes: '/api/slip/donor-types',
+      members:    '/api/slip/members',
+      addPayment: (id: number) => `/api/slip/${id}/payments`,
+      close:      (id: number) => `/api/slip/${id}/close`,
+      reopen:     (id: number) => `/api/slip/${id}/reopen`,
+      cancel:     (id: number) => `/api/slip/${id}/cancel`,
+    },
     contactDiary: {
       list:   '/api/contact-diary/',
       create: '/api/contact-diary/',
       get:    (id: number) => `/api/contact-diary/${id}`,
       update: (id: number) => `/api/contact-diary/${id}`,
       delete: (id: number) => `/api/contact-diary/${id}`,
+    },
+    roleAssignments: {
+      myRoles:          '/api/role-assignments/my-roles',
+      myProfile:        '/api/role-assignments/my-profile',
+      years:            '/api/role-assignments/years',
+      setCurrentYear:   (yearId: number) => `/api/role-assignments/years/${yearId}/current`,
+      yearAssignments:  (yearId: number) => `/api/role-assignments/years/${yearId}/assignments`,
+      yearAssignment:   (yearId: number, userId: number) => `/api/role-assignments/years/${yearId}/assignments/${userId}`,
+      eventAssignments: (eventId: number) => `/api/role-assignments/events/${eventId}/assignments`,
+      eventAssignment:  (eventId: number, userId: number) => `/api/role-assignments/events/${eventId}/assignments/${userId}`,
     },
     meetings: {
       // Admin

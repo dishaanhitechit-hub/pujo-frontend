@@ -540,11 +540,11 @@ function SummaryTab({ eventId }: { eventId: number }) {
       {/* Pledge summary */}
       {hasPledges && (
         <div>
-          <h2 className="text-sm font-semibold mb-4 flex items-center gap-2"><TrendingUp className="size-4" />Pledge Summary</h2>
+          <h2 className="text-sm font-semibold mb-4 flex items-center gap-2"><TrendingUp className="size-4" />Contribution Summary</h2>
           <div className="rounded-xl border border-border bg-card p-5">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 text-sm">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Total Pledged</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Total Booked</p>
                 <p className="font-semibold text-xl">{fmt(summary.totalPledged)}</p>
               </div>
               <div>
@@ -556,7 +556,7 @@ function SummaryTab({ eventId }: { eventId: number }) {
                 <p className="font-semibold text-xl text-yellow-700">{fmt(summary.totalPledgeOutstanding)}</p>
               </div>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Open Pledges</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Open Slips</p>
                 <p className="font-semibold text-xl">{summary.openPledgeCount}</p>
               </div>
             </div>

@@ -13,9 +13,58 @@ export type MemberCategory =
   | 'premium_executive'
   | 'executive'
   | 'general'
+
+export type CommitteeRole =
+  | 'chairman'
+  | 'president'
+  | 'vice_president'
+  | 'secretary'
+  | 'junior_secretary'
+  | 'treasurer'
+  | 'accountant'
+  | 'advisory_member'
+  | 'member'
+
+export interface ClubYear {
+  id: number
+  label: string
+  isCurrent: boolean
+  createdAt: string
+}
+
+export interface YearAssignmentMember {
+  id: number
+  name: string
+  phone: string | null
+  memberId: string | null
+  memberCategory: MemberCategory | null
+  role: CommitteeRole | null
+  isPublic: boolean
+}
+
+export interface YearAssignmentsResponse {
+  year: ClubYear
+  members: YearAssignmentMember[]
+}
+
+export interface EventAssignmentMember extends YearAssignmentMember {
+  canCollect: boolean
+}
+
+export interface EventAssignmentsResponse {
+  event: { id: number; name: string; year: number | null; status: string }
+  members: EventAssignmentMember[]
+}
+
+export interface MyRoles {
+  yearRole: { yearLabel: string; role: CommitteeRole } | null
+  eventRoles: { eventId: number; eventName: string; role: CommitteeRole; canCollect: boolean }[]
+}
 export type PaymentMethod = 'upi' | 'cash' | 'cheque'
 export type PaymentStatus = 'pending' | 'completed' | 'expired' | 'cancelled'
 export type PledgeStatus = 'open' | 'complete' | 'cancelled'
+export type SlipStatus = 'open' | 'closed' | 'cancelled'
+export type DonorKind = 'member' | 'other'
 export type TokenType = 'single' | 'dual' | 'bulk'
 export type TokenStatus = 'active' | 'void'
 export type EventStatus = 'draft' | 'published' | 'archived'
@@ -323,7 +372,9 @@ export interface Payment {
   chequeNumber?: string | null
   bankName?: string | null
   chequeDate?: string | null
-  pledgeId?: number | null
+  receivedDate?: string | null
+  slipId?: number | null
+  slipNumber?: string | null
   event?: { id: number; name: string } | null
   status: PaymentStatus
   whatsappSent?: boolean
@@ -803,9 +854,67 @@ export interface PaymentInitiateResponse {
   amount: string
   donorName: string
   status: PaymentStatus
-  pledgeId: number | null
+  slipId: number | null
   eventId: number
   nextUrl: string
+}
+
+// ── Contribution Slips ──────────────────────────────────────────────────────
+
+export interface ContributionSlip {
+  id: number
+  slipNumber: string
+  event: { id: number; name: string } | null
+  collector: { id: number; name: string } | null
+  donorKind: DonorKind
+  donor: Donor | null
+  memberUserId: number | null
+  memberName: string | null
+  totalAmount: string
+  paidAmount: string
+  outstanding: string
+  status: SlipStatus
+  notes: string | null
+  createdAt: string
+  closedAt: string | null
+  payments?: Payment[]
+}
+
+export interface PaginatedSlips {
+  slips: ContributionSlip[]
+  page: number
+  perPage: number
+  total: number
+  pages: number
+}
+
+export interface CreateSlipInput {
+  eventId: number
+  donorKind: DonorKind
+  memberUserId?: number | null
+  donorName?: string | null
+  donorPhone?: string | null
+  donorAddress?: string | null
+  donorNotes?: string | null
+  donorType?: string | null
+  totalAmount: number
+  notes?: string | null
+}
+
+export interface ManualPaymentInput {
+  amount: number
+  method: PaymentMethod
+  receivedDate?: string | null
+  utrNumber?: string | null
+  chequeNumber?: string | null
+  bankName?: string | null
+  chequeDate?: string | null
+}
+
+export interface SlipPaymentInitiateInput {
+  slipId: number
+  amount: string
+  method: PaymentMethod
 }
 
 export interface CreatePledgeInput {

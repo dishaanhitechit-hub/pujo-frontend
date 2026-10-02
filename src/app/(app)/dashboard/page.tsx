@@ -45,7 +45,7 @@ interface ViewOptions {
   canManageEvents:      boolean  // link event name → /admin/events/{id}
   canViewDonors:        boolean  // link donor count → /donors?eventId=
   canViewPayments:      boolean  // link total received → /payments?eventId=
-  canViewPledges:       boolean  // "View Pledges" links in Collection/Pledge cards
+  canViewPledges:       boolean  // "View Payments" links in Collection/Pledge cards
   canViewExpenses:      boolean  // link expenses → /admin/expenses?eventId=
   canViewReport:        boolean  // show the Report button and open the full Event Report
   canViewBudgetInReport: boolean // show budget planning totals inside the Expense Summary card
@@ -453,7 +453,7 @@ function AdminEventReport({
           {/* C. Collection Summary */}
           <CollectionSummaryCard summary={report.collectionSummary} eventId={eventId} showLink={viewOpts.canViewPledges} />
 
-          {/* D. Mode Breakdown + E. Pledge Summary */}
+          {/* D. Mode Breakdown + E. Contribution Summary */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <PaymentModesCard modes={report.paymentModes} />
             <PledgeCard pledge={report.pledgeSummary} eventId={eventId} showLink={viewOpts.canViewPledges} />
@@ -518,9 +518,9 @@ function CollectionSummaryCard({ summary, eventId, showLink = true }: { summary:
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-sm flex items-center gap-2">
-          <CheckCircle2 className="size-4" /> Pledge Collection Summary
+          <CheckCircle2 className="size-4" /> Contribution Collection Summary
         </h3>
-        {showLink && <Link href={`/pledges?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View Pledges</Link>}
+        {showLink && <Link href={`/payments?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View Payments</Link>}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tiles.map((t) => (
@@ -562,12 +562,12 @@ function PledgeCard({ pledge, eventId, showLink = true }: { pledge: EventReport[
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-sm flex items-center gap-2"><TrendingUp className="size-4" /> Pledge Summary</h3>
-        {showLink && <Link href={`/pledges?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View</Link>}
+        <h3 className="font-semibold text-sm flex items-center gap-2"><TrendingUp className="size-4" /> Contribution Summary</h3>
+        {showLink && <Link href={`/payments?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View</Link>}
       </div>
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div>
-          <p className="text-xs text-muted-foreground">Total Pledged</p>
+          <p className="text-xs text-muted-foreground">Total Booked</p>
           <p className="font-semibold">{fmt(pledge.totalPledged)}</p>
         </div>
         <div>
@@ -579,7 +579,7 @@ function PledgeCard({ pledge, eventId, showLink = true }: { pledge: EventReport[
           <p className="font-semibold text-yellow-700">{fmt(pledge.outstanding)}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Open Pledges</p>
+          <p className="text-xs text-muted-foreground">Open Slips</p>
           <p className="font-semibold">{pledge.openCount}</p>
         </div>
       </div>
@@ -794,10 +794,10 @@ function CollectorDashboard() {
           </div>
           {(Number(summary.totalPledged) > 0 || summary.openPledgeCount > 0) && (
             <div className="rounded-xl border border-border bg-card p-5">
-              <h2 className="font-semibold text-sm mb-4 flex items-center gap-2"><TrendingUp className="size-4" /> Pledge Summary{eventLabel ? ` · ${eventLabel}` : ''}</h2>
+              <h2 className="font-semibold text-sm mb-4 flex items-center gap-2"><TrendingUp className="size-4" /> Contribution Summary{eventLabel ? ` · ${eventLabel}` : ''}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground text-xs">Total Pledged</p>
+                  <p className="text-muted-foreground text-xs">Total Booked</p>
                   <p className="font-semibold text-lg">{fmt(summary.totalPledged)}</p>
                 </div>
                 <div>
@@ -809,7 +809,7 @@ function CollectorDashboard() {
                   <p className="font-semibold text-lg text-yellow-700">{fmt(summary.totalPledgeOutstanding)}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Open Pledges</p>
+                  <p className="text-muted-foreground text-xs">Open Slips</p>
                   <p className="font-semibold text-lg">{summary.openPledgeCount}</p>
                 </div>
               </div>
