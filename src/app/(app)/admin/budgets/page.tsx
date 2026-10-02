@@ -302,7 +302,7 @@ function BudgetStatCards({ report }: { report: BudgetReport }) {
           <Icon className="size-3.5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className={`text-[11px] sm:text-xs font-semibold uppercase tracking-wide leading-tight ${card.label}`}>{label}</p>
+          <p className={`text-xs sm:text-[13px] font-semibold uppercase tracking-wide leading-tight ${card.label}`}>{label}</p>
           <p className={`font-bold text-sm sm:text-base mt-0.5 leading-tight tabular-nums whitespace-nowrap ${card.value}`}>{value}</p>
           {sub}
         </div>
@@ -352,7 +352,7 @@ function BudgetStatCards({ report }: { report: BudgetReport }) {
       />
       {/* Utilization */}
       <div className="rounded-lg border border-border bg-card p-3 flex flex-col justify-center">
-        <p className="text-[11px] sm:text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-0.5 leading-tight">Utilization</p>
+        <p className="text-xs sm:text-[13px] text-muted-foreground font-semibold uppercase tracking-wide mb-0.5 leading-tight">Utilization</p>
         <p className="font-bold text-sm sm:text-base tabular-nums leading-tight whitespace-nowrap">{pct(u)}</p>
         <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
           <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(u, 100)}%` }} />
