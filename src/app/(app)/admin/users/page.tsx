@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Plus, UserX, Pencil, X, QrCode, Download, Printer, Check } from 'lucide-react'
+import { Loader2, Plus, UserX, Pencil, X, QrCode, Download, Printer, Check, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -169,6 +169,7 @@ function UsersContent() {
   const [pendingDeactivate, setPendingDeactivate] = useState<User | null>(null)
   const [qrUser, setQrUser] = useState<User | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   async function loadUsers() {
     setLoading(true)
@@ -202,6 +203,14 @@ function UsersContent() {
     }
   }
 
+  const q = search.trim().toLowerCase()
+  const filteredUsers = q
+    ? users.filter((u) =>
+        [u.name, u.phone, u.whatsappNo, u.address, u.email]
+          .some((v) => v?.toLowerCase().includes(q)),
+      )
+    : users
+
   return (
     <div className="p-6 lg:p-8">
       <PageHeader title="Members" subtitle="Manage club members and their membership category." className="mb-8">
@@ -212,6 +221,27 @@ function UsersContent() {
           <Plus className="size-4 mr-2" /> Add Member
         </Button>
       </PageHeader>
+
+      {/* Search */}
+      <div className="relative max-w-sm mb-5">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+        <Input
+          placeholder="Search name, phone, address…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9 pr-8"
+        />
+        {search && (
+          <button
+            type="button"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={() => setSearch('')}
+            aria-label="Clear search"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
 
       {error && (
         <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive mb-6">{error}</div>
@@ -226,20 +256,24 @@ function UsersContent() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/20">
-                {['Name', 'Email', 'Category', 'Member Since', 'Status', 'Phone', 'Actions'].map((h) => (
+                {['Name', 'Address', 'Category', 'Member Since', 'Status', 'Phone', 'Actions'].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <tr key={u.id} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
                   <td className="px-5 py-3 font-medium text-foreground">{u.name}</td>
-                  <td className="px-5 py-3 text-muted-foreground">{u.email ?? '—'}</td>
+                  <td className="px-5 py-3 text-muted-foreground max-w-[220px] truncate">{u.address ?? '—'}</td>
                   <td className="px-5 py-3">
-                    <span className="text-xs font-semibold text-brand-navy">
-                      {u.memberCategory ? MEMBER_CATEGORY_LABELS[u.memberCategory] : '—'}
-                    </span>
+                    {u.role === 'admin' ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-brand-navy/10 text-brand-navy text-xs font-semibold">Admin</span>
+                    ) : (
+                      <span className="text-xs font-semibold text-brand-navy">
+                        {u.memberCategory ? MEMBER_CATEGORY_LABELS[u.memberCategory] : '—'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-5 py-3 text-muted-foreground whitespace-nowrap">{fmtDate(u.memberSince ?? u.createdAt)}</td>
                   <td className="px-5 py-3"><ActiveBadge isActive={u.isActive} /></td>
@@ -283,8 +317,10 @@ function UsersContent() {
               ))}
             </tbody>
           </table>
-          {users.length === 0 && (
-            <div className="p-12 text-center text-sm text-muted-foreground">No members found.</div>
+          {filteredUsers.length === 0 && (
+            <div className="p-12 text-center text-sm text-muted-foreground">
+              {search ? 'No members match your search.' : 'No members found.'}
+            </div>
           )}
         </div>
       )}
@@ -570,6 +606,8 @@ function EditUserModal({
   onClose: () => void
   onSuccess: () => void
 }) {
+  const isAdmin = user.role === 'admin'
+
   const {
     register,
     handleSubmit,
@@ -592,13 +630,14 @@ function EditUserModal({
   async function onSubmit(data: EditFormData) {
     const input: UpdateUserInput = {
       name:           data.name,
-      memberCategory: data.memberCategory,
       memberSince:    data.memberSince || null,
       phone:          data.phone || null,
       whatsappNo:     data.whatsappNo || null,
       email:          data.email || null,
       address:        data.address || null,
     }
+    // Admin has no membership tier — never write a category for them.
+    if (!isAdmin) input.memberCategory = data.memberCategory
     if (data.password) input.password = data.password
 
     try {
@@ -621,18 +660,27 @@ function EditUserModal({
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="p-5 flex flex-col gap-4">
-          {/* Member Category */}
-          <div className="flex flex-col gap-1.5">
-            <Label>Member Category <span className="text-destructive">*</span></Label>
-            <Controller
-              control={control}
-              name="memberCategory"
-              render={({ field }) => (
-                <MemberCategorySelect value={field.value} onChange={field.onChange} />
-              )}
-            />
-            {errors.memberCategory && <p className="text-xs text-destructive">{errors.memberCategory.message}</p>}
-          </div>
+          {/* Member Category — not applicable to the admin account */}
+          {isAdmin ? (
+            <div className="flex flex-col gap-1.5">
+              <Label>Role</Label>
+              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-sm font-medium text-brand-navy">
+                Administrator
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <Label>Member Category <span className="text-destructive">*</span></Label>
+              <Controller
+                control={control}
+                name="memberCategory"
+                render={({ field }) => (
+                  <MemberCategorySelect value={field.value} onChange={field.onChange} />
+                )}
+              />
+              {errors.memberCategory && <p className="text-xs text-destructive">{errors.memberCategory.message}</p>}
+            </div>
+          )}
 
           {/* Name */}
           <div className="flex flex-col gap-1.5">
