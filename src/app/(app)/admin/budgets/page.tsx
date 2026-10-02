@@ -23,6 +23,7 @@ import type { BudgetCategory, BudgetReport, EventBudgetSummaryRow, EventStats, A
 import {
   Plus, Pencil, Trash2, Loader2, Wallet, TrendingUp, AlertTriangle,
   ChevronUp, ChevronDown, ExternalLink, Search, X, CircleDollarSign,
+  HandCoins, Hourglass, PiggyBank,
 } from 'lucide-react'
 
 function fmt(v: string | number | null | undefined) {
@@ -107,19 +108,19 @@ function AllEventsSummary() {
             </p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
               <div>
-                <p className="text-muted-foreground mb-0.5">Budget Planned</p>
+                <p className="text-muted-foreground mb-0.5">Estimated Expenditure</p>
                 <p className="font-semibold text-brand-orange tabular-nums">{fmt(row.totalPlanned)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground mb-0.5">Total Collected</p>
+                <p className="text-muted-foreground mb-0.5">Collection Received</p>
                 <p className="font-semibold text-amber-600 tabular-nums">{fmt(row.totalCollected)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground mb-0.5">Total Spent</p>
+                <p className="text-muted-foreground mb-0.5">Paid</p>
                 <p className={`tabular-nums ${spentColor(row.utilizationPct)}`}>{fmt(row.totalSpent)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground mb-0.5">Budget Balance</p>
+                <p className="text-muted-foreground mb-0.5">Balance to be Paid</p>
                 <p className={`tabular-nums ${balanceColor(row)}`}>{fmt(Math.abs(Number(row.remaining)))}</p>
               </div>
             </div>
@@ -138,7 +139,7 @@ function AllEventsSummary() {
         <table className="w-full text-sm min-w-[700px]">
           <thead>
             <tr className="border-b border-border bg-muted/20">
-              {['Event', 'Budget Planned', 'Total Collected', 'Total Spent', 'Budget Balance', 'Utilization'].map((h) => (
+              {['Event', 'Estimated Expenditure', 'Collection Received', 'Paid', 'Balance to be Paid', 'Utilization'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -224,43 +225,73 @@ function BudgetStatCards({ report }: { report: BudgetReport }) {
     sub?: React.ReactNode
   }) {
     return (
-      <div className={`rounded-xl border p-4 sm:p-5 flex items-start gap-3 sm:gap-4 ${card.bg} ${card.border}`}>
-        <div className={`size-8 sm:size-10 rounded-xl flex items-center justify-center shrink-0 ${card.icon}`}>
-          <Icon className="size-4 sm:size-5" />
+      <div className={`rounded-lg border p-3 flex items-center gap-2.5 ${card.bg} ${card.border}`}>
+        <div className={`size-7 rounded-lg flex items-center justify-center shrink-0 ${card.icon}`}>
+          <Icon className="size-3.5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className={`text-[11px] sm:text-xs font-medium uppercase tracking-wider leading-tight ${card.label}`}>{label}</p>
-          <p className={`font-heading font-bold text-lg sm:text-2xl mt-0.5 break-words leading-tight tabular-nums ${card.value}`}>{value}</p>
+          <p className={`text-[10px] font-medium uppercase tracking-wide leading-tight ${card.label}`}>{label}</p>
+          <p className={`font-bold text-sm sm:text-base mt-0.5 leading-tight tabular-nums whitespace-nowrap ${card.value}`}>{value}</p>
           {sub}
         </div>
       </div>
     )
   }
 
+  // Contribution Booked — indigo/blue
+  const pledgedCard = {
+    bg:     'bg-blue-50 dark:bg-blue-950/20',
+    border: 'border-blue-200 dark:border-blue-800/40',
+    icon:   'bg-blue-100 dark:bg-blue-900/40 text-blue-600',
+    label:  'text-blue-600/80 dark:text-blue-400/70',
+    value:  'text-blue-700 dark:text-blue-400',
+  }
+
+  // Expected Collection — violet/purple
+  const expectedCard = {
+    bg:     'bg-violet-50 dark:bg-violet-950/20',
+    border: 'border-violet-200 dark:border-violet-800/40',
+    icon:   'bg-violet-100 dark:bg-violet-900/40 text-violet-600',
+    label:  'text-violet-600/80 dark:text-violet-400/70',
+    value:  'text-violet-700 dark:text-violet-400',
+  }
+
+  // Fund in Hand — green when positive, red when negative (spent more than collected)
+  const fundNegative = Number(report.totals.fundInHand) < 0
+  const fundCard = fundNegative
+    ? { bg: 'bg-red-50 dark:bg-red-950/20',   border: 'border-red-200 dark:border-red-800/40',   icon: 'bg-red-100 dark:bg-red-900/30 text-red-600',    label: 'text-red-600/80',   value: 'text-red-600' }
+    : { bg: 'bg-teal-50 dark:bg-teal-950/20', border: 'border-teal-200 dark:border-teal-800/40', icon: 'bg-teal-100 dark:bg-teal-900/40 text-teal-600',  label: 'text-teal-600/80',  value: 'text-teal-700 dark:text-teal-400' }
+
   // Utilisation bar colour
   const barColor = u > 100 ? 'bg-red-600' : u > 75 ? 'bg-amber-500' : 'bg-green-600'
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-      <Card label="Budget Planned"  value={fmt(report.totals.totalPlanned)}   icon={Wallet}           card={plannedCard}  />
-      <Card label="Total Collected" value={fmt(report.totals.totalCollected)} icon={CircleDollarSign} card={collectedCard} />
-      <Card label="Total Spent"     value={fmt(report.totals.totalActual)}    icon={TrendingUp}       card={spentCard}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* Row 1 — expenditure side */}
+      <Card label="Estimated Expenditure" value={fmt(report.totals.totalPlanned)} icon={Wallet}     card={plannedCard} />
+      <Card label="Paid"                  value={fmt(report.totals.totalActual)}  icon={TrendingUp} card={spentCard}
         sub={u >= 100 && <p className="text-[10px] mt-1 flex items-center gap-0.5 text-red-600 font-semibold"><AlertTriangle className="size-3 shrink-0" />Over budget</p>}
       />
       <Card
-        label={balanceOver ? (balanceDeep ? 'Way Over Budget' : 'Over Budget') : 'Budget Balance'}
+        label={balanceOver ? (balanceDeep ? 'Way Over Budget' : 'Over Budget') : 'Balance to be Paid'}
         value={fmt(Math.abs(Number(report.totals.remaining)))}
         icon={balanceOver ? AlertTriangle : Wallet}
         card={balanceCard}
       />
       {/* Utilization */}
-      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-        <p className="text-[11px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1 leading-tight">Utilization</p>
-        <p className="font-heading font-bold text-lg sm:text-2xl tabular-nums leading-tight">{pct(u)}</p>
-        <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+      <div className="rounded-lg border border-border bg-card p-3 flex flex-col justify-center">
+        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5 leading-tight">Utilization</p>
+        <p className="font-bold text-sm sm:text-base tabular-nums leading-tight whitespace-nowrap">{pct(u)}</p>
+        <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
           <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(u, 100)}%` }} />
         </div>
       </div>
+
+      {/* Row 2 — collection side */}
+      <Card label="Contribution Booked" value={fmt(report.totals.contributionBooked)} icon={HandCoins}        card={pledgedCard} />
+      <Card label="Collection Received"  value={fmt(report.totals.totalCollected)}    icon={CircleDollarSign} card={collectedCard} />
+      <Card label="Expected Collection"  value={fmt(report.totals.expectedCollection)} icon={Hourglass}       card={expectedCard} />
+      <Card label="Fund in Hand"         value={fmt(report.totals.fundInHand)}        icon={PiggyBank}        card={fundCard} />
     </div>
   )
 }

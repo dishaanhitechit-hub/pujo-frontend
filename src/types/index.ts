@@ -116,6 +116,9 @@ export interface BudgetReport {
     totalCollected: string
     totalActual: string
     remaining: string
+    contributionBooked: string
+    expectedCollection: string
+    fundInHand: string
     overBudget: boolean
     utilizationPct: number
   }
@@ -129,6 +132,9 @@ export interface EventBudgetSummaryRow {
   totalCollected: string
   totalSpent: string
   remaining: string
+  contributionBooked: string
+  expectedCollection: string
+  fundInHand: string
   overBudget: boolean
   utilizationPct: number
 }
