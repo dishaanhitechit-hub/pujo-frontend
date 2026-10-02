@@ -13,7 +13,8 @@ import type {
 } from '@/types'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { useAuth } from '@/lib/auth/auth-provider'
-import { hasPermission, can, OVERSIGHT_ROLES } from '@/config/roles'
+import { hasPermission, userHasPermission, can, OVERSIGHT_ROLES } from '@/config/roles'
+import type { User } from '@/types'
 import type { Role } from '@/types'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { PageHeader } from '@/components/dashboard/PageHeader'
@@ -61,16 +62,18 @@ const FULL_ACCESS: ViewOptions = {
   canViewBudgetInReport: true,
 }
 
-function getViewOptions(role: Role): ViewOptions {
-  const isOversight = OVERSIGHT_ROLES.includes(role)
+function getViewOptions(user: User): ViewOptions {
+  // Financial detail (payment lists, collector money breakdown, full report) requires
+  // payment.view_receipt — plain members only ever see high-level overview totals.
+  const canFinance = userHasPermission(user, 'payment.view_all')
   return {
-    canManageEvents:      can(role, 'event.manage'),
-    canViewDonors:        !isOversight && can(role, 'dashboard.view'),
-    canViewPayments:      !isOversight && can(role, 'dashboard.view'),
-    canViewPledges:       !isOversight && can(role, 'payment.view_receipt'),
-    canViewExpenses:      can(role, 'expense.manage'),
-    canViewReport:        can(role, 'dashboard.view'),
-    canViewBudgetInReport: can(role, 'event.manage') || isOversight,
+    canManageEvents:      userHasPermission(user, 'event.manage'),
+    canViewDonors:        canFinance,
+    canViewPayments:      canFinance,
+    canViewPledges:       canFinance,
+    canViewExpenses:      userHasPermission(user, 'expense.manage'),
+    canViewReport:        canFinance,
+    canViewBudgetInReport: userHasPermission(user, 'event.manage'),
   }
 }
 
@@ -86,7 +89,7 @@ function DashboardContent() {
   const { user } = useAuth()
   if (!user) return null
   if (user.role === 'admin') return <AdminDashboard />
-  if (hasPermission(user.role, 'dashboard.view')) return <ReportingDashboard role={user.role} />
+  if (userHasPermission(user, 'dashboard.view')) return <ReportingDashboard user={user} />
   return null
 }
 
@@ -132,8 +135,8 @@ function AdminDashboard() {
 
 // ── Reporting Dashboard — cashier / managing_committee / executive ─────────────
 
-function ReportingDashboard({ role }: { role: Role }) {
-  const viewOpts = getViewOptions(role)
+function ReportingDashboard({ user }: { user: User }) {
+  const viewOpts = getViewOptions(user)
   const [eventStats, setEventStats]   = useState<EventStats[]>([])
   const [loadingEvents, setLoadingEvents] = useState(true)
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)

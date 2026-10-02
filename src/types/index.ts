@@ -336,6 +336,7 @@ export interface User {
   memberCategory: MemberCategory | null
   memberSince: string | null
   memberId: string | null
+  permissions?: string[]
   createdAt: string
 }
 
@@ -915,6 +916,36 @@ export interface SlipPaymentInitiateInput {
   slipId: number
   amount: string
   method: PaymentMethod
+}
+
+// ── Handovers (collector → treasurer) ──────────────────────────────────────────
+
+export type HandoverStatus = 'pending' | 'accepted' | 'rejected'
+
+export interface HandoverSummary {
+  eventId: number
+  eventName: string
+  totalCollected: string
+  onlineCollected: string
+  cashCollected: string
+  handedOver: string
+  pending: string
+  inHand: string
+  available: string
+}
+
+export interface Handover {
+  id: number
+  event: { id: number; name: string } | null
+  collector: { id: number; name: string } | null
+  amount: string
+  handoverDate: string | null
+  note: string | null
+  status: HandoverStatus
+  reviewedBy: { id: number; name: string } | null
+  reviewedAt: string | null
+  rejectReason: string | null
+  createdAt: string
 }
 
 export interface CreatePledgeInput {

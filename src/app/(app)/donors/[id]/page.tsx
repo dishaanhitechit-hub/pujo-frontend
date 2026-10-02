@@ -15,7 +15,7 @@ function fmt(v: string | number) {
 
 export default function DonorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <RoleGuard permission="dashboard.view">
+    <RoleGuard permission="payment.view_all">
       <DonorDetailContent params={params} />
     </RoleGuard>
   )

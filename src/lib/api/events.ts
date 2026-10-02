@@ -54,6 +54,26 @@ export async function listActiveEvents(): Promise<EventSummary[]> {
   return res.data.data
 }
 
+// ── Member-facing (authenticated, org-scoped) event browsing ─────────────────
+import type { PublicEventDetail, PublicEventsList } from '@/types'
+
+export async function getMemberFeaturedEvent(): Promise<PublicEventDetail | null> {
+  const res = await apiClient.get<ApiResponse<PublicEventDetail | null>>(apiConfig.endpoints.events.memberFeatured)
+  return res.data.data
+}
+
+export async function listMemberEvents(page = 1, perPage = 12, includeDays = false): Promise<PublicEventsList | null> {
+  const res = await apiClient.get<ApiResponse<PublicEventsList | null>>(apiConfig.endpoints.events.memberList, {
+    params: { page, perPage, includeDays },
+  })
+  return res.data.data
+}
+
+export async function getMemberEventBySlug(slug: string): Promise<PublicEventDetail | null> {
+  const res = await apiClient.get<ApiResponse<PublicEventDetail | null>>(apiConfig.endpoints.events.memberBySlug(slug))
+  return res.data.data
+}
+
 export async function createEvent(input: CreateEventInput): Promise<Event> {
   const res = await apiClient.post<ApiResponse<Event>>(apiConfig.endpoints.events.create, input)
   return res.data.data

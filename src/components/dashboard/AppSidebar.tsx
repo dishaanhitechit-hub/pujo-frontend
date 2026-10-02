@@ -10,7 +10,7 @@ import {
   Users, Settings, User, LogOut, Menu, X, ChevronDown,
   Handshake, UserSearch, Ticket, SlidersHorizontal, Calendar, MessageSquare,
   Megaphone, Users2, Wallet, Receipt, CalendarCheck, HeartHandshake,
-  ScrollText, Building2, BookUser,
+  ScrollText, Building2, BookUser, HandCoins,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { buildDashboardNav } from '@/config/navigation'
@@ -26,7 +26,7 @@ const ICON_MAP = {
   Users, Settings, User,
   Handshake, UserSearch, Ticket, SlidersHorizontal, Calendar, MessageSquare,
   Megaphone, Users2, Wallet, Receipt, CalendarCheck, HeartHandshake,
-  ScrollText, Building2, BookUser,
+  ScrollText, Building2, BookUser, HandCoins,
 } as const
 
 type IconName = keyof typeof ICON_MAP
@@ -44,7 +44,7 @@ export function AppSidebar() {
 
   const canCollect = user ? userCanCollect(user) : false
   const { standalone, groups } = user
-    ? buildDashboardNav(user.role, canCollect)
+    ? buildDashboardNav(user.role, canCollect, user.permissions)
     : { standalone: [], groups: [] }
 
   // Auto-open groups that contain the active route

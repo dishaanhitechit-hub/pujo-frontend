@@ -26,7 +26,7 @@ function fmt(v: string | number) {
 
 export default function PaymentsPage() {
   return (
-    <RoleGuard permission="dashboard.view">
+    <RoleGuard permission="payment.view_all">
       <Suspense>
         <PaymentsContent />
       </Suspense>

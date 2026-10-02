@@ -47,6 +47,9 @@ export const apiConfig = {
     events: {
       list:          '/api/events/',
       active:        '/api/events/active',
+      memberList:    '/api/events/member/list',
+      memberFeatured:'/api/events/member/featured',
+      memberBySlug:  (slug: string) => `/api/events/member/${slug}`,
       create:        '/api/events/',
       get:           (id: number) => `/api/events/${id}`,
       update:        (id: number) => `/api/events/${id}`,
@@ -136,6 +139,14 @@ export const apiConfig = {
     org: {
       register: '/api/org/register',
       me:       '/api/org/me',
+    },
+    handover: {
+      mySummary:  '/api/handover/my-summary',
+      mine:       '/api/handover/mine',
+      create:     '/api/handover/',
+      list:       '/api/handover/',
+      accept:     (id: number) => `/api/handover/${id}/accept`,
+      reject:     (id: number) => `/api/handover/${id}/reject`,
     },
     slip: {
       list:       '/api/slip/',

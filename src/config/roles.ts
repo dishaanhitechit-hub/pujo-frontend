@@ -38,6 +38,7 @@ type Permission =
   | 'payment.initiate'
   | 'payment.confirm'
   | 'payment.view_receipt'
+  | 'payment.view_all'
   | 'collector.view_own'
   | 'dashboard.view'
   | 'users.manage'
@@ -50,11 +51,13 @@ type Permission =
   | 'expense.manage'
   | 'contribution.manage'
   | 'meeting.manage'
+  | 'handover.manage'
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   admin: [
     'payment.confirm',
     'payment.view_receipt',
+    'payment.view_all',
     'dashboard.view',
     'users.manage',
     'permissions.manage',
@@ -66,6 +69,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'expense.manage',
     'contribution.manage',
     'meeting.manage',
+    'handover.manage',
   ],
   managing_committee: [
     'dashboard.view',
@@ -80,9 +84,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'payment.initiate',
     'payment.confirm',
     'payment.view_receipt',
+    'payment.view_all',
     'collector.view_own',
     'dashboard.view',
     'expense.manage',
+    'handover.manage',
   ],
   collector: [
     'payment.initiate',
@@ -110,6 +116,18 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 
 export function hasPermission(role: Role, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false
+}
+
+/**
+ * Permission check for a user. Prefers the server-resolved effective `permissions`
+ * list (baseline + committee roles + legacy); falls back to role-based grants when absent.
+ */
+export function userHasPermission(
+  user: { role: Role; permissions?: string[] },
+  permission: Permission,
+): boolean {
+  if (user.permissions) return user.permissions.includes(permission)
+  return hasPermission(user.role, permission)
 }
 
 

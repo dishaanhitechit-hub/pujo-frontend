@@ -56,7 +56,7 @@ function validateExtra(f: ExtraFilters): string | null {
 
 export default function DonorsPage() {
   return (
-    <RoleGuard permission="dashboard.view">
+    <RoleGuard permission="payment.view_all">
       <DonorsContent />
     </RoleGuard>
   )

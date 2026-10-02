@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/dashboard/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { getFeaturedEvent, listPublicEvents } from '@/lib/api/public'
+import { getMemberFeaturedEvent, listMemberEvents } from '@/lib/api/events'
 import type { PublicEvent, PublicEventDetail, PublicEventDay } from '@/types'
 import {
   Calendar, MapPin, Search, Star, X, Clock,
@@ -34,7 +34,7 @@ function EventsContent() {
 
   // Featured event — loaded once
   useEffect(() => {
-    getFeaturedEvent()
+    getMemberFeaturedEvent()
       .then((ev) => setFeatured(ev ?? null))
       .catch(() => setFeatured(null))
   }, [])
@@ -44,7 +44,7 @@ function EventsContent() {
     setLoadingList(true)
     try {
       const perPage = searchMode ? 50 : PER_PAGE
-      const res = await listPublicEvents(searchMode ? 1 : p, perPage, true)
+      const res = await listMemberEvents(searchMode ? 1 : p, perPage, true)
       setEvents(res?.events ?? [])
       setTotalPages(searchMode ? 1 : (res?.pages ?? 1))
       setTotal(res?.total ?? 0)

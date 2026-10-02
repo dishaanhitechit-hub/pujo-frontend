@@ -37,15 +37,17 @@ export interface DashboardNav {
   groups: NavGroup[]
 }
 
-export function buildDashboardNav(role: Role, canCollect?: boolean): DashboardNav {
+export function buildDashboardNav(role: Role, canCollect?: boolean, perms?: string[]): DashboardNav {
   const isAdmin     = role === 'admin'
   const isOversight = OVERSIGHT_ROLES.includes(role)
+  // Prefer the server-resolved effective permissions; fall back to role-based grants.
+  const has = (perm: Parameters<typeof can>[1]) => perms ? perms.includes(perm) : can(role, perm)
 
   const standalone: DashboardNavItem[] = []
   const groups: NavGroup[] = []
 
   // ── Dashboard — standalone, top ──────────────────────────────────────────
-  if (can(role, 'dashboard.view')) {
+  if (has('dashboard.view')) {
     standalone.push({ label: 'Dashboard', href: '/dashboard', iconName: 'LayoutDashboard' })
   }
 
@@ -53,12 +55,12 @@ export function buildDashboardNav(role: Role, canCollect?: boolean): DashboardNa
   const profileItems: DashboardNavItem[] = []
   profileItems.push({ label: 'My Profile', href: '/profile', iconName: 'User' })
 
-  if (can(role, 'users.manage')) {
+  if (has('users.manage')) {
     profileItems.push({ label: 'Users',         href: '/admin/users',         iconName: 'Users' })
     profileItems.push({ label: 'Contact Diary', href: '/admin/contact-diary', iconName: 'BookUser' })
   }
 
-  if (can(role, 'content.manage')) {
+  if (has('content.manage')) {
     profileItems.push({ label: 'Committee', href: '/admin/committee', iconName: 'Users2' })
   }
 
@@ -71,18 +73,18 @@ export function buildDashboardNav(role: Role, canCollect?: boolean): DashboardNa
   // ── Events group ──────────────────────────────────────────────────────────
   const eventItems: DashboardNavItem[] = []
 
-  if (can(role, 'event.manage')) {
+  if (has('event.manage')) {
     eventItems.push({ label: 'Events', href: '/admin/events', iconName: 'Calendar' })
     eventItems.push({ label: 'Budget', href: '/admin/budgets', iconName: 'Wallet' })
   } else {
     eventItems.push({ label: 'Events', href: '/event-overview', iconName: 'Calendar' })
   }
 
-  if (can(role, 'expense.manage')) {
+  if (has('expense.manage')) {
     eventItems.push({ label: 'Expenses', href: '/admin/expenses', iconName: 'Receipt' })
   }
 
-  if (can(role, 'meeting.manage')) {
+  if (has('meeting.manage')) {
     eventItems.push({ label: 'Meetings',     href: '/admin/meetings',     iconName: 'Users2' })
     eventItems.push({ label: 'Action Plans', href: '/admin/action-plans', iconName: 'ClipboardList' })
   } else {
@@ -90,20 +92,25 @@ export function buildDashboardNav(role: Role, canCollect?: boolean): DashboardNa
     eventItems.push({ label: 'My Responsibilities', href: '/action-plan',  iconName: 'ClipboardList' })
   }
 
-  if (can(role, 'content.manage')) {
+  if (has('content.manage')) {
     eventItems.push({ label: 'Contributions', href: '/admin/contributions', iconName: 'HeartHandshake' })
   }
 
-  if (can(role, 'dashboard.view') && !isOversight && isAdmin) {
+  if (has('dashboard.view') && !isOversight && isAdmin) {
     eventItems.push({ label: 'All Payments', href: '/payments', iconName: 'CreditCard' })
     eventItems.push({ label: 'Donors',       href: '/donors',   iconName: 'UserSearch' })
   }
 
-  if (isAdmin && (can(role, 'token.view') || can(role, 'token.generate'))) {
+  // Admins get Handover Approvals here (the Payments group below is non-admin only).
+  if (isAdmin && has('handover.manage')) {
+    eventItems.push({ label: 'Handover Approvals', href: '/admin/handovers', iconName: 'HandCoins' })
+  }
+
+  if (isAdmin && (has('token.view') || has('token.generate'))) {
     eventItems.push({ label: 'Tokens', href: '/tokens', iconName: 'Ticket' })
   }
 
-  if (can(role, 'users.manage')) {
+  if (has('users.manage')) {
     eventItems.push({ label: 'Token Config', href: '/admin/token-config', iconName: 'SlidersHorizontal' })
   }
 
@@ -112,7 +119,7 @@ export function buildDashboardNav(role: Role, canCollect?: boolean): DashboardNa
   // ── Circulars group ───────────────────────────────────────────────────────
   const circularItems: DashboardNavItem[] = []
 
-  if (can(role, 'content.manage')) {
+  if (has('content.manage')) {
     circularItems.push({ label: 'Circulars',     href: '/admin/circulars',     iconName: 'ScrollText' })
     circularItems.push({ label: 'Announcements', href: '/admin/announcements', iconName: 'Megaphone' })
   } else {
@@ -128,14 +135,20 @@ export function buildDashboardNav(role: Role, canCollect?: boolean): DashboardNa
     if (canCollect) {
       paymentItems.push({ label: 'Collect Payment', href: '/collect',        iconName: 'IndianRupee' })
       paymentItems.push({ label: 'My Collections',  href: '/my-collections', iconName: 'ClipboardList' })
+      paymentItems.push({ label: 'Cash Handover',   href: '/handovers',      iconName: 'HandCoins' })
     }
 
-    if (!isOversight && can(role, 'dashboard.view')) {
+    if (has('handover.manage')) {
+      paymentItems.push({ label: 'Handover Approvals', href: '/admin/handovers', iconName: 'HandCoins' })
+    }
+
+    // Org-wide payments/donors are for finance roles only — collectors use My Collections.
+    if (has('payment.view_all')) {
       paymentItems.push({ label: 'All Payments', href: '/payments', iconName: 'CreditCard' })
       paymentItems.push({ label: 'Donors',       href: '/donors',   iconName: 'UserSearch' })
     }
 
-    if (can(role, 'token.view') || can(role, 'token.generate')) {
+    if (has('token.view') || has('token.generate')) {
       paymentItems.push({ label: 'Tokens', href: '/tokens', iconName: 'Ticket' })
     }
 
@@ -145,13 +158,13 @@ export function buildDashboardNav(role: Role, canCollect?: boolean): DashboardNa
   }
 
   // ── Settings group (admin only) ───────────────────────────────────────────
-  if (can(role, 'users.manage')) {
+  if (has('users.manage')) {
     const settingsItems: DashboardNavItem[] = [
       { label: 'Config',       href: '/admin/config',       iconName: 'Settings' },
       { label: 'Organisation', href: '/admin/org-settings', iconName: 'Building2' },
     ]
 
-    if (can(role, 'content.manage')) {
+    if (has('content.manage')) {
       settingsItems.push({ label: 'Contact Queries', href: '/admin/contact-queries', iconName: 'MessageSquare' })
     }
 
@@ -159,10 +172,4 @@ export function buildDashboardNav(role: Role, canCollect?: boolean): DashboardNa
   }
 
   return { standalone, groups }
-}
-
-/** Legacy flat-list helper — kept so nothing else breaks */
-export function getDashboardNav(role: Role, canCollect?: boolean): DashboardNavItem[] {
-  const { standalone, groups } = buildDashboardNav(role, canCollect)
-  return [...standalone, ...groups.flatMap(g => g.items)]
 }
