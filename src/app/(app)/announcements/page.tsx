@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { getDashboardEvents } from '@/lib/api/dashboard'
-import { getPublicAnnouncements } from '@/lib/api/public'
+import { getMemberAnnouncements } from '@/lib/api/announcements'
 import type { PublicAnnouncement, EventStats } from '@/types'
 import { Megaphone, Search, X, Calendar, ChevronDown, ChevronUp } from 'lucide-react'
 
@@ -36,7 +36,7 @@ function AnnouncementsContent() {
   useEffect(() => {
     setLoading(true)
     Promise.all([
-      getPublicAnnouncements(),
+      getMemberAnnouncements(),
       getDashboardEvents().catch(() => []),
     ]).then(([ann, evs]) => {
       setAnnouncements(ann ?? [])

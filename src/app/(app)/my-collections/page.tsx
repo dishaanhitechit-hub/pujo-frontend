@@ -171,7 +171,14 @@ function Content() {
                     <td className="px-4 py-3 text-muted-foreground text-xs">{s.event?.name ?? '—'}</td>
                     <td className="px-4 py-3 tabular-nums whitespace-nowrap">{fmt(s.totalAmount)}</td>
                     <td className="px-4 py-3 tabular-nums whitespace-nowrap text-green-700">{fmt(s.paidAmount)}</td>
-                    <td className="px-4 py-3 tabular-nums whitespace-nowrap font-semibold text-brand-navy">{fmt(s.outstanding)}</td>
+                    <td className="px-4 py-3 tabular-nums whitespace-nowrap font-semibold text-brand-navy">
+                      {s.status === 'closed' && Number(s.outstanding) > 0 ? (
+                        <span title="Written off — slip closed before full payment">
+                          <span className="line-through text-muted-foreground/60 font-normal mr-1.5">{fmt(s.outstanding)}</span>
+                          <span className="text-green-700">₹0</span>
+                        </span>
+                      ) : fmt(s.outstanding)}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize', STATUS_STYLES[s.status])}>{s.status}</span>
                     </td>
@@ -209,7 +216,14 @@ function Content() {
                 <p className="text-sm font-medium">{donorOf(s) ?? '—'}</p>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground tabular-nums">{fmt(s.paidAmount)} / {fmt(s.totalAmount)}</span>
-                  <span className="font-semibold text-brand-navy tabular-nums">Out: {fmt(s.outstanding)}</span>
+                  {s.status === 'closed' && Number(s.outstanding) > 0 ? (
+                    <span className="tabular-nums" title="Written off — closed before full payment">
+                      <span className="line-through text-muted-foreground/60 mr-1">{fmt(s.outstanding)}</span>
+                      <span className="font-semibold text-green-700">₹0 due</span>
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-brand-navy tabular-nums">Out: {fmt(s.outstanding)}</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 pt-1">
                   <Button asChild variant="outline" size="sm" className="flex-1 gap-1 text-xs"><Link href={`/collect/${s.id}`}><Eye className="size-3.5" /> Open</Link></Button>

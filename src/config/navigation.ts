@@ -60,8 +60,11 @@ export function buildDashboardNav(role: Role, canCollect?: boolean, perms?: stri
     profileItems.push({ label: 'Contact Diary', href: '/admin/contact-diary', iconName: 'BookUser' })
   }
 
+  // Admins manage the committee; everyone else gets the read-only committee view.
   if (has('content.manage')) {
     profileItems.push({ label: 'Committee', href: '/admin/committee', iconName: 'Users2' })
+  } else {
+    profileItems.push({ label: 'Committee', href: '/committee', iconName: 'Users2' })
   }
 
   if (!isAdmin) {
@@ -92,13 +95,11 @@ export function buildDashboardNav(role: Role, canCollect?: boolean, perms?: stri
     eventItems.push({ label: 'My Responsibilities', href: '/action-plan',  iconName: 'ClipboardList' })
   }
 
-  if (has('content.manage')) {
+  // Merged contributions page (Members review + All Payments tabs). Admins get it here;
+  // non-admin finance roles get it in the Payments group below (avoids duplication).
+  if (isAdmin && has('payment.view_all')) {
     eventItems.push({ label: 'Contributions', href: '/admin/contributions', iconName: 'HeartHandshake' })
-  }
-
-  if (has('dashboard.view') && !isOversight && isAdmin) {
-    eventItems.push({ label: 'All Payments', href: '/payments', iconName: 'CreditCard' })
-    eventItems.push({ label: 'Donors',       href: '/donors',   iconName: 'UserSearch' })
+    eventItems.push({ label: 'Donors',        href: '/donors',              iconName: 'UserSearch' })
   }
 
   // Admins get Handover Approvals here (the Payments group below is non-admin only).
@@ -123,7 +124,8 @@ export function buildDashboardNav(role: Role, canCollect?: boolean, perms?: stri
     circularItems.push({ label: 'Circulars',     href: '/admin/circulars',     iconName: 'ScrollText' })
     circularItems.push({ label: 'Announcements', href: '/admin/announcements', iconName: 'Megaphone' })
   } else {
-    circularItems.push({ label: 'Circulars', href: '/circulars', iconName: 'ScrollText' })
+    circularItems.push({ label: 'Circulars',     href: '/circulars',     iconName: 'ScrollText' })
+    circularItems.push({ label: 'Announcements', href: '/announcements', iconName: 'Megaphone' })
   }
 
   groups.push({ id: 'circulars', label: 'Circulars', iconName: 'ScrollText', items: circularItems })
@@ -142,10 +144,10 @@ export function buildDashboardNav(role: Role, canCollect?: boolean, perms?: stri
       paymentItems.push({ label: 'Handover Approvals', href: '/admin/handovers', iconName: 'HandCoins' })
     }
 
-    // Org-wide payments/donors are for finance roles only — collectors use My Collections.
+    // Org-wide contributions/donors are for finance roles only — collectors use My Collections.
     if (has('payment.view_all')) {
-      paymentItems.push({ label: 'All Payments', href: '/payments', iconName: 'CreditCard' })
-      paymentItems.push({ label: 'Donors',       href: '/donors',   iconName: 'UserSearch' })
+      paymentItems.push({ label: 'Contributions', href: '/admin/contributions', iconName: 'HeartHandshake' })
+      paymentItems.push({ label: 'Donors',        href: '/donors',              iconName: 'UserSearch' })
     }
 
     if (has('token.view') || has('token.generate')) {

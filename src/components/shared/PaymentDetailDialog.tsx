@@ -98,6 +98,16 @@ export function PaymentDetailDialog({ payment, open, onOpenChange }: PaymentDeta
             {payment.chequeDate && <Field label="Cheque Date" value={payment.chequeDate} />}
             {payment.event && <Field label="Event" value={payment.event.name} />}
             {payment.slipNumber && <Field label="Slip" value={payment.slipNumber} />}
+            {payment.slipTotal != null && (
+              <Field label="Slip progress" value={
+                <span className="tabular-nums">
+                  ₹{Number(payment.slipPaid ?? 0).toLocaleString('en-IN')} / ₹{Number(payment.slipTotal).toLocaleString('en-IN')}
+                  {payment.slipStatus === 'closed' && Number(payment.slipPaid ?? 0) < Number(payment.slipTotal) && (
+                    <> · <span className="line-through text-muted-foreground">₹{(Number(payment.slipTotal) - Number(payment.slipPaid ?? 0)).toLocaleString('en-IN')}</span> written off</>
+                  )}
+                </span>
+              } />
+            )}
             {payment.receivedDate && <Field label="Received Date" value={payment.receivedDate} />}
             <Field label="Collector" value={payment.collector.name} />
             <Field label="Initiated" value={fmtDate(payment.createdAt)} />

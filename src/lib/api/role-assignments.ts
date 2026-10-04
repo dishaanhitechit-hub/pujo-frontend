@@ -3,9 +3,32 @@ import { apiConfig } from '@/config/api'
 import type {
   ApiResponse, ClubYear, CommitteeRole,
   YearAssignmentsResponse, EventAssignmentsResponse, MyRoles, ContributionStats,
+  CommitteeYearView, CommitteeEventView,
 } from '@/types'
 
 const ep = apiConfig.endpoints.roleAssignments
+
+// ── Member read-only committee view (no phone numbers) ───────────────────────
+
+export async function getCommitteeYears(): Promise<ClubYear[]> {
+  const res = await apiClient.get<ApiResponse<ClubYear[]>>(ep.committeeYears)
+  return res.data.data
+}
+
+export async function getCommitteeYear(yearId: number): Promise<CommitteeYearView> {
+  const res = await apiClient.get<ApiResponse<CommitteeYearView>>(ep.committeeYear(yearId))
+  return res.data.data
+}
+
+export async function getCommitteeEvents(): Promise<{ id: number; name: string; year: number | null }[]> {
+  const res = await apiClient.get<ApiResponse<{ id: number; name: string; year: number | null }[]>>(ep.committeeEvents)
+  return res.data.data
+}
+
+export async function getCommitteeEvent(eventId: number): Promise<CommitteeEventView> {
+  const res = await apiClient.get<ApiResponse<CommitteeEventView>>(ep.committeeEvent(eventId))
+  return res.data.data
+}
 
 export interface MyProfileExtras {
   roles: MyRoles

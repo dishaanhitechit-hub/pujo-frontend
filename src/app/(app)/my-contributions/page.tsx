@@ -9,8 +9,9 @@ import { toast } from 'sonner'
 import {
   Loader2, CheckCircle2, Clock, XCircle, IndianRupee,
   ImageIcon, X, QrCode, Building2, Banknote, Info,
-  Upload, CheckCircle, Copy, Check,
+  Upload, CheckCircle, Copy, Check, Search, ChevronLeft, ChevronRight,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,12 +27,13 @@ type Method = 'upi' | 'bank_transfer' | 'cash'
 
 function statusBadge(s: Contribution['status']) {
   if (s === 'approved') return <Badge className="bg-green-100 text-green-700 border-green-200 font-medium">Approved</Badge>
+  if (s === 'received') return <Badge className="bg-green-100 text-green-700 border-green-200 font-medium">Received</Badge>
   if (s === 'rejected') return <Badge className="bg-red-100 text-red-700 border-red-200 font-medium">Rejected</Badge>
   return <Badge className="bg-amber-100 text-amber-700 border-amber-200 font-medium">Pending</Badge>
 }
 
 function statusIcon(s: Contribution['status']) {
-  if (s === 'approved') return <CheckCircle2 className="size-4 text-green-600 shrink-0 mt-0.5" />
+  if (s === 'approved' || s === 'received') return <CheckCircle2 className="size-4 text-green-600 shrink-0 mt-0.5" />
   if (s === 'rejected') return <XCircle className="size-4 text-red-500 shrink-0 mt-0.5" />
   return <Clock className="size-4 text-amber-500 shrink-0 mt-0.5" />
 }
@@ -50,15 +52,18 @@ function fmtDate(d: string) {
 
 // ── main page ─────────────────────────────────────────────────────────────────
 
+const PER_PAGE = 12
+
 export default function MyContributionsPage() {
   const { token, user, isLoading } = useAuth()
   const router = useRouter()
 
-  const [stats, setStats] = useState<ContributionStats | null>(null)
-  const [list, setList] = useState<ContributionList | null>(null)
-  const [page, setPage] = useState(1)
+  const [items, setItems] = useState<Contribution[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'collected'>('all')
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
     if (isLoading) return
@@ -66,41 +71,47 @@ export default function MyContributionsPage() {
     else if (user?.role === 'admin') router.replace('/admin/contributions')
   }, [isLoading, token, user, router])
 
+  // Single API call — fetch the full list once, then stats/search/filter/paginate client-side.
   const load = useCallback(() => {
     if (!token) return
-    const headers = { Authorization: `Bearer ${token}` }
-    Promise.all([
-      fetch(`${BASE}${apiConfig.endpoints.contributions.myStats}`, { headers }).then(r => r.ok ? r.json() : null),
-      fetch(`${BASE}${apiConfig.endpoints.contributions.myList}?page=${page}&perPage=10`, { headers }).then(r => r.ok ? r.json() : null),
-    ]).then(([s, l]) => {
-      if (s?.data) setStats(s.data)
-      if (l?.data) setList(l.data)
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [token, page])
-
-  useEffect(() => {
-    if (!token) return
     setLoading(true)
-    const headers = { Authorization: `Bearer ${token}` }
-    Promise.all([
-      fetch(`${BASE}${apiConfig.endpoints.contributions.myStats}`, { headers }).then(r => r.ok ? r.json() : null),
-      fetch(`${BASE}${apiConfig.endpoints.contributions.myList}?page=${page}&perPage=10`, { headers }).then(r => r.ok ? r.json() : null),
-    ]).then(([s, l]) => {
-      if (s?.data) setStats(s.data)
-      if (l?.data) setList(l.data)
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [token, page])
+    fetch(`${BASE}${apiConfig.endpoints.contributions.myList}?page=1&perPage=200`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(l => { if (l?.data) setItems(l.data.contributions ?? []) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [token])
+
+  useEffect(() => { load() }, [load])
+  useEffect(() => { setPage(1) }, [search, statusFilter])
 
   if (isLoading || !token || user?.role === 'admin') return null
 
+  // Derived stats (no extra API)
+  const collectedTotal = items.filter(c => c.source === 'collected').reduce((s, c) => s + c.amount, 0)
+  const selfApproved   = items.filter(c => c.source !== 'collected' && c.status === 'approved').reduce((s, c) => s + c.amount, 0)
+  const totalReceived  = selfApproved + collectedTotal
+  const pendingCount   = items.filter(c => c.source !== 'collected' && c.status === 'pending').length
+
+  // Filter + search + paginate (client-side)
+  const q = search.trim().toLowerCase()
+  const filtered = items.filter(c => {
+    if (statusFilter === 'collected' && c.source !== 'collected') return false
+    if (statusFilter !== 'all' && statusFilter !== 'collected' && c.status !== statusFilter) return false
+    if (q) {
+      const hay = [c.event?.name, c.note, c.slipNumber, c.receiptNo, c.collector?.name, methodLabel(c.paymentMethod), String(c.amount)]
+      if (!hay.some(v => v?.toLowerCase().includes(q))) return false
+    }
+    return true
+  })
+  const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
+  const pageItems = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 flex flex-col gap-5 sm:gap-6">
-      <PageHeader
-        title="My Contributions"
-        subtitle="Your self-reported payments to the club"
-      >
+    <div className="p-4 sm:p-6 lg:p-8 flex flex-col gap-5">
+      <PageHeader title="My Contributions" subtitle="Your contributions to the club — submitted and collected.">
         <Button onClick={() => setShowModal(true)} className="bg-brand-navy hover:bg-brand-navy/90 text-white">
           + Submit contribution
         </Button>
@@ -108,71 +119,113 @@ export default function MyContributionsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
-        <StatCard
-          label="Total approved"
-          value={stats ? `₹${stats.totalApproved.toLocaleString('en-IN')}` : '₹—'}
-          sub={stats ? `${stats.approvedCount} payment${stats.approvedCount !== 1 ? 's' : ''}` : ''}
-          accent="green"
-        />
-        <StatCard
-          label="Pending review"
-          value={stats ? String(stats.pendingCount) : '—'}
-          sub="awaiting admin"
-          accent="amber"
-        />
-        <StatCard
-          label="Total submitted"
-          value={list?.total != null ? String(list.total) : '—'}
-          sub="all time"
-          accent="neutral"
-        />
+        <StatCard label="Total received" value={`₹${totalReceived.toLocaleString('en-IN')}`}
+          sub={collectedTotal ? `incl. ₹${collectedTotal.toLocaleString('en-IN')} collected` : 'approved + collected'} accent="green" />
+        <StatCard label="Pending review" value={String(pendingCount)} sub="awaiting admin" accent="amber" />
+        <StatCard label="Total entries" value={String(items.length)} sub="all time" accent="neutral" />
       </div>
 
-      {/* List */}
-      {loading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          <Input placeholder="Search event, slip, collector, amount…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 pr-8" />
+          {search && <button className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSearch('')}><X className="size-3.5" /></button>}
         </div>
-      ) : list?.contributions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-          <div className="size-12 rounded-2xl bg-brand-navy/5 flex items-center justify-center">
-            <IndianRupee className="size-6 text-brand-navy/30" />
-          </div>
-          <div>
-            <p className="font-semibold text-brand-navy">No contributions yet</p>
-            <p className="text-sm text-muted-foreground mt-0.5">Record your first payment to the club.</p>
-          </div>
-          <Button onClick={() => setShowModal(true)}>Submit contribution</Button>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {list?.contributions.map(c => (
-            <ContribCard key={c.id} c={c} token={token} />
+        <div className="flex gap-1 flex-wrap">
+          {([
+            ['all', 'All'], ['pending', 'Pending'], ['approved', 'Approved'], ['rejected', 'Rejected'], ['collected', 'Collected'],
+          ] as const).map(([val, label]) => (
+            <button key={val} onClick={() => setStatusFilter(val)}
+              className={cn('px-3 py-1.5 rounded-full text-xs font-semibold transition-colors',
+                statusFilter === val ? 'bg-brand-orange text-white' : 'bg-muted text-muted-foreground hover:bg-brand-orange/10 hover:text-brand-orange')}>
+              {label}
+            </button>
           ))}
         </div>
-      )}
+      </div>
 
-      {/* Pagination */}
-      {list && list.pages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-          <span className="text-sm text-muted-foreground">Page {page} / {list.pages}</span>
-          <Button variant="outline" size="sm" disabled={page === list.pages} onClick={() => setPage(p => p + 1)}>Next</Button>
+      {loading ? (
+        <div className="flex flex-col gap-2">{[...Array(6)].map((_, i) => <div key={i} className="h-12 rounded-xl bg-muted/40 animate-pulse" />)}</div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center gap-3 rounded-xl border border-border bg-card text-muted-foreground">
+          <IndianRupee className="size-8 opacity-20" />
+          <p className="text-sm">{items.length === 0 ? 'No contributions yet.' : 'No contributions match your filters.'}</p>
+          {items.length === 0 && <Button onClick={() => setShowModal(true)} size="sm">Submit contribution</Button>}
         </div>
+      ) : (
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block rounded-xl border border-border bg-card overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/20">
+                  {['Status', 'Amount', 'Method', 'Date', 'Event', 'Details'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pageItems.map(c => (
+                  <tr key={`${c.source ?? 'self'}-${c.id}`} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1.5">{statusIcon(c.status)}{statusBadge(c.status)}</span>
+                    </td>
+                    <td className="px-4 py-3 font-semibold tabular-nums whitespace-nowrap">₹{c.amount.toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-3 text-xs"><span className="font-medium">{methodLabel(c.paymentMethod)}</span></td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">{fmtDate(c.paymentDate)}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{c.event?.name ?? 'General'}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {c.source === 'collected' ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="px-1.5 py-0.5 rounded bg-brand-orange/10 text-brand-orange font-medium">Collected</span>
+                          <span className="font-mono">{c.slipNumber}</span>
+                          {c.collector ? <span>· {c.collector.name}</span> : null}
+                        </span>
+                      ) : c.status === 'rejected' && c.adminNote ? (
+                        <span className="text-red-600">{c.adminNote}</span>
+                      ) : c.note ? <span className="italic">&quot;{c.note}&quot;</span>
+                      : c.hasScreenshot && c.screenshotUrl ? (
+                        <a href={`${BASE}${c.screenshotUrl}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-brand-orange hover:underline"><ImageIcon className="size-3.5" /> screenshot</a>
+                      ) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="flex flex-col gap-2 md:hidden">
+            {pageItems.map(c => (
+              <div key={`${c.source ?? 'self'}-${c.id}`} className="rounded-xl border border-border bg-card p-3.5 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold tabular-nums">₹{c.amount.toLocaleString('en-IN')} <span className="text-xs font-normal text-muted-foreground">{methodLabel(c.paymentMethod)}</span></span>
+                  <span className="inline-flex items-center gap-1">{statusBadge(c.status)}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {fmtDate(c.paymentDate)} · {c.event?.name ?? 'General'}
+                  {c.source === 'collected' && c.slipNumber ? <span className="text-brand-orange"> · Collected {c.slipNumber}</span> : ''}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {pages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Page {page} of {pages} · {filtered.length} entries</p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}><ChevronLeft className="size-4" /></Button>
+                <Button variant="outline" size="sm" disabled={page >= pages} onClick={() => setPage(p => p + 1)}><ChevronRight className="size-4" /></Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Submit modal */}
       {showModal && (
-        <SubmitModal
-          token={token}
-          onClose={() => setShowModal(false)}
-          onSuccess={() => {
-            setShowModal(false)
-            setPage(1)
-            setLoading(true)
-            load()
-          }}
-        />
+        <SubmitModal token={token} onClose={() => setShowModal(false)}
+          onSuccess={() => { setShowModal(false); load() }} />
       )}
     </div>
   )
@@ -214,6 +267,9 @@ function ContribCard({ c, token }: { c: Contribution; token: string }) {
               {methodLabel(c.paymentMethod)}
             </span>
             {statusBadge(c.status)}
+            {c.source === 'collected' && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-brand-orange/10 text-brand-orange font-medium">Collected</span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground shrink-0">
             {new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -225,6 +281,14 @@ function ContribCard({ c, token }: { c: Contribution; token: string }) {
           {c.paymentTime ? ` · ${c.paymentTime}` : ''}
           {c.event ? <span className="text-brand-orange"> · {c.event.name}</span> : ' · General'}
         </p>
+
+        {c.source === 'collected' && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {c.slipNumber && <span className="font-mono">{c.slipNumber}</span>}
+            {c.collector ? ` · collected by ${c.collector.name}` : ''}
+            {c.receiptNo ? ` · ${c.receiptNo}` : ''}
+          </p>
+        )}
 
         {c.note && (
           <p className="text-xs text-muted-foreground mt-1.5 italic">"{c.note}"</p>

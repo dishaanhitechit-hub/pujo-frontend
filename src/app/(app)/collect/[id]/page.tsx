@@ -88,6 +88,7 @@ function SlipDetail({ slipId }: { slipId: number }) {
   const donorName = slip.donorKind === 'member' ? (slip.memberName ?? slip.donor?.name) : slip.donor?.name
   const pct = Math.min(100, Math.round((Number(slip.paidAmount) / Number(slip.totalAmount)) * 100))
   const isOpen = slip.status === 'open'
+  const writtenOff = slip.status === 'closed' && Number(slip.outstanding) > 0
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl flex flex-col gap-5">
@@ -113,7 +114,14 @@ function SlipDetail({ slipId }: { slipId: number }) {
           </div>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Outstanding</p>
-            <p className="text-lg font-bold tabular-nums text-brand-navy">{fmt(slip.outstanding)}</p>
+            {writtenOff ? (
+              <p className="text-lg font-bold tabular-nums">
+                <span className="line-through text-muted-foreground/60 font-normal text-base mr-1.5">{fmt(slip.outstanding)}</span>
+                <span className="text-green-700">₹0</span>
+              </p>
+            ) : (
+              <p className="text-lg font-bold tabular-nums text-brand-navy">{fmt(slip.outstanding)}</p>
+            )}
           </div>
         </div>
         <div>
@@ -121,9 +129,15 @@ function SlipDetail({ slipId }: { slipId: number }) {
             <span>Paid {fmt(slip.paidAmount)}</span>
             <span>of {fmt(slip.totalAmount)}</span>
           </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <div className={cn('h-full rounded-full', pct >= 100 ? 'bg-green-600' : 'bg-brand-orange')} style={{ width: `${pct}%` }} />
+          <div className="h-2 rounded-full bg-muted overflow-hidden flex">
+            <div className={cn('h-full', pct >= 100 ? 'bg-green-600' : 'bg-brand-orange')} style={{ width: `${pct}%` }} />
+            {writtenOff && <div className="h-full bg-muted-foreground/25 bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(0,0,0,0.08)_4px,rgba(0,0,0,0.08)_8px)]" style={{ width: `${100 - pct}%` }} />}
           </div>
+          {writtenOff && (
+            <p className="text-xs text-muted-foreground mt-1.5">
+              {fmt(slip.outstanding)} unpaid was <span className="font-medium">written off</span> when the slip was closed. Reopen to collect it.
+            </p>
+          )}
         </div>
 
         {/* Actions */}

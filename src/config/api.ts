@@ -104,6 +104,7 @@ export const apiConfig = {
     },
     announcements: {
       list:   '/api/announcements/',
+      member: '/api/announcements/member',
       create: '/api/announcements/',
       get:    (id: number) => `/api/announcements/${id}`,
       update: (id: number) => `/api/announcements/${id}`,
@@ -169,6 +170,10 @@ export const apiConfig = {
     roleAssignments: {
       myRoles:          '/api/role-assignments/my-roles',
       myProfile:        '/api/role-assignments/my-profile',
+      committeeYears:   '/api/role-assignments/committee/years',
+      committeeYear:    (yearId: number) => `/api/role-assignments/committee/years/${yearId}`,
+      committeeEvents:  '/api/role-assignments/committee/events',
+      committeeEvent:   (eventId: number) => `/api/role-assignments/committee/events/${eventId}`,
       years:            '/api/role-assignments/years',
       setCurrentYear:   (yearId: number) => `/api/role-assignments/years/${yearId}/current`,
       yearAssignments:  (yearId: number) => `/api/role-assignments/years/${yearId}/assignments`,

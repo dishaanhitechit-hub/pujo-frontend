@@ -45,7 +45,7 @@ function fmt(val: string | number) {
 interface ViewOptions {
   canManageEvents:      boolean  // link event name → /admin/events/{id}
   canViewDonors:        boolean  // link donor count → /donors?eventId=
-  canViewPayments:      boolean  // link total received → /payments?eventId=
+  canViewPayments:      boolean  // link total received → /admin/contributions?eventId=
   canViewPledges:       boolean  // "View Payments" links in Collection/Pledge cards
   canViewExpenses:      boolean  // link expenses → /admin/expenses?eventId=
   canViewReport:        boolean  // show the Report button and open the full Event Report
@@ -292,7 +292,7 @@ function EventOverviewTable({
                     <td className="px-4 py-3 font-medium">{fmt(s.donationCharge)}</td>
                     <td className="px-4 py-3">
                       {viewOpts.canViewPayments ? (
-                        <Link href={`/payments?eventId=${s.event.id}`} className="font-semibold hover:text-brand-orange transition-colors">
+                        <Link href={`/admin/contributions?eventId=${s.event.id}`} className="font-semibold hover:text-brand-orange transition-colors">
                           {fmt(s.totalReceived)}
                         </Link>
                       ) : (
@@ -523,7 +523,7 @@ function CollectionSummaryCard({ summary, eventId, showLink = true }: { summary:
         <h3 className="font-semibold text-sm flex items-center gap-2">
           <CheckCircle2 className="size-4" /> Contribution Collection Summary
         </h3>
-        {showLink && <Link href={`/payments?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View Payments</Link>}
+        {showLink && <Link href={`/admin/contributions?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View Payments</Link>}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tiles.map((t) => (
@@ -566,7 +566,7 @@ function PledgeCard({ pledge, eventId, showLink = true }: { pledge: EventReport[
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-sm flex items-center gap-2"><TrendingUp className="size-4" /> Contribution Summary</h3>
-        {showLink && <Link href={`/payments?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View</Link>}
+        {showLink && <Link href={`/admin/contributions?eventId=${eventId}`} className="text-xs text-brand-orange hover:underline">View</Link>}
       </div>
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div>
@@ -1027,7 +1027,7 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
           </h2>
           {isFetching && !loading && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
         </div>
-        <Link href="/payments" className="text-xs text-brand-orange hover:underline font-medium flex items-center gap-1">
+        <Link href="/admin/contributions" className="text-xs text-brand-orange hover:underline font-medium flex items-center gap-1">
           View All <ExternalLink className="size-3" />
         </Link>
       </div>

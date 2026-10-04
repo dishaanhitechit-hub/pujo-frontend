@@ -1,6 +1,14 @@
 import apiClient from './client'
 import { apiConfig } from '@/config/api'
-import type { ApiResponse, AdminAnnouncement } from '@/types'
+import type { ApiResponse, AdminAnnouncement, PublicAnnouncement } from '@/types'
+
+/** Published announcements for the logged-in member's org (baseline-accessible). */
+export async function getMemberAnnouncements(eventId?: number): Promise<PublicAnnouncement[]> {
+  const res = await apiClient.get<ApiResponse<PublicAnnouncement[]>>(apiConfig.endpoints.announcements.member, {
+    params: eventId ? { eventId } : undefined,
+  })
+  return res.data.data
+}
 
 export async function listAdminAnnouncements(): Promise<AdminAnnouncement[]> {
   const res = await apiClient.get<ApiResponse<AdminAnnouncement[]>>(

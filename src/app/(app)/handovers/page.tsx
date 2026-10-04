@@ -35,6 +35,7 @@ function Content() {
   const [history, setHistory] = useState<Handover[]>([])
   const [loading, setLoading] = useState(true)
   const [target, setTarget] = useState<HandoverSummary | null>(null)
+  const [eventFilter, setEventFilter] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -90,9 +91,28 @@ function Content() {
 
           {/* History */}
           <div className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-muted-foreground">My handovers</h2>
-            {history.length === 0 ? (
-              <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">No handovers yet.</div>
+            {(() => {
+              const eventOptions = Array.from(
+                new Map(history.filter(h => h.event).map(h => [h.event!.id, h.event!.name])).entries()
+              )
+              const rows = eventFilter ? history.filter(h => String(h.event?.id) === eventFilter) : history
+              return (
+            <>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <h2 className="text-sm font-semibold text-muted-foreground">My handovers</h2>
+              {eventOptions.length > 1 && (
+                <select
+                  value={eventFilter}
+                  onChange={e => setEventFilter(e.target.value)}
+                  className="h-8 rounded-lg border border-input bg-transparent px-2 text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <option value="">All events</option>
+                  {eventOptions.map(([id, name]) => <option key={id} value={String(id)}>{name}</option>)}
+                </select>
+              )}
+            </div>
+            {rows.length === 0 ? (
+              <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">{history.length === 0 ? 'No handovers yet.' : 'No handovers for this event.'}</div>
             ) : (
               <>
                 {/* Desktop table */}
@@ -106,7 +126,7 @@ function Content() {
                       </tr>
                     </thead>
                     <tbody>
-                      {history.map((h) => (
+                      {rows.map((h) => (
                         <tr key={h.id} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
                           <td className="px-4 py-3">{h.event?.name ?? '—'}</td>
                           <td className="px-4 py-3 font-semibold tabular-nums whitespace-nowrap">{fmt(h.amount)}</td>
@@ -128,7 +148,7 @@ function Content() {
 
                 {/* Mobile cards */}
                 <div className="flex flex-col gap-2 md:hidden">
-                  {history.map((h) => (
+                  {rows.map((h) => (
                     <div key={h.id} className="rounded-xl border border-border bg-card px-4 py-3 flex items-center gap-3">
                       <div className="size-9 rounded-full bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center shrink-0">
                         <Wallet className="size-4 text-brand-orange" />
@@ -148,6 +168,9 @@ function Content() {
                 </div>
               </>
             )}
+            </>
+            )
+            })()}
           </div>
         </>
       )}

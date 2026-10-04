@@ -60,6 +60,25 @@ export interface MyRoles {
   yearRole: { yearLabel: string; role: CommitteeRole } | null
   eventRoles: { eventId: number; eventName: string; role: CommitteeRole; canCollect: boolean }[]
 }
+
+// Read-only committee view (no phone numbers)
+export interface CommitteeMemberEntry {
+  userId: number
+  name: string
+  memberId: string | null
+  memberCategory: MemberCategory | null
+  role: CommitteeRole
+}
+
+export interface CommitteeYearView {
+  year: ClubYear
+  members: CommitteeMemberEntry[]
+}
+
+export interface CommitteeEventView {
+  event: { id: number; name: string; year: number | null }
+  members: CommitteeMemberEntry[]
+}
 export type PaymentMethod = 'upi' | 'cash' | 'cheque'
 export type PaymentStatus = 'pending' | 'completed' | 'expired' | 'cancelled'
 export type PledgeStatus = 'open' | 'complete' | 'cancelled'
@@ -376,6 +395,9 @@ export interface Payment {
   receivedDate?: string | null
   slipId?: number | null
   slipNumber?: string | null
+  slipTotal?: string | null
+  slipPaid?: string | null
+  slipStatus?: 'open' | 'closed' | 'cancelled' | null
   event?: { id: number; name: string } | null
   status: PaymentStatus
   whatsappSent?: boolean
@@ -1010,19 +1032,24 @@ export type ContributionStatus = 'pending' | 'approved' | 'rejected'
 
 export interface Contribution {
   id: number
+  source?: 'self' | 'collected'
   amount: number
   paymentMethod: ContributionPaymentMethod
   paymentDate: string
-  paymentTime: string | null
+  paymentTime?: string | null
   note: string | null
-  status: ContributionStatus
-  adminNote: string | null
+  status: ContributionStatus | 'received'
+  adminNote?: string | null
   hasScreenshot: boolean
-  screenshotUrl: string | null
-  event: { id: number; name: string; slug: string } | null
-  user: { id: number; name: string; role: string } | null
-  reviewer: { id: number; name: string } | null
-  reviewedAt: string | null
+  screenshotUrl?: string | null
+  event: { id: number; name: string; slug?: string } | null
+  user?: { id: number; name: string; role: string } | null
+  reviewer?: { id: number; name: string } | null
+  reviewedAt?: string | null
+  // Collected-via-slip entries only:
+  slipNumber?: string | null
+  receiptNo?: string | null
+  collector?: { id: number; name: string } | null
   createdAt: string
 }
 
@@ -1038,6 +1065,9 @@ export interface ContributionStats {
   totalApproved: number
   approvedCount: number
   pendingCount: number
+  selfApproved?: number
+  collectedTotal?: number
+  collectedCount?: number
 }
 
 export interface PaymentInfo {
