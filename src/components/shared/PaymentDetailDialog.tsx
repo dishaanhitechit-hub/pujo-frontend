@@ -34,7 +34,7 @@ function fmtDate(d: string | null | undefined) {
   })
 }
 
-function Field({ label, value }: { label: string; value?: string | number | boolean | null }) {
+function Field({ label, value }: { label: string; value?: React.ReactNode }) {
   const isEmpty = value === null || value === undefined || value === ''
   return (
     <div className="flex flex-col gap-0.5">
@@ -43,8 +43,10 @@ function Field({ label, value }: { label: string; value?: string | number | bool
         <p className="text-sm text-muted-foreground/40 italic">Not provided</p>
       ) : typeof value === 'boolean' ? (
         <p className="text-sm font-medium">{value ? 'Yes' : 'No'}</p>
-      ) : (
+      ) : typeof value === 'string' || typeof value === 'number' ? (
         <p className="text-sm font-medium text-foreground">{String(value)}</p>
+      ) : (
+        <div className="text-sm font-medium text-foreground">{value}</div>
       )}
     </div>
   )

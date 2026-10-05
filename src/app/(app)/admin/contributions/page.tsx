@@ -23,9 +23,9 @@ import { userHasPermission } from '@/config/roles'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { apiConfig } from '@/config/api'
 import { cn } from '@/lib/utils'
-import { getDashboardEvents, getDashboardPayments } from '@/lib/api/dashboard'
+import { getDashboardEvents, getDashboardPayments, getDashboardSummary } from '@/lib/api/dashboard'
 import { getAdminContributions, reviewContribution } from '@/lib/api/contributions'
-import type { EventStats, Contribution, Payment, PaginatedPayments, ApiError } from '@/types'
+import type { EventStats, Contribution, Payment, PaginatedPayments, DashboardSummary, ApiError } from '@/types'
 
 const BASE = apiConfig.baseUrl
 const fmt = (v: string | number) => `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`
@@ -46,6 +46,7 @@ function Content() {
   const [tab, setTab] = useState<'members' | 'payments'>(canReview ? 'members' : 'payments')
   const [events, setEvents] = useState<EventStats[]>([])
   const [eventId, setEventId] = useState<string>('')
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
 
   // Load events once; default to the most recent event.
   useEffect(() => {
@@ -54,6 +55,11 @@ function Content() {
       if (d && d.length) setEventId(String(d[0].event.id))
     }).catch(() => {})
   }, [])
+
+  // Summary for the selected event — one shared call, refetched only when the event changes.
+  useEffect(() => {
+    getDashboardSummary(eventId ? Number(eventId) : undefined).then(setSummary).catch(() => setSummary(null))
+  }, [eventId])
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 flex flex-col gap-5">
@@ -79,9 +85,46 @@ function Content() {
         </div>
       </div>
 
+      {/* Shared summary for the selected event — spans both tabs */}
+      <SummaryBar summary={summary} eventName={eventId ? events.find(e => String(e.event.id) === eventId)?.event.name : null} />
+
       {tab === 'members'
         ? <MembersTab eventId={eventId} canReview={canReview} />
         : <AllPaymentsTab eventId={eventId} />}
+    </div>
+  )
+}
+
+function SummaryBar({ summary, eventName }: { summary: DashboardSummary | null; eventName?: string | null }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <SummaryTile
+        label="Collection Received"
+        hint={`Money actually collected${eventName ? ` · ${eventName}` : ' · all events'}`}
+        value={summary ? fmt(summary.grandTotal) : null}
+        accent="green"
+      />
+      <SummaryTile
+        label="Total Slip Value (Booked)"
+        hint="Total amount committed across contribution slips"
+        value={summary ? fmt(summary.totalPledged) : null}
+        accent="orange"
+      />
+    </div>
+  )
+}
+
+function SummaryTile({ label, hint, value, accent }: { label: string; hint: string; value: string | null; accent: 'green' | 'orange' }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <span className={cn('size-2 rounded-full', accent === 'green' ? 'bg-green-500' : 'bg-brand-orange')} />
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      </div>
+      {value === null
+        ? <Skeleton className="h-8 w-28 mt-0.5" />
+        : <p className="text-2xl font-bold tabular-nums">{value}</p>}
+      <p className="text-[11px] text-muted-foreground">{hint}</p>
     </div>
   )
 }
@@ -156,6 +199,11 @@ function MembersTab({ eventId, canReview }: { eventId: string; canReview: boolea
                   <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
                     <td className="px-4 py-3">
                       <button onClick={() => setReviewTarget(c)} className="font-medium text-left hover:text-brand-orange">{c.user?.name ?? '—'}</button>
+                      {c.source === 'collected' && (
+                        <p className="text-[11px] text-muted-foreground">
+                          via slip {c.slipNumber ?? '—'}{c.collector ? ` · ${c.collector.name}` : ''}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-semibold tabular-nums whitespace-nowrap">₹{c.amount.toLocaleString('en-IN')}</td>
                     <td className="px-4 py-3 text-xs">{methodLabel(c.paymentMethod)}</td>
@@ -181,6 +229,9 @@ function MembersTab({ eventId, canReview }: { eventId: string; canReview: boolea
                 </div>
                 <span className="font-bold tabular-nums">₹{c.amount.toLocaleString('en-IN')} <span className="text-xs font-normal text-muted-foreground">{methodLabel(c.paymentMethod)}</span></span>
                 <span className="text-xs text-muted-foreground">{fmtDate(c.paymentDate)} · {c.event?.name ?? 'General'}</span>
+                {c.source === 'collected' && (
+                  <span className="text-[11px] text-muted-foreground">via slip {c.slipNumber ?? '—'}{c.collector ? ` · ${c.collector.name}` : ''}</span>
+                )}
               </button>
             ))}
           </div>
@@ -324,7 +375,17 @@ function ReviewDialog({ target, canReview, onOpenChange, onDone }: {
               <Field label="Date" value={fmtDate(target.paymentDate)} />
               <Field label="Event" value={target.event?.name ?? 'General'} />
               <Field label="Status" value={<span>{statusBadge(target.status)}</span>} />
+              {target.source === 'collected' && target.slipNumber && <Field label="Slip" value={target.slipNumber} />}
+              {target.source === 'collected' && target.collector && <Field label="Collected by" value={target.collector.name} />}
             </div>
+            {target.source === 'collected' && (
+              <p className="text-xs text-muted-foreground">Collected from this member via a contribution slip — recorded automatically, no review needed.</p>
+            )}
+            {target.source === 'collected' && target.receiptNo && (
+              <a href={`${BASE}/pay/receipt/${target.id}?from=detail`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-brand-orange hover:underline">
+                <Receipt className="size-4" /> View receipt {target.receiptNo}
+              </a>
+            )}
             {target.note && <Field label="Member note" value={<span className="italic">&quot;{target.note}&quot;</span>} />}
             {target.adminNote && <Field label="Admin note" value={target.adminNote} />}
             {target.hasScreenshot && target.screenshotUrl && (
