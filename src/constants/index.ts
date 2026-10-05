@@ -24,8 +24,6 @@ export const MAX_PAGE_SIZE = 100
 export const DONOR_TYPES = [
   'House-to-House',
   'Shop at Local Market',
-  'General Member',
-  'Executive Member',
   'Corporate Sponsor',
   'Running Public',
   'Other Donation',
