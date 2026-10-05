@@ -53,7 +53,7 @@ function CollectContent() {
     const req = ++reqRef.current
     setEventsLoading(true)
     listActiveEvents()
-      .then((d) => { if (req === reqRef.current) setEvents(d) })
+      .then((d) => { if (req === reqRef.current) { setEvents(d); if (d.length > 0) setEventId(d[0].id) } })
       .catch(() => { if (req === reqRef.current) setEvents([]) })
       .finally(() => { if (req === reqRef.current) setEventsLoading(false) })
     getSlipMembers().then(setMembers).catch(() => {})
@@ -122,7 +122,7 @@ function CollectContent() {
           <legend className="text-sm font-semibold px-1">Collection Event</legend>
           <div className="flex flex-col gap-1.5">
             <Label className="flex items-center gap-1.5"><CalendarDays className="size-3.5 text-muted-foreground" /> Event <span className="text-destructive">*</span></Label>
-            <Select onValueChange={(v) => setEventId(Number(v))} value={eventId ? String(eventId) : ''} disabled={eventsLoading || noActiveEvents}>
+            <Select key={String(eventId)} onValueChange={(v) => setEventId(Number(v))} value={eventId ? String(eventId) : ''} disabled={eventsLoading || noActiveEvents}>
               <SelectTrigger className="w-full"><SelectValue placeholder={eventsLoading ? 'Loading…' : 'Select event'} /></SelectTrigger>
               <SelectContent position="popper">
                 {events.map((e) => <SelectItem key={e.id} value={String(e.id)}>{e.name}</SelectItem>)}
