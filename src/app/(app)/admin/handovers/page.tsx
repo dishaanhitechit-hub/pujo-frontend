@@ -63,7 +63,7 @@ function Content() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 flex flex-col gap-5">
-      <PageHeader title="Handover Approvals" subtitle="Review and accept cash handed over by collectors." />
+      <PageHeader title="Handover Approvals" subtitle="Review and accept cash handed over to you by collectors." />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
@@ -102,7 +102,7 @@ function Content() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/20">
-                  {['Collector', 'Event', 'Amount', 'Date', 'Status', 'Actions'].map((h) => (
+                  {['Collector', 'Handed to', 'Event', 'Amount', 'Date', 'Status', 'Actions'].map((h) => (
                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -111,6 +111,7 @@ function Content() {
                 {rows.map((h) => (
                   <tr key={h.id} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
                     <td className="px-5 py-3 font-medium">{h.collector?.name ?? '—'}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{h.handoverTo?.name ?? '—'}</td>
                     <td className="px-5 py-3 text-muted-foreground">{h.event?.name ?? '—'}</td>
                     <td className="px-5 py-3 font-semibold tabular-nums">{fmt(h.amount)}</td>
                     <td className="px-5 py-3 text-muted-foreground whitespace-nowrap">{h.handoverDate}</td>
@@ -149,7 +150,7 @@ function Content() {
                     {STATUS[h.status].icon}{h.status}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground">{h.event?.name} · {h.handoverDate}</p>
+                <p className="text-xs text-muted-foreground">{h.event?.name} · {h.handoverDate}{h.handoverTo ? ` · to ${h.handoverTo.name}` : ''}</p>
                 <p className="text-lg font-bold tabular-nums text-brand-navy">{fmt(h.amount)}</p>
                 {h.status === 'pending' && (
                   <div className="flex items-center gap-2 pt-1">

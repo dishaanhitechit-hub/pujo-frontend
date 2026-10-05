@@ -154,7 +154,7 @@ export interface EventStats {
   overBudget: boolean
 }
 
-// ── Budget Categories ─────────────────────────────────────────────────────────
+// ── Budget Categories ──────────────────────────────────────────────────
 
 export interface BudgetCategory {
   id: number
@@ -230,7 +230,7 @@ export interface UpdateBudgetCategoryInput {
   sortOrder?: number
 }
 
-// ── Expense / Budget ──────────────────────────────────────────────────────────
+// ── Expense / Budget ──────────────────────────────────────────────────
 
 export interface Expense {
   id: number
@@ -281,7 +281,7 @@ export interface UpdateExpenseInput {
   notes?: string | null
 }
 
-// ── Event Report ──────────────────────────────────────────────────────────────
+// ── Event Report ──────────────────────────────────────────────────
 
 export interface EventReportSummary {
   donorCount: number
@@ -567,7 +567,7 @@ export interface AdminConfigResponse {
   allowedKeys: Record<string, string>
 }
 
-// ── Admin Announcement ────────────────────────────────────────────────────────
+// ── Admin Announcement ────────────────────────────────────────────────
 
 export interface AdminAnnouncement {
   id: number
@@ -580,7 +580,7 @@ export interface AdminAnnouncement {
   createdAt: string | null
 }
 
-// ── Circular ──────────────────────────────────────────────────────────────────
+// ── Circular ──────────────────────────────────────────────────────
 
 export interface Circular {
   id: number
@@ -603,7 +603,7 @@ export interface PaginatedCirculars {
   perPage: number
 }
 
-// ── Admin Committee Member ────────────────────────────────────────────────────
+// ── Admin Committee Member ────────────────────────────────────────────
 
 export interface AdminCommitteeMember {
   id: number
@@ -752,7 +752,7 @@ export interface PublicSiteConfig {
   club: PublicClubConfig
 }
 
-// ── Contact Queries ───────────────────────────────────────────────────────────
+// ── Contact Queries ──────────────────────────────────────────────────
 
 export type ContactQueryStatus = 'new' | 'read' | 'resolved'
 
@@ -781,7 +781,7 @@ export interface ContactQueryList {
   pages: number
 }
 
-// ── Meetings ──────────────────────────────────────────────────────────────────
+// ── Meetings ──────────────────────────────────────────────────────
 
 export type MeetingType      = 'general' | 'emergency' | 'committee' | 'agm' | 'other'
 export type MeetingStatus    = 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
@@ -850,7 +850,7 @@ export interface AttendanceStatus {
   markedAt:  string | null
 }
 
-// ── Action Plans ──────────────────────────────────────────────────────────────
+// ── Action Plans ────────────────────────────────────────────────────
 
 export type ActionPlanPriority = 'low' | 'medium' | 'high' | 'urgent'
 export type ActionPlanStatus   = 'not_started' | 'in_progress' | 'completed' | 'on_hold' | 'cancelled'
@@ -888,7 +888,7 @@ export interface PaginatedActionPlans {
   pages:       number
 }
 
-// ── Shared ────────────────────────────────────────────────────────────────────
+// ── Shared ─────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {
   success: boolean
@@ -926,7 +926,7 @@ export interface PaymentInitiateResponse {
   nextUrl: string
 }
 
-// ── Contribution Slips ──────────────────────────────────────────────────────
+// ── Contribution Slips ──────────────────────────────────────────────
 
 export interface ContributionSlip {
   id: number
@@ -1004,6 +1004,7 @@ export interface Handover {
   id: number
   event: { id: number; name: string } | null
   collector: { id: number; name: string } | null
+  handoverTo: { id: number; name: string } | null
   amount: string
   handoverDate: string | null
   note: string | null
@@ -1012,6 +1013,12 @@ export interface Handover {
   reviewedAt: string | null
   rejectReason: string | null
   createdAt: string
+}
+
+export interface HandoverReceiver {
+  id: number
+  name: string
+  role: string
 }
 
 export interface CreatePledgeInput {
@@ -1069,7 +1076,7 @@ export interface UpdateUserInput {
   canCollect?: boolean
 }
 
-// ── Self Contributions ─────────────────────────────────────────────────────
+// ── Self Contributions ─────────────────────────────────────────────────
 
 export type ContributionPaymentMethod = 'cash' | 'upi' | 'bank_transfer'
 export type ContributionStatus = 'pending' | 'approved' | 'rejected'

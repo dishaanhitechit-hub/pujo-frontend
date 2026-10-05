@@ -146,6 +146,7 @@ export const apiConfig = {
     handover: {
       mySummary:  '/api/handover/my-summary',
       mine:       '/api/handover/mine',
+      receivers:  '/api/handover/receivers',
       create:     '/api/handover/',
       list:       '/api/handover/',
       accept:     (id: number) => `/api/handover/${id}/accept`,

@@ -11,9 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getMyHandoverSummary, getMyHandovers, createHandover } from '@/lib/api/handovers'
+import { getMyHandoverSummary, getMyHandovers, getHandoverReceivers, createHandover } from '@/lib/api/handovers'
 import { cn } from '@/lib/utils'
-import type { HandoverSummary, Handover, ApiError } from '@/types'
+import type { HandoverSummary, Handover, HandoverReceiver, ApiError } from '@/types'
 
 const fmt = (v: string | number) => `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`
 const STATUS: Record<string, { cls: string; icon: React.ReactNode }> = {
@@ -196,20 +196,40 @@ function HandoverDialog({ target, onOpenChange, onDone }: {
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState('')
   const [note, setNote] = useState('')
+  const [receiverId, setReceiverId] = useState('')
+  const [receivers, setReceivers] = useState<HandoverReceiver[]>([])
+  const [loadingReceivers, setLoadingReceivers] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (target) { setAmount(target.available); setDate(new Date().toISOString().slice(0, 10)); setNote('') }
+    if (target) {
+      setAmount(target.available)
+      setDate(new Date().toISOString().slice(0, 10))
+      setNote('')
+      setReceiverId('')
+      setLoadingReceivers(true)
+      getHandoverReceivers()
+        .then(setReceivers)
+        .catch(() => toast.error('Failed to load receivers.'))
+        .finally(() => setLoadingReceivers(false))
+    }
   }, [target])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!target) return
     if (!amount || !/^\d+(\.\d{1,2})?$/.test(amount)) { toast.error('Enter a valid amount'); return }
+    if (!receiverId) { toast.error('Please select who you are handing over to'); return }
     setSaving(true)
     try {
-      await createHandover({ eventId: target.eventId, amount: Number(amount), handoverDate: date || null, note: note.trim() || null })
-      toast.success('Handover submitted for treasurer approval.')
+      await createHandover({
+        eventId: target.eventId,
+        amount: Number(amount),
+        handoverDate: date || null,
+        note: note.trim() || null,
+        handoverToId: Number(receiverId),
+      })
+      toast.success('Handover submitted. The recipient will be notified to confirm.')
       onDone()
     } catch (err) {
       toast.error((err as ApiError).message ?? 'Failed to submit handover.')
@@ -223,6 +243,28 @@ function HandoverDialog({ target, onOpenChange, onDone }: {
         {target && (
           <form onSubmit={submit} className="flex flex-col gap-4 pt-1">
             <p className="text-xs text-muted-foreground">{target.eventName} · available {fmt(target.available)}</p>
+
+            <div className="flex flex-col gap-1.5">
+              <Label>Hand over to <span className="text-destructive">*</span></Label>
+              {loadingReceivers ? (
+                <div className="h-9 rounded-lg border border-input bg-muted/30 animate-pulse" />
+              ) : receivers.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No cashier or treasurer found for this organisation.</p>
+              ) : (
+                <select
+                  required
+                  value={receiverId}
+                  onChange={e => setReceiverId(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <option value="">Select recipient…</option>
+                  {receivers.map(r => (
+                    <option key={r.id} value={String(r.id)}>{r.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <Label>Amount <span className="text-destructive">*</span></Label>
               <div className="relative">
@@ -230,17 +272,20 @@ function HandoverDialog({ target, onOpenChange, onDone }: {
                 <Input className="pl-7" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
               </div>
             </div>
+
             <div className="flex flex-col gap-1.5">
               <Label>Handover date</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
+
             <div className="flex flex-col gap-1.5">
               <Label>Note</Label>
               <Textarea rows={2} placeholder="Optional" value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving} className="bg-brand-orange hover:bg-brand-orange/90 text-white">
+              <Button type="submit" disabled={saving || receivers.length === 0} className="bg-brand-orange hover:bg-brand-orange/90 text-white">
                 {saving && <Loader2 className="size-4 animate-spin mr-2" />}Submit
               </Button>
             </DialogFooter>
