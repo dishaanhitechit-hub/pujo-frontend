@@ -2,11 +2,16 @@
 
 import React, { useRef, useState, useEffect } from 'react'
 import { toPng } from 'html-to-image'
+import { Dancing_Script } from 'next/font/google'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { MEMBER_CATEGORY_LABELS } from '@/config/members'
 import type { User } from '@/types'
+
+// Flowing handwritten script for the "Welcome" greeting and "More Than a Club".
+const script = Dancing_Script({ subsets: ['latin'], weight: ['500', '600', '700'], display: 'swap' })
+const SCRIPT_FF = script.style.fontFamily
 
 const CARD_W = 720
 const CARD_H = 380
@@ -29,14 +34,16 @@ function fmtSince(v: string | null | undefined) {
   catch { return v }
 }
 
-// ── Circular field icons: navy circle + white SVG ───────────────────────────
+// ── Circular field icons: thin gold outline + navy icon ─────────────────────
 function CircleIcon({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
       width: 34, height: 34, borderRadius: '50%',
-      background: NAVY, flexShrink: 0,
+      background: 'transparent',
+      border: `1.5px solid rgba(184,136,42,0.75)`,
+      color: NAVY, flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      marginTop: 1,
+      marginTop: 1, boxSizing: 'border-box' as const,
     }}>
       {children}
     </div>
@@ -59,38 +66,38 @@ function FieldRow({ icon, label, value }: { icon: React.ReactNode; label: string
   )
 }
 
-// White icons for inside navy circles
+// Navy icons (currentColor) for inside the outline circles
 const IdSvg = (
   <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
-    <rect x="0.5" y="1.5" width="11" height="9" rx="1.5" stroke="white" strokeWidth="1.1"/>
-    <line x1="3" y1="4.5" x2="9" y2="4.5" stroke="white" strokeWidth="1" strokeLinecap="round"/>
-    <line x1="3" y1="6.5" x2="7" y2="6.5" stroke="white" strokeWidth="1" strokeLinecap="round"/>
-    <circle cx="6" cy="4" r="1" fill="white" opacity="0.8"/>
+    <rect x="0.5" y="1.5" width="11" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.1"/>
+    <line x1="3" y1="4.5" x2="9" y2="4.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+    <line x1="3" y1="6.5" x2="7" y2="6.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+    <circle cx="6" cy="4" r="1" fill="currentColor" opacity="0.8"/>
   </svg>
 )
 const CalSvg = (
   <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
-    <rect x="0.5" y="1.5" width="11" height="9.5" rx="1.5" stroke="white" strokeWidth="1.1"/>
-    <line x1="0.5" y1="4.5" x2="11.5" y2="4.5" stroke="white" strokeWidth="1"/>
-    <line x1="4" y1="0.5" x2="4" y2="3" stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
-    <line x1="8" y1="0.5" x2="8" y2="3" stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
+    <rect x="0.5" y="1.5" width="11" height="9.5" rx="1.5" stroke="currentColor" strokeWidth="1.1"/>
+    <line x1="0.5" y1="4.5" x2="11.5" y2="4.5" stroke="currentColor" strokeWidth="1"/>
+    <line x1="4" y1="0.5" x2="4" y2="3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    <line x1="8" y1="0.5" x2="8" y2="3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
   </svg>
 )
 const PhoneSvg = (
   <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
-    <path d="M2.5 1.5C2.5 1.5 1.5 3 2 4.5C3 7 5.5 9.5 8 10.5C9.5 11 11 10 11 10L9.5 8L8 8.5L5.5 5.5L6.5 4L5 2Z" stroke="white" strokeWidth="1.1" fill="none" strokeLinejoin="round"/>
+    <path d="M2.5 1.5C2.5 1.5 1.5 3 2 4.5C3 7 5.5 9.5 8 10.5C9.5 11 11 10 11 10L9.5 8L8 8.5L5.5 5.5L6.5 4L5 2Z" stroke="currentColor" strokeWidth="1.1" fill="none" strokeLinejoin="round"/>
   </svg>
 )
 const EmailSvg = (
   <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
-    <rect x="0.5" y="2" width="11" height="8" rx="1.5" stroke="white" strokeWidth="1.1"/>
-    <path d="M1 2.5L6 7L11 2.5" stroke="white" strokeWidth="1.1" strokeLinecap="round"/>
+    <rect x="0.5" y="2" width="11" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.1"/>
+    <path d="M1 2.5L6 7L11 2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
   </svg>
 )
 const PinSvg = (
   <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
-    <path d="M6 1C4 1 2.5 2.5 2.5 4.5C2.5 7 6 11 6 11C6 11 9.5 7 9.5 4.5C9.5 2.5 8 1 6 1Z" stroke="white" strokeWidth="1.1"/>
-    <circle cx="6" cy="4.5" r="1.5" stroke="white" strokeWidth="1.1"/>
+    <path d="M6 1C4 1 2.5 2.5 2.5 4.5C2.5 7 6 11 6 11C6 11 9.5 7 9.5 4.5C9.5 2.5 8 1 6 1Z" stroke="currentColor" strokeWidth="1.1"/>
+    <circle cx="6" cy="4.5" r="1.5" stroke="currentColor" strokeWidth="1.1"/>
   </svg>
 )
 
@@ -268,28 +275,24 @@ function CardContent({ user, logoSrc, nameVer, nameEn, tagline, estYear, cat }: 
 
           {/* Welcome text — top right */}
           <div style={{ flexShrink: 0, textAlign: 'right', minWidth: 148 }}>
-            {/* "Welcome," — navy, elegant serif italic */}
+            {/* "Welcome," — navy, flowing script */}
             <div style={{
-              fontSize: 22,
+              fontSize: 26,
               color: NAVY,
-              fontFamily: '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif',
-              fontStyle: 'italic',
-              fontWeight: 700,
+              fontFamily: SCRIPT_FF,
+              fontWeight: 600,
               lineHeight: 1.0,
-              letterSpacing: -0.3,
             }}>
               Welcome,
             </div>
-            {/* "{firstName}!" — gold, larger, same script style */}
+            {/* "{firstName}!" — gold, larger script */}
             <div style={{
-              fontSize: 32,
+              fontSize: 38,
               color: GOLD,
-              fontFamily: '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif',
-              fontStyle: 'italic',
+              fontFamily: SCRIPT_FF,
               fontWeight: 700,
-              lineHeight: 1.05,
-              letterSpacing: -0.5,
-              marginTop: -2,
+              lineHeight: 1.0,
+              marginTop: 1,
             }}>
               {firstName}!
             </div>
@@ -331,10 +334,10 @@ function CardContent({ user, logoSrc, nameVer, nameEn, tagline, estYear, cat }: 
             | People | Culture | Community |
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 15, fontStyle: 'italic', color: GOLD, fontFamily: 'Georgia,serif', fontWeight: 700, whiteSpace: 'nowrap' as const, lineHeight: 1 }}>
+            <div style={{ fontSize: 22, color: GOLD, fontFamily: SCRIPT_FF, fontWeight: 600, whiteSpace: 'nowrap' as const, lineHeight: 1 }}>
               More Than a Club
             </div>
-            <div style={{ height: 2.5, background: GOLD_GRAD, borderRadius: 2, marginTop: 3 }} />
+            <div style={{ height: 2.5, background: GOLD_GRAD, borderRadius: 2, marginTop: 2 }} />
           </div>
         </div>
       </div>
