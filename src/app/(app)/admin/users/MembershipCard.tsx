@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useRef, useState, useEffect } from 'react'
-import html2canvas from 'html2canvas'
+import { toPng } from 'html-to-image'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
@@ -18,31 +18,6 @@ const NAVY     = '#0D2137'
 const GOLD     = '#B8882A'
 const GOLD_LT  = '#E8C060'
 const GOLD_GRAD = 'linear-gradient(90deg,#b8872a,#e8c060,#f5d878,#e8c060,#b8872a)'
-
-// Hex overrides injected into the html2canvas clone to avoid oklch/lab errors
-const OKLCH_FIX_CSS = `
-:root {
-  --brand-orange:#F05A22;--brand-orange-light:#fde8e0;
-  --brand-navy:#1B2A6B;--brand-navy-light:#2d4a9e;
-  --brand-pink:#F075B2;--brand-pink-light:#fce4f0;
-  --brand-green:#5E8733;--brand-cream:#fdfaf5;
-  --background:#ffffff;--foreground:#1a1a1a;
-  --card:#ffffff;--card-foreground:#1a1a1a;
-  --popover:#ffffff;--popover-foreground:#1a1a1a;
-  --primary:#F05A22;--primary-foreground:#ffffff;
-  --secondary:#1B2A6B;--secondary-foreground:#ffffff;
-  --muted:#f5f5f8;--muted-foreground:#717180;
-  --accent:#fce4f0;--accent-foreground:#1B2A6B;
-  --destructive:#e03d3d;--destructive-foreground:#ffffff;
-  --border:#e0e0e8;--input:#ebebf0;--ring:#F05A22;
-  --chart-1:#F05A22;--chart-2:#1B2A6B;--chart-3:#F075B2;
-  --chart-4:#5E8733;--chart-5:#cc9933;
-  --sidebar:#141d3a;--sidebar-foreground:#e0e0e8;
-  --sidebar-primary:#F05A22;--sidebar-primary-foreground:#ffffff;
-  --sidebar-accent:#1e2d58;--sidebar-accent-foreground:#e0e0e8;
-  --sidebar-border:#2a3d70;--sidebar-ring:#F05A22;
-}
-`
 
 function initials(name: string) {
   return name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('')
@@ -119,7 +94,7 @@ const PinSvg = (
   </svg>
 )
 
-/** Card face — 720 × 380, all inline styles for html2canvas compatibility */
+/** Card face — 720 × 380, all inline styles */
 function CardContent({ user, logoSrc, nameVer, nameEn, tagline, estYear, cat }: {
   user: User; logoSrc: string | null; nameVer: string; nameEn: string
   tagline: string; estYear: string; cat: string | null
@@ -413,51 +388,33 @@ export function MembershipCardDialog({ user, config, open, onOpenChange, apiBase
     if (!el) return
     setBusy(true)
 
-    // Render the card in a clean, isolated iframe that has ZERO Tailwind/shadcn
-    // CSS — only our safe hex-colour overrides. This is the only reliable way to
-    // prevent html2canvas from encountering lab()/oklch() computed values.
-    const iframe = document.createElement('iframe')
-    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:720px;height:380px;border:0;visibility:hidden;'
-    document.body.appendChild(iframe)
-
     try {
-      const iDoc = iframe.contentDocument!
-      iDoc.open()
-      // Use el.innerHTML (the CardContent div itself) — NOT outerHTML which
-      // carries the preview wrapper's transform:scale().
-      iDoc.write(`<!doctype html><html><head><style>
-        ${OKLCH_FIX_CSS}
-        *{box-sizing:border-box;margin:0;padding:0;}
-        html,body{margin:0;padding:0;width:${CARD_W}px;height:${CARD_H}px;overflow:hidden;background:${CREAM};}
-      </style></head><body>${el.innerHTML}</body></html>`)
-      iDoc.close()
-
-      // Wait for images to load
-      const imgs = Array.from(iDoc.querySelectorAll('img'))
-      await Promise.all(imgs.map(img =>
-        img.complete ? Promise.resolve() : new Promise(res => { img.onload = res; img.onerror = res })
-      ))
-
-      const target = iDoc.body.firstElementChild as HTMLElement
-
-      const canvas = await html2canvas(target, {
-        scale: 3,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: CREAM,
-        logging: false,
+      // html-to-image renders via the browser's own engine (SVG foreignObject),
+      // so the output is pixel-identical to the preview AND it handles modern CSS
+      // colour functions (lab/oklch) natively — no lab() parse error.
+      // `style.transform:none` overrides the preview's scale() so the capture is
+      // always at full 720×380 regardless of how the preview was scaled to fit.
+      const dataUrl = await toPng(el, {
         width: CARD_W,
         height: CARD_H,
+        pixelRatio: 3,
+        cacheBust: true,
+        backgroundColor: CREAM,
+        style: {
+          transform: 'none',
+          transformOrigin: 'top left',
+          borderRadius: '0',
+          margin: '0',
+        },
       })
 
       const link = document.createElement('a')
       link.download = `${user.name.replace(/\s+/g, '-')}-membership.png`
-      link.href = canvas.toDataURL('image/png')
+      link.href = dataUrl
       link.click()
     } catch (err) {
       console.error('Card download failed:', err)
     } finally {
-      document.body.removeChild(iframe)
       setBusy(false)
     }
   }
@@ -515,7 +472,7 @@ export function MembershipCardDialog({ user, config, open, onOpenChange, apiBase
                   Your membership card will be downloaded as a high-resolution PNG (2160 × 1140 px) — ready to print or share.
                 </p>
               </div>
-              {/* Hidden card inside dialog — shares CSS context for correct html2canvas capture */}
+              {/* Hidden full-size card for capture (mobile shows a summary, not the card) */}
               <div aria-hidden style={{ position: 'absolute', top: -(CARD_H + 20), left: 0, pointerEvents: 'none' }}>
                 <div ref={captureRef} style={{ width: CARD_W, height: CARD_H, overflow: 'hidden' }}>
                   <CardContent user={user} logoSrc={logoSrc} nameVer={nameVer} nameEn={nameEn} tagline={tagline} estYear={estYear} cat={cat} />
