@@ -199,11 +199,13 @@ function MembersTab({ eventId, canReview }: { eventId: string; canReview: boolea
                   <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
                     <td className="px-4 py-3">
                       <button onClick={() => setReviewTarget(c)} className="font-medium text-left hover:text-brand-orange">{c.user?.name ?? '—'}</button>
-                      {c.source === 'collected' && (
+                      {c.source === 'collected' ? (
                         <p className="text-[11px] text-muted-foreground">
                           via slip {c.slipNumber ?? '—'}{c.collector ? ` · ${c.collector.name}` : ''}
                         </p>
-                      )}
+                      ) : c.slipNumber ? (
+                        <p className="text-[11px] font-mono text-brand-orange">{c.slipNumber}</p>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 font-semibold tabular-nums whitespace-nowrap">₹{c.amount.toLocaleString('en-IN')}</td>
                     <td className="px-4 py-3 text-xs">{methodLabel(c.paymentMethod)}</td>
@@ -229,9 +231,11 @@ function MembersTab({ eventId, canReview }: { eventId: string; canReview: boolea
                 </div>
                 <span className="font-bold tabular-nums">₹{c.amount.toLocaleString('en-IN')} <span className="text-xs font-normal text-muted-foreground">{methodLabel(c.paymentMethod)}</span></span>
                 <span className="text-xs text-muted-foreground">{fmtDate(c.paymentDate)} · {c.event?.name ?? 'General'}</span>
-                {c.source === 'collected' && (
+                {c.source === 'collected' ? (
                   <span className="text-[11px] text-muted-foreground">via slip {c.slipNumber ?? '—'}{c.collector ? ` · ${c.collector.name}` : ''}</span>
-                )}
+                ) : c.slipNumber ? (
+                  <span className="text-[11px] font-mono text-brand-orange">{c.slipNumber}</span>
+                ) : null}
               </button>
             ))}
           </div>

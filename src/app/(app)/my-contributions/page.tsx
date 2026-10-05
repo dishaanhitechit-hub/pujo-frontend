@@ -184,10 +184,15 @@ export default function MyContributionsPage() {
                         </span>
                       ) : c.status === 'rejected' && c.adminNote ? (
                         <span className="text-red-600">{c.adminNote}</span>
-                      ) : c.note ? <span className="italic">&quot;{c.note}&quot;</span>
-                      : c.hasScreenshot && c.screenshotUrl ? (
-                        <a href={`${BASE}${c.screenshotUrl}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-brand-orange hover:underline"><ImageIcon className="size-3.5" /> screenshot</a>
-                      ) : '—'}
+                      ) : (
+                        <span className="inline-flex flex-col gap-0.5">
+                          {c.slipNumber && <span className="font-mono text-brand-orange">{c.slipNumber}</span>}
+                          {c.note ? <span className="italic">&quot;{c.note}&quot;</span>
+                            : c.hasScreenshot && c.screenshotUrl ? (
+                              <a href={`${BASE}${c.screenshotUrl}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-brand-orange hover:underline"><ImageIcon className="size-3.5" /> screenshot</a>
+                            ) : !c.slipNumber ? '—' : null}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
