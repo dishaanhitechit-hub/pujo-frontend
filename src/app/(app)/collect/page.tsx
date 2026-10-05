@@ -217,7 +217,7 @@ function CollectContent() {
             <Label className="flex items-center gap-1.5"><IndianRupee className="size-3.5 text-muted-foreground" /> Total Amount <span className="text-destructive">*</span></Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
-              <Input type="text" inputMode="decimal" placeholder="500.00" className="pl-7" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <Input type="text" inputMode="decimal" placeholder="00.00" className="pl-7" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
             <p className="text-xs text-muted-foreground">The committed/total amount for this slip. Payments can be collected in parts until it is fully paid.</p>
           </div>
