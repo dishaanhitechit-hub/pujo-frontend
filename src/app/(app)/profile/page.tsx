@@ -310,7 +310,7 @@ function InfoField({
 }) {
   return (
     <div className={`flex flex-col gap-1 ${className ?? ''}`}>
-      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground/70">
+      <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground/70">
         {icon} {label}
       </span>
       <span className={`text-sm font-medium text-brand-navy break-all ${mono ? 'font-mono tracking-tight' : ''}`}>
