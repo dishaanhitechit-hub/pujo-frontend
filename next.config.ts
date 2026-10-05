@@ -17,12 +17,16 @@ try {
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
+      // Backend /media/ paths
       {
         protocol: apiProtocol,
         hostname: apiHostname,
         port:     apiPort,
         pathname: '/media/**',
       },
+      // External URLs stored in club config (logo, hero image, OG image)
+      { protocol: 'https', hostname: '**' },
+      { protocol: 'http',  hostname: '**' },
     ],
   },
 }

@@ -3,6 +3,7 @@ import type {
   PublicEventDetail,
   PublicEventsList,
   PublicCommitteeMember,
+  PublicCommitteeFull,
   PublicAnnouncement,
   PublicSiteConfig,
   PublicGalleryResponse,
@@ -12,6 +13,7 @@ import type {
 } from '@/types'
 
 const BASE = apiConfig.baseUrl
+const ORG_SLUG = process.env.NEXT_PUBLIC_ORG_SLUG ?? ''
 
 /**
  * Convert a relative media path (/media/...) returned by the public API
@@ -20,6 +22,12 @@ const BASE = apiConfig.baseUrl
 export function mediaUrl(path: string | null | undefined): string | null {
   if (!path) return null
   return `${BASE}${path}`
+}
+
+function withOrg(path: string, extraParams?: string): string {
+  const slug = ORG_SLUG ? `orgSlug=${encodeURIComponent(ORG_SLUG)}` : ''
+  const parts = [slug, extraParams].filter(Boolean).join('&')
+  return parts ? `${path}?${parts}` : path
 }
 
 async function publicGet<T>(
@@ -39,7 +47,7 @@ async function publicGet<T>(
 }
 
 export async function getFeaturedEvent(): Promise<PublicEventDetail | null> {
-  return publicGet<PublicEventDetail>(apiConfig.endpoints.public.featuredEvent, 300)
+  return publicGet<PublicEventDetail>(withOrg(apiConfig.endpoints.public.featuredEvent), 300)
 }
 
 export async function listPublicEvents(
@@ -47,42 +55,50 @@ export async function listPublicEvents(
   perPage = 12,
   includeDays = false,
 ): Promise<PublicEventsList | null> {
-  const qs = `?page=${page}&perPage=${perPage}${includeDays ? '&includeDays=true' : ''}`
-  return publicGet<PublicEventsList>(apiConfig.endpoints.public.events + qs, 300)
+  const extra = `page=${page}&perPage=${perPage}${includeDays ? '&includeDays=true' : ''}`
+  return publicGet<PublicEventsList>(withOrg(apiConfig.endpoints.public.events, extra), 300)
 }
 
 export async function getPublicEventBySlug(slug: string): Promise<PublicEventDetail | null> {
-  return publicGet<PublicEventDetail>(apiConfig.endpoints.public.eventBySlug(slug), 300)
+  return publicGet<PublicEventDetail>(withOrg(apiConfig.endpoints.public.eventBySlug(slug)), 300)
 }
 
 export async function getPublicCommittee(eventId?: number): Promise<PublicCommitteeMember[]> {
-  const qs = eventId ? `?eventId=${eventId}` : ''
+  const extra = eventId ? `eventId=${eventId}` : undefined
   const data = await publicGet<PublicCommitteeMember[]>(
-    apiConfig.endpoints.public.committee + qs,
+    withOrg(apiConfig.endpoints.public.committee, extra),
     600,
   )
   return data ?? []
 }
 
+export async function getPublicCommitteeFull(): Promise<PublicCommitteeFull> {
+  const data = await publicGet<PublicCommitteeFull>(
+    withOrg(apiConfig.endpoints.public.committeeFull),
+    600,
+  )
+  return data ?? { yearCommittee: null, eventCommittees: [], legacyMembers: [] }
+}
+
 export async function getPublicAnnouncements(eventId?: number): Promise<PublicAnnouncement[]> {
-  const qs = eventId ? `?eventId=${eventId}` : ''
+  const extra = eventId ? `eventId=${eventId}` : undefined
   const data = await publicGet<PublicAnnouncement[]>(
-    apiConfig.endpoints.public.announcements + qs,
+    withOrg(apiConfig.endpoints.public.announcements, extra),
     300,
   )
   return data ?? []
 }
 
 export async function getSiteConfig(): Promise<PublicSiteConfig | null> {
-  return publicGet<PublicSiteConfig>(apiConfig.endpoints.public.siteConfig, 3600)
+  return publicGet<PublicSiteConfig>(withOrg(apiConfig.endpoints.public.siteConfig), 3600)
 }
 
 export async function listPublicGallery(): Promise<PublicGalleryResponse | null> {
-  return publicGet<PublicGalleryResponse>(apiConfig.endpoints.public.gallery, 300)
+  return publicGet<PublicGalleryResponse>(withOrg(apiConfig.endpoints.public.gallery), 300)
 }
 
 export async function getPublicStats(): Promise<PublicStats | null> {
-  return publicGet<PublicStats>(apiConfig.endpoints.public.stats, 3600)
+  return publicGet<PublicStats>(withOrg(apiConfig.endpoints.public.stats), 3600)
 }
 
 export interface OrgRequestInput {
@@ -107,7 +123,7 @@ export async function submitContactQuery(input: ContactQueryInput): Promise<Cont
   const res = await fetch(`${BASE}${apiConfig.endpoints.contact.submit}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
+    body: JSON.stringify({ ...input, orgSlug: ORG_SLUG }),
     cache: 'no-store',
   })
   const json = await res.json()

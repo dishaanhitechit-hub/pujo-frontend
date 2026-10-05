@@ -11,3 +11,14 @@ export async function updateAdminConfig(input: Partial<AdminConfig>): Promise<Ad
   const res = await apiClient.post<ApiResponse<AdminConfig>>(apiConfig.endpoints.admin.config, input)
   return res.data.data
 }
+
+export async function uploadConfigMedia(file: File): Promise<{ url: string; id: number }> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await apiClient.post<ApiResponse<{ url: string; id: number }>>(
+    apiConfig.endpoints.admin.configMedia,
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  )
+  return res.data.data
+}

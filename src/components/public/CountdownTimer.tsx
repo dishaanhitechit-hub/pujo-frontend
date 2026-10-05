@@ -13,13 +13,13 @@ interface TimeLeft {
 type Phase = 'countdown' | 'live' | 'ended'
 
 export interface CountdownTimerProps {
-  /** ISO datetime with tz offset — overrides festivalConfig.countdownTarget */
-  targetISO?: string
-  /** ISO datetime with tz offset — overrides festivalConfig.festivalEnd */
-  endISO?: string
-  /** Label above the digits — overrides festivalConfig.countdownLabel */
+  /** ISO datetime with tz offset. When null (no event configured) the timer is hidden. */
+  targetISO?: string | null
+  /** ISO datetime with tz offset. When null (no event configured) the timer is hidden. */
+  endISO?: string | null
+  /** Label above the digits */
   label?: string
-  /** Festival name used in live/ended states — overrides festivalConfig.name */
+  /** Festival name used in live/ended states */
   festivalName?: string
 }
 
@@ -40,16 +40,41 @@ export function CountdownTimer({
   label,
   festivalName,
 }: CountdownTimerProps = {}) {
-  const targetMs = useMemo(
-    () => new Date(targetISO ?? festivalConfig.countdownTarget).getTime(),
-    [targetISO],
+  const resolvedTarget = targetISO ?? festivalConfig.countdownTarget
+  const resolvedEnd    = endISO    ?? festivalConfig.festivalEnd
+
+  // If no event is configured at all, show a "coming soon" placeholder
+  if (!resolvedTarget || !resolvedEnd) {
+    return (
+      <div className="text-center space-y-2 py-4">
+        <p className="text-white/50 text-sm italic">Event dates will be announced soon.</p>
+      </div>
+    )
+  }
+
+  return (
+    <CountdownInner
+      targetISO={resolvedTarget}
+      endISO={resolvedEnd}
+      label={label ?? festivalConfig.countdownLabel}
+      festivalName={festivalName ?? festivalConfig.name}
+    />
   )
-  const endMs = useMemo(
-    () => new Date(endISO ?? festivalConfig.festivalEnd).getTime(),
-    [endISO],
-  )
-  const displayLabel  = label       ?? festivalConfig.countdownLabel
-  const displayName   = festivalName ?? festivalConfig.name
+}
+
+function CountdownInner({
+  targetISO,
+  endISO,
+  label,
+  festivalName,
+}: {
+  targetISO: string
+  endISO: string
+  label: string
+  festivalName: string
+}) {
+  const targetMs = useMemo(() => new Date(targetISO).getTime(), [targetISO])
+  const endMs    = useMemo(() => new Date(endISO).getTime(),    [endISO])
 
   const [phase, setPhase] = useState<Phase | null>(null)
   const [time,  setTime]  = useState<TimeLeft | null>(null)
@@ -79,10 +104,10 @@ export function CountdownTimer({
     return (
       <div className="text-center space-y-2">
         <p className="font-heading font-bold text-3xl text-brand-orange">
-          {displayName} is here! 🙏
+          {festivalName} is here! 🙏
         </p>
         <p className="text-white/60 text-sm">
-          Join us in Kolaghat — the celebrations are on!
+          The celebrations are on — join us!
         </p>
       </div>
     )
@@ -93,7 +118,7 @@ export function CountdownTimer({
       <div className="text-center space-y-3">
         <p className="font-heading font-bold text-2xl text-brand-orange">জয় মা দুর্গা 🙏</p>
         <p className="text-white/60 text-sm">
-          {displayName} has concluded.
+          {festivalName} has concluded.
           <br />
           See you next year!
         </p>
@@ -104,7 +129,7 @@ export function CountdownTimer({
   return (
     <div role="timer" aria-live="off">
       <p className="text-center text-white/55 text-[10px] uppercase tracking-[0.28em] font-medium mb-5">
-        {displayLabel}
+        {label}
       </p>
       <div className="flex gap-3 sm:gap-4 justify-center">
         <TimeBox value={time.days}    label="Days" />

@@ -39,7 +39,7 @@ export default async function GalleryPage() {
         <p className="text-brand-orange/80 text-xs uppercase tracking-widest font-semibold mb-3">Memories</p>
         <h1 className="font-heading font-bold text-4xl sm:text-5xl text-white">Gallery</h1>
         <p className="text-white/60 mt-4 max-w-xl mx-auto">
-          Glimpses of joy, colour, and community — moments from Shatadal celebrations across the years.
+          Glimpses of joy, colour, and community — moments from our celebrations across the years.
         </p>
       </div>
 

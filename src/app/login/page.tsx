@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { getDefaultRoute } from '@/config/roles'
-import { siteConfig } from '@/config/site'
 import { firstSetup, getOrgsByEmail, type OrgOption } from '@/lib/api/auth'
 import { saveAuth } from '@/lib/storage'
 import type { ApiError } from '@/types'
@@ -168,15 +167,12 @@ function LoginContent() {
           <div className="absolute bottom-1/4 left-0 w-80 h-80 rounded-full bg-brand-pink/5 blur-3xl" />
         </div>
         <Link href="/" className="relative flex items-center gap-3">
-          <Image src="/assets/branding/club-logo.jpeg" alt={siteConfig.nameEn} width={44} height={44} className="rounded-lg bg-white/5 p-0.5" />
-          <div>
-            <p className="font-bengali font-bold text-white text-lg">{siteConfig.name}</p>
-            <p className="text-white/40 text-xs tracking-widest uppercase">Kolaghat</p>
-          </div>
+          <Image src="/assets/branding/club-logo.jpeg" alt="Logo" width={44} height={44} className="rounded-lg bg-white/5 p-0.5" />
+          <p className="font-bold text-white text-base tracking-wide">PujoPay</p>
         </Link>
         <div className="relative">
           <p className="text-brand-orange/80 text-xs uppercase tracking-widest font-semibold mb-3">
-            {siteConfig.nav.appName}
+            PujoPay
           </p>
           <h1 className="font-heading font-bold text-4xl text-white leading-tight mb-4">
             Member Portal
@@ -187,7 +183,7 @@ function LoginContent() {
           </p>
         </div>
         <p className="relative text-white/25 text-xs">
-          © {new Date().getFullYear()} {siteConfig.fullName}
+          © {new Date().getFullYear()} PujoPay
         </p>
       </div>
 
@@ -196,8 +192,8 @@ function LoginContent() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <Link href="/" className="lg:hidden flex items-center gap-2 mb-8">
-            <Image src="/assets/branding/club-logo.jpeg" alt={siteConfig.nameEn} width={36} height={36} className="rounded-md" />
-            <p className="font-bengali font-bold text-brand-navy">{siteConfig.name}</p>
+            <Image src="/assets/branding/club-logo.jpeg" alt="Logo" width={36} height={36} className="rounded-md" />
+            <p className="font-bold text-brand-navy">PujoPay</p>
           </Link>
 
           {step === 'login' ? (

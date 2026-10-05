@@ -1,20 +1,36 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { siteConfig } from '@/config/site'
+
 import { publicNav } from '@/config/navigation'
-import { getSiteConfig } from '@/lib/api/public'
-import { MapPin, Phone, Mail, ExternalLink } from 'lucide-react'
+import { getSiteConfig, mediaUrl } from '@/lib/api/public'
+import { MapPin, Phone, Mail, ExternalLink, Flower2 } from 'lucide-react'
 import type { ReactNode } from 'react'
+
+function resolveUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) return url
+  return mediaUrl(url)
+}
 
 export async function SiteFooter() {
   const apiCfg = await getSiteConfig()
+  const club = apiCfg?.club
 
-  // Merge API values with local siteConfig fallbacks
-  const phone    = apiCfg?.contact.phone    ?? siteConfig.contact.phone
-  const email    = apiCfg?.contact.email    ?? siteConfig.contact.email
-  const facebook  = apiCfg?.social.facebook  ?? siteConfig.social.facebook
-  const instagram = apiCfg?.social.instagram ?? siteConfig.social.instagram
-  const youtube   = apiCfg?.social.youtube   ?? siteConfig.social.youtube
+  const logoSrc = resolveUrl(club?.logoUrl) ?? null
+  const nameVernacular = club?.nameVernacular ?? ''
+  const nameEn = club?.nameEn ?? ''
+  const tagline = club?.tagline ?? null
+  const description = club?.description ?? null
+
+  const phone    = apiCfg?.contact.phone    ?? null
+  const email    = apiCfg?.contact.email    ?? null
+  const address  = apiCfg?.contact.address  ?? null
+  const facebook  = apiCfg?.social.facebook  ?? null
+  const instagram = apiCfg?.social.instagram ?? null
+  const youtube   = apiCfg?.social.youtube   ?? null
+  const fullName = nameEn
+    ? (tagline ? `${nameEn}, ${tagline}` : nameEn)
+    : null
 
   return (
     <footer className="bg-brand-navy text-white/80">
@@ -30,19 +46,25 @@ export async function SiteFooter() {
           {/* Brand */}
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
-              <Image
-                src="/assets/branding/club-logo.jpeg"
-                alt={`${siteConfig.nameEn} logo`}
-                width={48}
-                height={48}
-                className="rounded-sm object-contain bg-white p-0.5"
-              />
+              {logoSrc ? (
+                <Image
+                  src={logoSrc}
+                  alt={`${nameEn} logo`}
+                  width={48}
+                  height={48}
+                  className="rounded-sm object-contain bg-white p-0.5"
+                />
+              ) : (
+                <div className="size-12 rounded-sm bg-brand-orange/20 flex items-center justify-center shrink-0">
+                  <Flower2 className="size-6 text-brand-orange" />
+                </div>
+              )}
               <div>
-                <p className="font-bengali font-bold text-xl text-white">{siteConfig.name}</p>
-                <p className="text-xs text-white/50 tracking-widest uppercase">Kolaghat</p>
+                <p className="font-bengali font-bold text-xl text-white">{nameVernacular}</p>
+                <p className="text-xs text-white/50 tracking-widest uppercase">{tagline}</p>
               </div>
             </div>
-            <p className="text-sm leading-relaxed">{siteConfig.description}</p>
+            <p className="text-sm leading-relaxed">{description}</p>
             {(facebook || instagram || youtube) && (
               <div className="flex gap-3">
                 {facebook  && <SocialLink href={facebook}  label="Facebook"><ExternalLink className="size-4" /></SocialLink>}
@@ -70,10 +92,10 @@ export async function SiteFooter() {
           <div>
             <h3 className="text-white font-semibold text-sm uppercase tracking-wider mb-4">Contact</h3>
             <ul className="flex flex-col gap-3">
-              {siteConfig.contact.address && (
+              {address && (
                 <li className="flex items-start gap-2 text-sm">
                   <MapPin className="size-4 text-brand-orange mt-0.5 shrink-0" />
-                  <span>{siteConfig.contact.address}</span>
+                  <span>{address}</span>
                 </li>
               )}
               {phone && (
@@ -88,7 +110,7 @@ export async function SiteFooter() {
                   <a href={`mailto:${email}`} className="hover:text-brand-orange transition-colors">{email}</a>
                 </li>
               )}
-              {!phone && !email && (
+              {!address && !phone && !email && (
                 <li className="text-sm text-white/40 italic">Contact details coming soon.</li>
               )}
             </ul>
@@ -96,7 +118,7 @@ export async function SiteFooter() {
         </div>
 
         <div className="mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-white/40">
-          <p>© {new Date().getFullYear()} {siteConfig.fullName}. All rights reserved.</p>
+          <p>© {new Date().getFullYear()}{fullName ? ` ${fullName}` : ''}. All rights reserved.</p>
           <p>
             Designed &amp; developed by{' '}
             <a href="tel:+919832661429" className="hover:text-white/70 transition-colors">Ankan Das</a>
@@ -104,7 +126,7 @@ export async function SiteFooter() {
             <a href="tel:+919339243759" className="hover:text-white/70 transition-colors">Soumyajit Maity</a>
           </p>
           <Link href="/login" className="hover:text-white/70 transition-colors">
-            Collector Portal
+            Member Portal
           </Link>
         </div>
       </div>

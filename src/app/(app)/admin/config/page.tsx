@@ -1,17 +1,19 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Settings, Phone, Mail, MapPin, Globe, Save, Heart, HeartHandshake, Hash } from 'lucide-react'
+import { Loader2, Settings, Phone, Mail, MapPin, Globe, Save, Heart, HeartHandshake, Hash, Building2, Upload, X, ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { RoleGuard } from '@/lib/auth/role-guard'
-import { getAdminConfig, updateAdminConfig } from '@/lib/api/admin'
+import { getAdminConfig, updateAdminConfig, uploadConfigMedia } from '@/lib/api/admin'
+import { apiConfig } from '@/config/api'
 import type { ApiError } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -47,6 +49,20 @@ const schema = z.object({
   // Member ID format
   memberIdPrefix:         z.string().max(20).optional(),
   memberIdDigits:         z.string().optional(),
+  // Club identity
+  clubNameVernacular:     z.string().max(100).optional(),
+  clubNameEn:             z.string().max(100).optional(),
+  clubTagline:            z.string().max(200).optional(),
+  clubDescription:        z.string().max(500).optional(),
+  clubCity:               z.string().max(100).optional(),
+  clubState:              z.string().max(100).optional(),
+  clubFoundingYear:       z.string().max(4).optional(),
+  clubLogoUrl:            z.string().max(500).optional(),
+  clubHeroImageUrl:       z.string().max(500).optional(),
+  clubAboutText:          z.string().max(5000).optional(),
+  clubSiteUrl:            z.string().max(300).optional(),
+  clubMetaDescription:    z.string().max(300).optional(),
+  clubOgImageUrl:         z.string().max(500).optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -67,6 +83,8 @@ function ConfigContent() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<FormData>({ resolver: zodResolver(schema) })
 
@@ -95,6 +113,19 @@ function ConfigContent() {
           contributionBankBranch:    c['contribution.bank_branch']   ?? '',
           memberIdPrefix:            c['member_id.prefix']           ?? '',
           memberIdDigits:            c['member_id.digits']           ?? '4',
+          clubNameVernacular:        c['club.name_vernacular']       ?? '',
+          clubNameEn:                c['club.name_en']               ?? '',
+          clubTagline:               c['club.tagline']               ?? '',
+          clubDescription:           c['club.description']           ?? '',
+          clubCity:                  c['club.city']                  ?? '',
+          clubState:                 c['club.state']                 ?? '',
+          clubFoundingYear:          c['club.founding_year']         ?? '',
+          clubLogoUrl:               c['club.logo_url']              ?? '',
+          clubHeroImageUrl:          c['club.hero_image_url']        ?? '',
+          clubAboutText:             c['club.about_text']            ?? '',
+          clubSiteUrl:               c['club.site_url']              ?? '',
+          clubMetaDescription:       c['club.meta_description']      ?? '',
+          clubOgImageUrl:            c['club.og_image_url']          ?? '',
         })
       })
       .catch((err: ApiError) => setError(err.message ?? 'Failed to load configuration.'))
@@ -115,6 +146,19 @@ function ConfigContent() {
         contributionBankBranch:    data.contributionBankBranch    ?? '',
         memberIdPrefix:            data.memberIdPrefix            ?? '',
         memberIdDigits:            data.memberIdDigits            ?? '4',
+        clubNameVernacular:        data.clubNameVernacular        ?? '',
+        clubNameEn:                data.clubNameEn                ?? '',
+        clubTagline:               data.clubTagline               ?? '',
+        clubDescription:           data.clubDescription           ?? '',
+        clubCity:                  data.clubCity                  ?? '',
+        clubState:                 data.clubState                 ?? '',
+        clubFoundingYear:          data.clubFoundingYear          ?? '',
+        clubLogoUrl:               data.clubLogoUrl               ?? '',
+        clubHeroImageUrl:          data.clubHeroImageUrl          ?? '',
+        clubAboutText:             data.clubAboutText             ?? '',
+        clubSiteUrl:               data.clubSiteUrl               ?? '',
+        clubMetaDescription:       data.clubMetaDescription       ?? '',
+        clubOgImageUrl:            data.clubOgImageUrl            ?? '',
       })
       reset(data)
       toast.success('Configuration saved successfully.')
@@ -250,6 +294,84 @@ function ConfigContent() {
             </Field>
           </Section>
 
+          {/* Club Identity */}
+          <Section icon={<Building2 className="size-4 text-brand-orange" />} title="Club Identity"
+            hint="Shown on the public website — homepage, about page, header, footer, and metadata.">
+            <Field label="Club Name (Vernacular)" error={errors.clubNameVernacular?.message}
+              hint="The name in your local language (e.g. Bengali), used in the header and footer.">
+              <Input id="club-name-v" placeholder="শতদল" {...register('clubNameVernacular')} />
+            </Field>
+            <Field label="Club Name (English)" error={errors.clubNameEn?.message}
+              hint="The English name shown across the public site.">
+              <Input id="club-name-en" placeholder="Shatadal" {...register('clubNameEn')} />
+            </Field>
+            <Field label="Tagline / Location" error={errors.clubTagline?.message}
+              hint="Short descriptor shown next to the name, e.g. the city or a brief tagline.">
+              <Input id="club-tagline" placeholder="Kolaghat · Purba Medinipur" {...register('clubTagline')} />
+            </Field>
+            <Field label="Short Description" error={errors.clubDescription?.message}
+              hint="One-line description shown in the footer and metadata.">
+              <Input id="club-desc" placeholder="A community cultural club celebrating togetherness." {...register('clubDescription')} />
+            </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="City" error={errors.clubCity?.message}>
+                <Input id="club-city" placeholder="Kolaghat" {...register('clubCity')} />
+              </Field>
+              <Field label="State" error={errors.clubState?.message}>
+                <Input id="club-state" placeholder="West Bengal" {...register('clubState')} />
+              </Field>
+            </div>
+            <Field label="Founding Year" error={errors.clubFoundingYear?.message}
+              hint="4-digit year the club was established.">
+              <Input id="club-year" placeholder="1985" maxLength={4} {...register('clubFoundingYear')} />
+            </Field>
+            <Field label="Club Logo" error={errors.clubLogoUrl?.message}
+              hint="The logo shown in the header, footer, and homepage.">
+              <ImageUploadField
+                value={watch('clubLogoUrl') ?? ''}
+                onChange={(url) => setValue('clubLogoUrl', url, { shouldDirty: true })}
+                placeholder="https://… or upload below"
+                previewClass="h-14 w-14 object-contain rounded-lg"
+              />
+            </Field>
+            <Field label="Hero / Background Image" error={errors.clubHeroImageUrl?.message}
+              hint="Full-page background shown on the homepage hero.">
+              <ImageUploadField
+                value={watch('clubHeroImageUrl') ?? ''}
+                onChange={(url) => setValue('clubHeroImageUrl', url, { shouldDirty: true })}
+                placeholder="https://… or upload below"
+                previewClass="h-20 w-full object-cover rounded-lg"
+              />
+            </Field>
+            <Field label="OG / Social Share Image" error={errors.clubOgImageUrl?.message}
+              hint="Image shown when shared on social media (1200×630 px recommended).">
+              <ImageUploadField
+                value={watch('clubOgImageUrl') ?? ''}
+                onChange={(url) => setValue('clubOgImageUrl', url, { shouldDirty: true })}
+                placeholder="https://… or upload below"
+                previewClass="h-16 w-full object-cover rounded-lg"
+              />
+            </Field>
+            <Field label="Website URL" error={errors.clubSiteUrl?.message}
+              hint="The canonical public URL of this site (used in Open Graph metadata).">
+              <Input id="club-site" placeholder="https://shatadal.in" {...register('clubSiteUrl')} />
+            </Field>
+            <Field label="Meta Description" error={errors.clubMetaDescription?.message}
+              hint="SEO description shown in Google results (under 160 chars recommended).">
+              <Input id="club-meta-desc" placeholder="Shatadal Kolaghat — celebrating Durga Puja and community since 1985." {...register('clubMetaDescription')} />
+            </Field>
+            <Field label="About Text" error={errors.clubAboutText?.message}
+              hint="Full about-page text. Separate paragraphs with a blank line. Leave blank to use the default.">
+              <Textarea
+                id="club-about"
+                rows={6}
+                placeholder={"Write your club's story here...\n\nSeparate paragraphs with a blank line."}
+                className="resize-y"
+                {...register('clubAboutText')}
+              />
+            </Field>
+          </Section>
+
           <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 text-xs text-blue-800">
             <strong>Note:</strong> The UPI ID is shown on all QR code payment pages and receipts.
             Set this before allowing collectors to start collecting payments.
@@ -332,3 +454,98 @@ const PhoneInput = React.forwardRef<
     />
   </div>
 ))
+
+function resolvePreviewUrl(value: string): string | null {
+  if (!value) return null
+  if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('//')) return value
+  if (value.startsWith('/media/')) return `${apiConfig.baseUrl}${value}`
+  return null
+}
+
+function ImageUploadField({
+  value,
+  onChange,
+  placeholder,
+  previewClass,
+}: {
+  value: string
+  onChange: (url: string) => void
+  placeholder?: string
+  previewClass?: string
+}) {
+  const [uploading, setUploading] = useState(false)
+  const [localPreview, setLocalPreview] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const previewSrc = localPreview ?? resolvePreviewUrl(value)
+
+  async function handleFile(file: File) {
+    const local = URL.createObjectURL(file)
+    setLocalPreview(local)
+    setUploading(true)
+    try {
+      const result = await uploadConfigMedia(file)
+      onChange(result.url)
+    } catch (err) {
+      toast.error((err as ApiError).message ?? 'Upload failed. Please try again.')
+      setLocalPreview(null)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {previewSrc && (
+        <div className="relative inline-flex items-start gap-2 p-2 rounded-lg border border-border bg-muted/30">
+          <img
+            src={previewSrc}
+            alt="Preview"
+            className={previewClass ?? 'h-16 w-auto object-contain rounded'}
+          />
+          <button
+            type="button"
+            onClick={() => { onChange(''); setLocalPreview(null) }}
+            className="absolute top-1 right-1 size-5 rounded-full bg-destructive/80 text-white flex items-center justify-center hover:bg-destructive transition-colors"
+            title="Remove image"
+          >
+            <X className="size-3" />
+          </button>
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Input
+          value={value}
+          onChange={(e) => { setLocalPreview(null); onChange(e.target.value) }}
+          placeholder={placeholder ?? 'https://…'}
+          className="flex-1 text-xs"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="shrink-0 gap-1.5"
+        >
+          {uploading
+            ? <Loader2 className="size-3.5 animate-spin" />
+            : <Upload className="size-3.5" />
+          }
+          {uploading ? 'Uploading…' : 'Upload'}
+        </Button>
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) handleFile(file)
+          e.target.value = ''
+        }}
+      />
+    </div>
+  )
+}

@@ -2,8 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
-import { siteConfig } from '@/config/site'
+import { ArrowRight, Flower2 } from 'lucide-react'
 import { festivalConfig } from '@/config/festival'
 
 function fmtDate(dateStr: string, opts: Intl.DateTimeFormatOptions): string {
@@ -22,32 +21,67 @@ export interface HeroSectionProps {
   startDate?: string | null
   /** YYYY-MM-DD end date — overrides last day from festivalConfig */
   endDate?: string | null
+  /** Club logo URL (fully resolved). When null a generic icon is shown. */
+  clubLogoUrl?: string | null
+  /** Club hero/background image URL (fully resolved). When null a gradient is shown. */
+  clubHeroImageUrl?: string | null
+  /** Club name in local language */
+  clubNameVernacular?: string | null
+  /** Club name in English */
+  clubNameEn?: string | null
+  /** Short location / tagline (e.g. "Kolaghat · West Bengal") */
+  clubLocation?: string | null
 }
 
-export function HeroSection({ eventName, year, startDate, endDate }: HeroSectionProps = {}) {
+export function HeroSection({
+  eventName,
+  year,
+  startDate,
+  endDate,
+  clubLogoUrl,
+  clubHeroImageUrl,
+  clubNameVernacular,
+  clubNameEn,
+  clubLocation,
+}: HeroSectionProps = {}) {
   const displayName = eventName ?? festivalConfig.name
   const displayYear = year ?? festivalConfig.year
 
-  const firstDateStr = startDate ?? festivalConfig.days[0].date
-  const lastDateStr  = endDate   ?? festivalConfig.days[festivalConfig.days.length - 1].date
+  const firstDateStr = startDate ?? festivalConfig.days[0]?.date ?? null
+  const lastDateStr  = endDate   ?? festivalConfig.days[festivalConfig.days.length - 1]?.date ?? null
 
-  const displayStart = fmtDate(firstDateStr, { day: 'numeric', month: 'long' })
-  const displayEnd   = fmtDate(lastDateStr,  { day: 'numeric', month: 'long', year: 'numeric' })
+  const displayStart = firstDateStr ? fmtDate(firstDateStr, { day: 'numeric', month: 'long' }) : null
+  const displayEnd   = lastDateStr  ? fmtDate(lastDateStr,  { day: 'numeric', month: 'long', year: 'numeric' }) : null
+
+  const nameVernacular = clubNameVernacular ?? ''
+  const nameEn         = clubNameEn ?? ''
+  const location       = clubLocation ?? ''
+  const taglineText    = [nameEn, location.split(' · ')[0]].filter(Boolean).join(' · ')
 
   return (
     <section
       className="relative h-screen min-h-[600px] overflow-hidden"
-      aria-label={`${siteConfig.nameEn} — ${displayName} ${displayYear}`}
+      aria-label={`${nameEn || displayName} — ${displayName} ${displayYear}`}
     >
-      {/* Rupnarayan River, Deulti — near Kolaghat. CC0 public domain. */}
-      <Image
-        src="/assets/branding/rupnarayan-hero.webp"
-        alt="Rupnarayan River, near Kolaghat, West Bengal"
-        fill
-        priority
-        className="object-cover object-center"
-        sizes="100vw"
-      />
+      {/* Background — hero image or gradient fallback */}
+      {clubHeroImageUrl ? (
+        <Image
+          src={clubHeroImageUrl}
+          alt={`${nameEn} hero background`}
+          fill
+          priority
+          className="object-cover object-center"
+          sizes="100vw"
+        />
+      ) : (
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(135deg, oklch(0.12 0.09 252) 0%, oklch(0.16 0.08 258) 45%, oklch(0.10 0.07 265) 100%)',
+          }}
+        />
+      )}
 
       {/* Cinematic overlay */}
       <div
@@ -78,28 +112,40 @@ export function HeroSection({ eventName, year, startDate, endDate }: HeroSection
           >
             {/* Club logo + location */}
             <div className="flex items-center gap-3 mb-7">
-              <Image
-                src="/assets/branding/club-logo.jpeg"
-                alt={siteConfig.nameEn}
-                width={40}
-                height={40}
-                className="rounded-full ring-1 ring-white/15 shrink-0"
-              />
-              <p className="text-[9px] font-bold uppercase tracking-[0.30em] text-brand-orange/80">
-                Kolaghat · Purba Medinipur
-              </p>
+              {clubLogoUrl ? (
+                <Image
+                  src={clubLogoUrl}
+                  alt={nameEn}
+                  width={40}
+                  height={40}
+                  className="rounded-full ring-1 ring-white/15 shrink-0 object-contain"
+                />
+              ) : (
+                <div className="size-10 rounded-full bg-brand-orange/20 ring-1 ring-white/15 flex items-center justify-center shrink-0">
+                  <Flower2 className="size-5 text-brand-orange" />
+                </div>
+              )}
+              {location && (
+                <p className="text-[9px] font-bold uppercase tracking-[0.30em] text-brand-orange/80">
+                  {location}
+                </p>
+              )}
             </div>
 
             {/* Primary identity */}
-            <h1
-              className="font-bengali font-bold text-white leading-[0.88] mb-2"
-              style={{ fontSize: 'clamp(2.8rem, 5.2vw, 4rem)' }}
-            >
-              {siteConfig.name}
-            </h1>
-            <p className="text-[10px] uppercase tracking-[0.44em] text-white/35 font-semibold mb-5">
-              Shatadal · Kolaghat
-            </p>
+            {nameVernacular && (
+              <h1
+                className="font-bengali font-bold text-white leading-[0.88] mb-2"
+                style={{ fontSize: 'clamp(2.8rem, 5.2vw, 4rem)' }}
+              >
+                {nameVernacular}
+              </h1>
+            )}
+            {taglineText && (
+              <p className="text-[10px] uppercase tracking-[0.44em] text-white/35 font-semibold mb-5">
+                {taglineText}
+              </p>
+            )}
             <p className="text-[13px] text-white/50 leading-relaxed mb-8 max-w-[272px]">
               A community rooted in culture, tradition &amp; togetherness.
             </p>
@@ -121,9 +167,11 @@ export function HeroSection({ eventName, year, startDate, endDate }: HeroSection
               >
                 {displayName}
               </p>
-              <p className="text-[12px] text-white/42 tracking-wide">
-                {displayStart} – {displayEnd}
-              </p>
+              {displayStart && displayEnd && (
+                <p className="text-[12px] text-white/42 tracking-wide">
+                  {displayStart} – {displayEnd}
+                </p>
+              )}
             </div>
 
             {/* CTA */}

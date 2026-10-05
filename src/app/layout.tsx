@@ -4,8 +4,8 @@ import { Geist, Geist_Mono, Playfair_Display, Noto_Sans_Bengali } from 'next/fon
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/lib/auth/auth-provider'
 import './globals.css'
-import { siteConfig } from '@/config/site'
 import { festivalConfig } from '@/config/festival'
+import { getSiteConfig } from '@/lib/api/public'
 
 const geistSans = Geist({
   variable: '--font-sans',
@@ -32,22 +32,39 @@ const notoSansBengali = Noto_Sans_Bengali({
   display: 'swap',
 })
 
-const defaultTitle = `${siteConfig.nameEn} Kolaghat — ${festivalConfig.name} ${festivalConfig.year}`
+export async function generateMetadata(): Promise<Metadata> {
+  const cfg = await getSiteConfig()
+  const club = cfg?.club
 
-export const metadata: Metadata = {
-  title: {
-    default: defaultTitle,
-    template: `%s | ${siteConfig.nameEn}`,
-  },
-  description: siteConfig.meta.description,
-  metadataBase: new URL(siteConfig.meta.url),
-  openGraph: {
-    title: defaultTitle,
-    description: siteConfig.meta.description,
-    siteName: siteConfig.fullName,
-    locale: 'en_IN',
-    type: 'website',
-  },
+  const nameEn    = club?.nameEn    ?? ''
+  const tagline   = club?.tagline   ?? null
+  const fullName  = nameEn
+    ? (tagline ? `${nameEn}, ${tagline}` : nameEn)
+    : null
+  const description = club?.metaDescription ?? club?.description ?? undefined
+  const siteUrl   = club?.siteUrl   ?? null
+  const ogImage   = club?.ogImageUrl ?? null
+
+  const defaultTitle = nameEn
+    ? `${nameEn}${tagline ? ` ${tagline} — ` : ' — '}${festivalConfig.name} ${festivalConfig.year}`
+    : `${festivalConfig.name} ${festivalConfig.year}`
+
+  return {
+    title: {
+      default: defaultTitle,
+      template: nameEn ? `%s | ${nameEn}` : '%s',
+    },
+    description,
+    ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
+    openGraph: {
+      title: defaultTitle,
+      description,
+      ...(fullName ? { siteName: fullName } : {}),
+      locale: 'en_IN',
+      type: 'website',
+      images: ogImage ? [{ url: ogImage }] : undefined,
+    },
+  }
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -20,6 +20,7 @@ export const apiConfig = {
     },
     admin: {
       config: '/api/admin/config',
+      configMedia: '/api/admin/config/media',
       tokenConfig: '/api/admin/token-config',
       tokenConfigReset: '/api/admin/token-config/reset',
     },
@@ -92,6 +93,7 @@ export const apiConfig = {
       stats:         '/api/public/stats',
       announcements: '/api/public/announcements',
       committee:     '/api/public/committee',
+      committeeFull: '/api/public/committee/full',
       platformUpi:   '/api/public/platform-upi',
       platformUpiQr: '/api/public/platform-upi-qr',
       orgRequest:    '/api/public/org-request',

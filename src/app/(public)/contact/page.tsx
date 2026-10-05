@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
 import { SectionHeading } from '@/components/public/SectionHeading'
 import { ContactQueryForm } from '@/components/public/ContactQueryForm'
-import { siteConfig } from '@/config/site'
-import { festivalConfig } from '@/config/festival'
 import { getFeaturedEvent, getSiteConfig } from '@/lib/api/public'
 import { MapPin, Phone, Mail, MessageCircle, Clock } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -13,29 +11,31 @@ export const metadata: Metadata = { title: 'Contact' }
 export default async function ContactPage() {
   const [apiConfig, featured] = await Promise.all([getSiteConfig(), getFeaturedEvent()])
 
-  // Merge API values with local fallbacks
-  const phone    = apiConfig?.contact.phone    ?? siteConfig.contact.phone
-  const email    = apiConfig?.contact.email    ?? siteConfig.contact.email
-  const whatsapp = apiConfig?.contact.whatsapp ?? siteConfig.contact.whatsapp
-  const address  = apiConfig?.contact.address  ?? siteConfig.contact.address
+  const phone    = apiConfig?.contact.phone    ?? null
+  const email    = apiConfig?.contact.email    ?? null
+  const whatsapp = apiConfig?.contact.whatsapp ?? null
+  const address  = apiConfig?.contact.address  ?? null
 
   const supportTitle     = apiConfig?.support?.title         ?? 'Support Our Puja'
-  const supportDesc      = apiConfig?.support?.description   ?? `Want to contribute to ${siteConfig.fullName}? Contact us for details about donations, sponsorships, or volunteering opportunities.`
-  const supportWaMessage = apiConfig?.support?.whatsappMessage ?? `I would like to support ${siteConfig.fullName}`
+  const supportDesc      = apiConfig?.support?.description   ?? 'Want to contribute? Contact us for details about donations, sponsorships, or volunteering opportunities.'
+  const supportWaMessage = apiConfig?.support?.whatsappMessage ?? 'I would like to support your event'
 
-  // Derive visit card from featured event — no admin config needed, the event IS the source of truth
   const visitCardTitle = featured?.name ? `Visit Us — ${featured.name}` : 'Visit Us During Our Events'
-  const firstDate = featured?.days[0]?.date ?? featured?.startDate ?? festivalConfig.days[0].date
-  const lastDate  = featured?.days[featured.days.length - 1]?.date ?? featured?.endDate ?? festivalConfig.days[festivalConfig.days.length - 1].date
-  const hasDates  = !!(featured?.startDate ?? featured?.days?.[0]?.date)
+  const firstDate = featured?.days[0]?.date ?? featured?.startDate ?? null
+  const lastDate  = featured?.days[(featured?.days?.length ?? 0) - 1]?.date ?? featured?.endDate ?? null
+  const hasDates  = !!firstDate
 
-  const startStr = new Date(firstDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
-    month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata',
-  })
-  const endStr = new Date(lastDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
-    month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata',
-  })
-  const visitLocation = featured?.location ?? address ?? siteConfig.contact.city
+  const startStr = firstDate
+    ? new Date(firstDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
+        month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata',
+      })
+    : null
+  const endStr = lastDate
+    ? new Date(lastDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
+        month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata',
+      })
+    : null
+  const visitLocation = featured?.location ?? address ?? null
 
   return (
     <>

@@ -1,13 +1,12 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { siteConfig } from '@/config/site'
 
 export default function NotFound() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white px-6 text-center">
       <Image
         src="/assets/branding/club-logo.jpeg"
-        alt={siteConfig.nameEn}
+        alt="Logo"
         width={64}
         height={64}
         className="rounded-xl mb-6 opacity-60"

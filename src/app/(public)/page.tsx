@@ -1,9 +1,9 @@
 import Link from 'next/link'
-import { siteConfig } from '@/config/site'
+
 import { festivalConfig } from '@/config/festival'
-import { getFeaturedEvent, listPublicGallery, getPublicStats, mediaUrl } from '@/lib/api/public'
+import { getFeaturedEvent, listPublicGallery, getPublicStats, getSiteConfig, mediaUrl } from '@/lib/api/public'
 import Image from 'next/image'
-import type { PublicGalleryImage } from '@/types'
+import type { PublicGalleryImage, PublicClubConfig } from '@/types'
 import { CountdownTimer } from '@/components/public/CountdownTimer'
 import { SectionHeading } from '@/components/public/SectionHeading'
 import { HeroSection } from '@/components/public/hero/HeroSection'
@@ -31,24 +31,32 @@ function fmtFestivalDate(dateStr: string, opts: Intl.DateTimeFormatOptions): str
 }
 
 /** Derive a countdown target ISO string from featured event data. */
-function countdownTarget(days: PublicEventDay[], startDate: string | null): string {
+function countdownTarget(days: PublicEventDay[], startDate: string | null): string | null {
   const firstDate = days[0]?.date ?? startDate
   return firstDate ? firstDate + 'T06:00:00+05:30' : festivalConfig.countdownTarget
 }
 
 /** Derive a countdown end ISO string from featured event data. */
-function countdownEnd(days: PublicEventDay[], endDate: string | null): string {
+function countdownEnd(days: PublicEventDay[], endDate: string | null): string | null {
   const lastDate = days[days.length - 1]?.date ?? endDate
   return lastDate ? lastDate + 'T23:59:59+05:30' : festivalConfig.festivalEnd
 }
 
+function resolveUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) return url
+  return mediaUrl(url)
+}
+
 export default async function HomePage() {
-  const [featured, galleryResult, stats] = await Promise.all([
+  const [featured, galleryResult, stats, siteCfg] = await Promise.all([
     getFeaturedEvent(),
     listPublicGallery(),
     getPublicStats(),
+    getSiteConfig(),
   ])
   const galleryImages = galleryResult?.images.slice(0, 6) ?? []
+  const club = siteCfg?.club ?? null
 
   const heroProps = featured
     ? {
@@ -58,6 +66,16 @@ export default async function HomePage() {
         endDate:   featured.days[featured.days.length - 1]?.date ?? featured.endDate,
       }
     : {}
+
+  const clubHeroProps = {
+    clubLogoUrl:         resolveUrl(club?.logoUrl),
+    clubHeroImageUrl:    resolveUrl(club?.heroImageUrl),
+    clubNameVernacular:  club?.nameVernacular ?? null,
+    clubNameEn:          club?.nameEn ?? null,
+    clubLocation:        club?.city
+      ? (club.state ? `${club.city} · ${club.state}` : club.city)
+      : null,
+  }
 
   const cdTarget = featured
     ? countdownTarget(featured.days, featured.startDate)
@@ -69,39 +87,48 @@ export default async function HomePage() {
 
   const activeDays = featured?.days?.length ? featured.days : null
 
+  const nameEn    = club?.nameEn   ?? ''
+  const tagline   = club?.tagline  ?? null
+  const city      = club?.city     ?? ''
+  const address   = siteCfg?.contact.address ?? null
+
   return (
     <>
-      <HeroSection {...heroProps} />
-      <AboutSection />
+      <HeroSection {...heroProps} {...clubHeroProps} />
+      <AboutSection nameEn={nameEn} tagline={tagline ?? ''} city={city} />
       <CountdownSection
         targetISO={cdTarget}
         endISO={cdEnd}
         festivalName={cdName}
         year={featured?.year ?? festivalConfig.year}
         days={activeDays}
-        fallbackDays={festivalConfig.days}
       />
       <PujaSection days={activeDays} />
-      <EventsSection />
+      <EventsSection nameEn={nameEn} city={city} />
       <GallerySection images={galleryImages} />
       <CommunitySection
         donorCount={stats?.donorCount ?? null}
         oldestYear={stats?.oldestYear ?? null}
         festivalDays={activeDays?.length ?? null}
+        nameEn={nameEn}
+        tagline={tagline ?? ''}
+        foundingYear={club?.foundingYear ? parseInt(club.foundingYear) : null}
       />
-      <ContributionCTA />
+      <ContributionCTA nameEn={nameEn} tagline={tagline ?? ''} />
       <ContactSection
         startDate={featured?.days[0]?.date ?? featured?.startDate ?? null}
         endDate={featured?.days[featured?.days.length - 1]?.date ?? featured?.endDate ?? null}
         year={featured?.year ?? festivalConfig.year}
         eventName={featured?.name ?? null}
+        nameEn={nameEn}
+        address={address}
       />
     </>
   )
 }
 
 /* ── About ─────────────────────────────────────────────────────── */
-function AboutSection() {
+function AboutSection({ nameEn, tagline, city }: { nameEn: string; tagline: string; city: string }) {
   const pillars = [
     { icon: Flower2, label: 'Tradition', desc: 'Decades of cultural heritage' },
     { icon: Heart,   label: 'Devotion',  desc: 'Spiritual celebrations' },
@@ -116,12 +143,12 @@ function AboutSection() {
           <div>
             <SectionHeading
               label="Our Story"
-              title={`শতদল — The Lotus`}
-              subtitle="Like the lotus that blooms from still waters, Shatadal blooms every year to celebrate Ma Durga with grandeur, devotion, and the collective spirit of the Kolaghat community."
+              title={`${nameEn} — The Community`}
+              subtitle={`${nameEn} blooms every year to celebrate Ma Durga with grandeur, devotion, and the collective spirit of the ${city} community.`}
               align="left"
             />
             <p className="mt-6 text-muted-foreground leading-relaxed">
-              Rooted in the cultural heartland of Purba Medinipur, our Durga Puja is more than a
+              Rooted in the cultural heartland of our community, our Durga Puja is more than a
               festival — it is an expression of identity, community, and faith that brings
               generations together every autumn.
             </p>
@@ -160,28 +187,21 @@ function CountdownSection({
   festivalName,
   year,
   days,
-  fallbackDays,
 }: {
-  targetISO: string
-  endISO: string
+  targetISO: string | null
+  endISO: string | null
   festivalName: string
   year: number
   days: PublicEventDay[] | null
-  fallbackDays: typeof festivalConfig.days
 }) {
   const firstDay = days?.[0]
   const lastDay  = days?.[days.length - 1]
 
-  const firstDate = firstDay?.date
-    ? fmtFestivalDate(firstDay.date, { day: 'numeric', month: 'long' })
-    : fmtFestivalDate(fallbackDays[0].date, { day: 'numeric', month: 'long' })
-
-  const lastDate = lastDay?.date
-    ? fmtFestivalDate(lastDay.date, { day: 'numeric', month: 'long' })
-    : fmtFestivalDate(fallbackDays[fallbackDays.length - 1].date, { day: 'numeric', month: 'long' })
-
-  const firstLabel = firstDay?.label ?? fallbackDays[0].label
-  const lastLabel  = lastDay?.label  ?? fallbackDays[fallbackDays.length - 1].label
+  const firstDate = firstDay?.date ? fmtFestivalDate(firstDay.date, { day: 'numeric', month: 'long' }) : null
+  const lastDate  = lastDay?.date  ? fmtFestivalDate(lastDay.date,  { day: 'numeric', month: 'long' }) : null
+  const firstLabel = firstDay?.label ?? null
+  const lastLabel  = lastDay?.label  ?? null
+  const showDates  = firstLabel && firstDate && lastLabel && lastDate
 
   return (
     <section
@@ -207,11 +227,13 @@ function CountdownSection({
           label={`${festivalName} Begins In`}
         />
 
-        <div className="mt-10 flex flex-wrap justify-center gap-4 text-sm text-white/55">
-          <span>{firstLabel} · {firstDate}</span>
-          <span className="text-brand-orange/35">·</span>
-          <span>{lastLabel} · {lastDate}</span>
-        </div>
+        {showDates && (
+          <div className="mt-10 flex flex-wrap justify-center gap-4 text-sm text-white/55">
+            <span>{firstLabel} · {firstDate}</span>
+            <span className="text-brand-orange/35">·</span>
+            <span>{lastLabel} · {lastDate}</span>
+          </div>
+        )}
       </div>
     </section>
   )
@@ -231,15 +253,9 @@ function PujaSection({ days }: { days: PublicEventDay[] | null }) {
           : '',
         desc: day.description ?? '',
       }))
-    : festivalConfig.days.map((day) => ({
-        id:   day.key,
-        icon: day.emoji,
-        title: day.label,
-        date: new Date(day.date + 'T12:00:00+05:30').toLocaleDateString('en-IN', {
-          weekday: 'long', month: 'long', day: 'numeric',
-        }),
-        desc: day.description,
-      }))
+    : []
+
+  if (!highlights.length) return null
 
   return (
     <section className="py-20 lg:py-28 bg-[oklch(0.985_0.01_90)]" aria-labelledby="puja-heading">
@@ -286,12 +302,12 @@ function PujaSection({ days }: { days: PublicEventDay[] | null }) {
 }
 
 /* ── Events ────────────────────────────────────────────────────── */
-function EventsSection() {
+function EventsSection({ nameEn, city }: { nameEn: string; city: string }) {
   const programs = [
-    { icon: Music, title: 'Cultural Programs', desc: 'An evening of music, dance, and theatrical performances by talented artists from Kolaghat and beyond.' },
+    { icon: Music, title: 'Cultural Programs', desc: `An evening of music, dance, and theatrical performances by talented artists from ${city} and beyond.` },
     { icon: '🥁' as const, title: 'Dhunuchi Naach', desc: 'The mesmerising traditional dance with earthen incense pots, a symbol of devotion to Ma Durga.' },
     { icon: '🍽️' as const, title: 'Community Feast', desc: 'Traditional Bengali cuisine served to all — bhog prasad, sweets, and more through the festive days.' },
-    { icon: Users, title: 'Procession', desc: 'The grand Vijaya Dashami immersion procession through Kolaghat, a sight of colour and emotion.' },
+    { icon: Users, title: 'Procession', desc: `The grand Vijaya Dashami immersion procession through ${city}, a sight of colour and emotion.` },
   ]
 
   return (
@@ -301,7 +317,7 @@ function EventsSection() {
           <SectionHeading
             label="What's Happening"
             title="Events & Programs"
-            subtitle="Beyond the rituals, Shatadal brings a rich program of cultural events for the whole community."
+            subtitle={`Beyond the rituals, ${nameEn} brings a rich program of cultural events for the whole community.`}
             align="left"
             className="lg:sticky lg:top-24"
           />
@@ -361,7 +377,7 @@ function GallerySection({ images }: { images: PublicGalleryImage[] }) {
         <SectionHeading
           label="Memories"
           title="Gallery"
-          subtitle="Glimpses of our celebrations across the years."
+          subtitle="Glimpses of joy, colour, and community — moments from our celebrations across the years."
           inverted
           className="mb-12"
         />
@@ -423,21 +439,24 @@ function CommunitySection({
   donorCount,
   oldestYear,
   festivalDays,
+  nameEn,
+  tagline,
+  foundingYear,
 }: {
   donorCount: number | null
   oldestYear: number | null
   festivalDays: number | null
+  nameEn: string
+  tagline: string
+  foundingYear: number | null
 }) {
   const currentYear = new Date().getFullYear()
 
-  const startYear = oldestYear ?? festivalConfig.foundingYear
-  const yearsCount = Math.max(1, currentYear - startYear)
+  const startYear = oldestYear ?? foundingYear ?? festivalConfig.foundingYear
+  const yearsCount = startYear !== null ? Math.max(1, currentYear - startYear) : null
 
   const stats = [
-    {
-      value: `${yearsCount}+`,
-      label: 'Years of celebration',
-    },
+    ...(yearsCount !== null ? [{ value: `${yearsCount}+`, label: 'Years of celebration' }] : []),
     {
       value: donorCount !== null ? (donorCount > 999 ? `${(donorCount / 1000).toFixed(1)}k+` : `${donorCount}+`) : '—',
       label: 'Community donors',
@@ -455,7 +474,7 @@ function CommunitySection({
         <SectionHeading
           label="Our Community"
           title="United in Devotion"
-          subtitle="Shatadal Kolaghat is not just a Puja — it is a family that grows stronger every year."
+          subtitle={`${nameEn} is not just a Puja — it is a family that grows stronger every year.`}
           className="mb-12"
         />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
@@ -472,7 +491,7 @@ function CommunitySection({
 }
 
 /* ── Contribution CTA ──────────────────────────────────────────── */
-function ContributionCTA() {
+function ContributionCTA({ nameEn, tagline }: { nameEn: string; tagline: string }) {
   return (
     <section className="py-20 lg:py-28 bg-white" aria-label="Contribution call to action">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
@@ -482,10 +501,10 @@ function ContributionCTA() {
           </div>
           <p className="text-white/70 text-xs uppercase tracking-widest mb-3">Support Our Community</p>
           <h2 className="font-heading font-bold text-3xl sm:text-4xl text-white mb-4">
-            Be Part of Shatadal
+            Be Part of {nameEn}
           </h2>
           <p className="text-white/80 text-base sm:text-lg max-w-xl mx-auto mb-8">
-            Your support keeps our celebrations alive — grand, joyful, and rooted in the spirit of Kolaghat.
+            Your support keeps our celebrations alive — grand, joyful, and rooted in the spirit of {tagline}.
             Every contribution, big or small, makes a difference.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -515,19 +534,25 @@ function ContactSection({
   endDate,
   year,
   eventName,
+  nameEn,
+  address,
 }: {
   startDate: string | null
   endDate: string | null
   year: number
   eventName: string | null
+  nameEn: string
+  address: string | null
 }) {
   const start = startDate
     ? new Date(startDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', { month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata' })
-    : new Date(festivalConfig.days[0].date + 'T12:00:00+05:30').toLocaleDateString('en-IN', { month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata' })
+    : null
 
   const end = endDate
     ? new Date(endDate + 'T12:00:00+05:30').toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' })
-    : new Date(festivalConfig.days[festivalConfig.days.length - 1].date + 'T12:00:00+05:30').toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' })
+    : null
+
+  const displayAddress = address
 
   return (
     <section className="py-20 bg-[oklch(0.985_0.01_90)]" aria-labelledby="contact-heading">
@@ -535,8 +560,8 @@ function ContactSection({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <SectionHeading
             label="Find Us"
-            title="Visit Shatadal"
-            subtitle="Come celebrate with us in Kolaghat during the festive season."
+            title={`Visit ${nameEn}`}
+            subtitle="Come celebrate with us during the festive season."
             align="left"
           />
 
@@ -547,21 +572,23 @@ function ContactSection({
               </div>
               <div>
                 <p className="font-semibold text-brand-navy text-sm">Address</p>
-                <p className="text-sm text-muted-foreground mt-0.5">{siteConfig.contact.address}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">{displayAddress}</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-4 p-5 bg-white rounded-xl border border-border">
-              <div className="size-10 rounded-xl bg-brand-orange/10 flex items-center justify-center shrink-0">
-                <Calendar className="size-5 text-brand-orange" />
+            {(start || end) && (
+              <div className="flex items-start gap-4 p-5 bg-white rounded-xl border border-border">
+                <div className="size-10 rounded-xl bg-brand-orange/10 flex items-center justify-center shrink-0">
+                  <Calendar className="size-5 text-brand-orange" />
+                </div>
+                <div>
+                  <p className="font-semibold text-brand-navy text-sm">{eventName ?? 'Event Dates'}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {start && end ? `${start} – ${end}` : start ?? end}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-brand-navy text-sm">{eventName ?? 'Event Dates'}</p>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {start} – {end}
-                </p>
-              </div>
-            </div>
+            )}
 
             <Link
               href="/contact"

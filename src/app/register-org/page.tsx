@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { submitOrgRequest } from '@/lib/api/public'
 import { apiConfig } from '@/config/api'
-import { siteConfig } from '@/config/site'
 import type { ApiError } from '@/types'
 
 const IN_MOBILE_RE = /^[6-9]\d{9}$/
@@ -64,11 +63,8 @@ export default function RegisterOrgPage() {
           <div className="absolute bottom-1/4 left-0 w-80 h-80 rounded-full bg-brand-pink/5 blur-3xl" />
         </div>
         <Link href="/" className="relative flex items-center gap-3">
-          <Image src="/assets/branding/club-logo.jpeg" alt={siteConfig.nameEn} width={44} height={44} className="rounded-lg bg-white/5 p-0.5" />
-          <div>
-            <p className="font-bengali font-bold text-white text-lg">{siteConfig.name}</p>
-            <p className="text-white/40 text-xs tracking-widest uppercase">Kolaghat</p>
-          </div>
+          <Image src="/assets/branding/club-logo.jpeg" alt="Logo" width={44} height={44} className="rounded-lg bg-white/5 p-0.5" />
+          <p className="font-bold text-white text-base tracking-wide">PujoPay</p>
         </Link>
         <div className="relative">
           <p className="text-brand-orange/80 text-xs uppercase tracking-widest font-semibold mb-3">
@@ -83,7 +79,7 @@ export default function RegisterOrgPage() {
           </p>
         </div>
         <p className="relative text-white/25 text-xs">
-          © {new Date().getFullYear()} {siteConfig.fullName}
+          © {new Date().getFullYear()} PujoPay
         </p>
       </div>
 
@@ -92,8 +88,8 @@ export default function RegisterOrgPage() {
         <div className="w-full max-w-md py-8">
           {/* Mobile logo */}
           <Link href="/" className="lg:hidden flex items-center gap-2 mb-8">
-            <Image src="/assets/branding/club-logo.jpeg" alt={siteConfig.nameEn} width={36} height={36} className="rounded-md" />
-            <p className="font-bengali font-bold text-brand-navy">{siteConfig.name}</p>
+            <Image src="/assets/branding/club-logo.jpeg" alt="Logo" width={36} height={36} className="rounded-md" />
+            <p className="font-bold text-brand-navy">PujoPay</p>
           </Link>
 
           {submitted ? (

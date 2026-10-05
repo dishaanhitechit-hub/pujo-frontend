@@ -16,7 +16,6 @@ import { useAuth } from '@/lib/auth/auth-provider'
 import { buildDashboardNav } from '@/config/navigation'
 import { userCanCollect } from '@/config/roles'
 import { MEMBER_CATEGORY_LABELS } from '@/config/members'
-import { siteConfig } from '@/config/site'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -102,14 +101,16 @@ export function AppSidebar() {
       <div className="flex items-center gap-2.5 h-16 px-5 border-b border-sidebar-border shrink-0">
         <Image
           src="/assets/branding/club-logo.jpeg"
-          alt={siteConfig.nameEn}
+          alt="Logo"
           width={32}
           height={32}
           className="rounded-sm bg-white/10 p-0.5 shrink-0"
         />
         <div className="min-w-0">
-          <p className="text-sidebar-foreground font-semibold text-sm truncate">{siteConfig.nav.appName}</p>
-          <p className="text-sidebar-foreground/40 text-[10px] truncate">{siteConfig.fullName}</p>
+          <p className="text-sidebar-foreground font-semibold text-sm truncate">PujoPay</p>
+          <p className="text-sidebar-foreground/40 text-[10px] truncate uppercase tracking-wider">
+            {process.env.NEXT_PUBLIC_ORG_SLUG ?? 'admin'}
+          </p>
         </div>
       </div>
 
@@ -230,8 +231,8 @@ export function AppSidebar() {
       {/* Mobile top bar */}
       <div className="lg:hidden fixed top-0 inset-x-0 z-40 h-14 bg-sidebar flex items-center justify-between px-4 border-b border-sidebar-border">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/assets/branding/club-logo.jpeg" alt={siteConfig.nameEn} width={28} height={28} className="rounded-sm bg-white/10 p-0.5" />
-          <span className="font-semibold text-sidebar-foreground text-sm">{siteConfig.nav.appName}</span>
+          <Image src="/assets/branding/club-logo.jpeg" alt="Logo" width={28} height={28} className="rounded-sm bg-white/10 p-0.5" />
+          <span className="font-semibold text-sidebar-foreground text-sm">PujoPay</span>
         </Link>
         <Button
           variant="ghost"

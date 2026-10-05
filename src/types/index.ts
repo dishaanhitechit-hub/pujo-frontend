@@ -547,6 +547,19 @@ export interface AdminConfig {
   contributionBankBranch?: string
   memberIdPrefix?: string
   memberIdDigits?: string
+  clubNameVernacular?: string
+  clubNameEn?: string
+  clubTagline?: string
+  clubDescription?: string
+  clubCity?: string
+  clubState?: string
+  clubFoundingYear?: string
+  clubLogoUrl?: string
+  clubHeroImageUrl?: string
+  clubAboutText?: string
+  clubSiteUrl?: string
+  clubMetaDescription?: string
+  clubOgImageUrl?: string
 }
 
 export interface AdminConfigResponse {
@@ -679,12 +692,43 @@ export interface PublicCommitteeMember {
   sortOrder: number
 }
 
+export interface PublicCommitteeFull {
+  yearCommittee: {
+    yearId: number
+    yearLabel: string
+    members: PublicCommitteeMember[]
+  } | null
+  eventCommittees: {
+    eventId: number
+    eventName: string
+    eventYear: number | null
+    members: PublicCommitteeMember[]
+  }[]
+  legacyMembers: PublicCommitteeMember[]
+}
+
 export interface PublicAnnouncement {
   id: number
   title: string
   body: string
   event: { id: number; name: string; slug: string } | null
   publishedAt: string | null
+}
+
+export interface PublicClubConfig {
+  nameVernacular: string | null
+  nameEn: string | null
+  tagline: string | null
+  description: string | null
+  city: string | null
+  state: string | null
+  foundingYear: string | null
+  logoUrl: string | null
+  heroImageUrl: string | null
+  aboutText: string | null
+  siteUrl: string | null
+  metaDescription: string | null
+  ogImageUrl: string | null
 }
 
 export interface PublicSiteConfig {
@@ -706,6 +750,7 @@ export interface PublicSiteConfig {
     instagram: string | null
     youtube: string | null
   }
+  club: PublicClubConfig
 }
 
 // ── Contact Queries ───────────────────────────────────────────────────────────

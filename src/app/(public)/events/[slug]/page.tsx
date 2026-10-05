@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { SectionHeading } from '@/components/public/SectionHeading'
 import { getPublicEventBySlug, getPublicAnnouncements, mediaUrl } from '@/lib/api/public'
-import { festivalConfig } from '@/config/festival'
 import { MapPin, Calendar, ChevronLeft } from 'lucide-react'
 
 // Stable emoji map for known day keys

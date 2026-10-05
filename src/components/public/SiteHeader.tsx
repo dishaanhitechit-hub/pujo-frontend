@@ -4,16 +4,32 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Flower2 } from 'lucide-react'
 import { publicNav } from '@/config/navigation'
-import { siteConfig } from '@/config/site'
+
 import { cn } from '@/lib/utils'
 
-export function SiteHeader() {
+interface SiteHeaderProps {
+  clubLogoUrl?: string | null
+  clubNameVernacular?: string | null
+  clubNameEn?: string | null
+  clubTagline?: string | null
+}
+
+export function SiteHeader({
+  clubLogoUrl,
+  clubNameVernacular,
+  clubNameEn,
+  clubTagline,
+}: SiteHeaderProps = {}) {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname()
   const isHome = pathname === '/'
+
+  const nameVernacular = clubNameVernacular ?? ''
+  const nameEn = clubNameEn ?? ''
+  const tagline = clubTagline ?? null
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 32)
@@ -22,13 +38,6 @@ export function SiteHeader() {
     return () => window.removeEventListener('scroll', handler)
   }, [])
 
-  /*
-   * Unscrolled:
-   *   Homepage → dark navy bg (needed because the right hero panel is cream;
-   *              transparent nav would put white text on cream = invisible).
-   *   Other pages → transparent (their hero areas are dark navy).
-   * Scrolled → solid white for all pages.
-   */
   const navBg = scrolled
     ? 'bg-white/97 backdrop-blur-md shadow-sm border-b border-brand-orange/8'
     : isHome
@@ -59,25 +68,34 @@ export function SiteHeader() {
           <Link
             href="/"
             className="flex items-center gap-2.5 shrink-0 group"
-            aria-label={siteConfig.fullName}
+            aria-label={nameEn}
           >
-            <Image
-              src="/assets/branding/club-logo.jpeg"
-              alt={`${siteConfig.nameEn} logo`}
-              width={38}
-              height={38}
-              className={cn(
-                'rounded-sm object-contain transition-opacity duration-200',
-                scrolled ? 'ring-1 ring-brand-navy/10' : '',
-              )}
-              priority
-            />
+            {clubLogoUrl ? (
+              <Image
+                src={clubLogoUrl}
+                alt={`${nameEn} logo`}
+                width={38}
+                height={38}
+                className={cn(
+                  'rounded-sm object-contain transition-opacity duration-200',
+                  scrolled ? 'ring-1 ring-brand-navy/10' : '',
+                )}
+                priority
+              />
+            ) : (
+              <div className={cn(
+                'size-[38px] rounded-sm flex items-center justify-center transition-colors',
+                scrolled ? 'bg-brand-orange/10' : 'bg-brand-orange/20',
+              )}>
+                <Flower2 className="size-5 text-brand-orange" />
+              </div>
+            )}
             <div>
               <span className={cn('font-bengali font-bold text-[1.15rem] leading-tight transition-colors', logoTextColor)}>
-                {siteConfig.name}
+                {nameVernacular}
               </span>
               <p className={cn('text-[9px] uppercase tracking-[0.22em] leading-none transition-colors', scrolled ? 'text-brand-navy/30' : 'text-white/30')}>
-                Kolaghat
+                {tagline}
               </p>
             </div>
           </Link>
