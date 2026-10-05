@@ -1,10 +1,10 @@
 import apiClient from './client'
 import { apiConfig } from '@/config/api'
-import type { ApiResponse, Handover, HandoverSummary } from '@/types'
+import type { ApiResponse, Handover, HandoverSummary, HandoverReceiver } from '@/types'
 
 const ep = apiConfig.endpoints.handover
 
-// ── Collector ──────────────────────────────────────────────────────────────
+// ── Collector ─────────────────────────────────────────────────────────────
 
 export async function getMyHandoverSummary(): Promise<HandoverSummary[]> {
   const res = await apiClient.get<ApiResponse<HandoverSummary[]>>(ep.mySummary)
@@ -16,11 +16,17 @@ export async function getMyHandovers(params: { status?: string; eventId?: number
   return res.data.data
 }
 
+export async function getHandoverReceivers(): Promise<HandoverReceiver[]> {
+  const res = await apiClient.get<ApiResponse<HandoverReceiver[]>>(ep.receivers)
+  return res.data.data
+}
+
 export interface CreateHandoverInput {
   eventId: number
   amount: number
   handoverDate?: string | null
   note?: string | null
+  handoverToId?: number | null
 }
 
 export async function createHandover(input: CreateHandoverInput): Promise<Handover> {
@@ -28,7 +34,7 @@ export async function createHandover(input: CreateHandoverInput): Promise<Handov
   return res.data.data
 }
 
-// ── Treasurer ──────────────────────────────────────────────────────────────
+// ── Treasurer ──────────────────────────────────────────────────────────
 
 export async function listHandovers(params: { status?: string; eventId?: number } = {}): Promise<Handover[]> {
   const res = await apiClient.get<ApiResponse<Handover[]>>(ep.list, { params })
