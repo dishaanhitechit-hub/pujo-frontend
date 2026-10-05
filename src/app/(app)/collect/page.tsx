@@ -53,7 +53,7 @@ function CollectContent() {
     const req = ++reqRef.current
     setEventsLoading(true)
     listActiveEvents()
-      .then((d) => { if (req === reqRef.current) { setEvents(d); if (d.length > 0) setEventId(d[0].id) } })
+      .then((d) => { if (req === reqRef.current) { setEvents(d); const featured = d.find((e) => e.isFeatured) ?? d[0]; if (featured) setEventId(featured.id) } })
       .catch(() => { if (req === reqRef.current) setEvents([]) })
       .finally(() => { if (req === reqRef.current) setEventsLoading(false) })
     getSlipMembers().then(setMembers).catch(() => {})
