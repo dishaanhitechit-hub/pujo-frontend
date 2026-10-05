@@ -379,7 +379,7 @@ function ReviewDialog({ target, canReview, onOpenChange, onDone }: {
               <Field label="Date" value={fmtDate(target.paymentDate)} />
               <Field label="Event" value={target.event?.name ?? 'General'} />
               <Field label="Status" value={<span>{statusBadge(target.status)}</span>} />
-              {target.source === 'collected' && target.slipNumber && <Field label="Slip" value={target.slipNumber} />}
+              {target.slipNumber && <Field label="Slip" value={<span className="font-mono">{target.slipNumber}</span>} />}
               {target.source === 'collected' && target.collector && <Field label="Collected by" value={target.collector.name} />}
             </div>
             {target.source === 'collected' && (
