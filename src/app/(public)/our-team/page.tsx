@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { SectionHeading } from '@/components/public/SectionHeading'
 import { getPublicCommitteeFull, getSiteConfig, mediaUrl } from '@/lib/api/public'
 import type { PublicCommitteeMember } from '@/types'
-import { User, Phone } from 'lucide-react'
+import { User } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'Our Team' }
 
@@ -21,14 +21,6 @@ function MemberCard({ member }: { member: PublicCommitteeMember }) {
       <div className="flex-1 min-w-0">
         <h3 className="font-heading font-bold text-brand-navy text-sm leading-snug">{member.name}</h3>
         <p className="text-xs text-brand-orange font-medium mt-0.5">{member.roleTitle}</p>
-        {member.phone && (
-          <a
-            href={`tel:${member.phone}`}
-            className="mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-brand-orange transition-colors"
-          >
-            <Phone className="size-3" /> {member.phone}
-          </a>
-        )}
       </div>
     </div>
   )

@@ -687,7 +687,6 @@ export interface PublicCommitteeMember {
   id: number
   name: string
   roleTitle: string
-  phone: string | null
   photoUrl: string | null   // /media/... path
   sortOrder: number
 }
