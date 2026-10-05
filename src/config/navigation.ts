@@ -135,7 +135,7 @@ export function buildDashboardNav(role: Role, canCollect?: boolean, perms?: stri
     const paymentItems: DashboardNavItem[] = []
 
     if (canCollect) {
-      paymentItems.push({ label: 'Collect Payment', href: '/collect',        iconName: 'IndianRupee' })
+      paymentItems.push({ label: 'Contribution Slip', href: '/collect',        iconName: 'IndianRupee' })
       paymentItems.push({ label: 'My Collections',  href: '/my-collections', iconName: 'ClipboardList' })
       paymentItems.push({ label: 'Cash Handover',   href: '/handovers',      iconName: 'HandCoins' })
     }
