@@ -23,7 +23,7 @@ import type { ContributionList, ContributionStats, Contribution, PaymentInfo, Pu
 const BASE = apiConfig.baseUrl
 type Method = 'upi' | 'bank_transfer' | 'cash'
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// ── helpers ──────────────────────────────────────────────────────────────────────────────
 
 function statusBadge(s: Contribution['status']) {
   if (s === 'approved') return <Badge className="bg-green-100 text-green-700 border-green-200 font-medium">Approved</Badge>
@@ -50,7 +50,7 @@ function fmtDate(d: string) {
   })
 }
 
-// ── main page ─────────────────────────────────────────────────────────────────
+// ── main page ─────────────────────────────────────────────────────────────────────────────
 
 const PER_PAGE = 12
 
@@ -231,7 +231,7 @@ export default function MyContributionsPage() {
   )
 }
 
-// ── stat card ─────────────────────────────────────────────────────────────────
+// ── stat card ─────────────────────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, sub, accent }: {
   label: string; value: string; sub: string; accent: 'green' | 'amber' | 'neutral'
@@ -251,7 +251,7 @@ function StatCard({ label, value, sub, accent }: {
   )
 }
 
-// ── contribution card ─────────────────────────────────────────────────────────
+// ── contribution card ────────────────────────────────────────────────────────────────────────────
 
 function ContribCard({ c, token }: { c: Contribution; token: string }) {
   return (
@@ -315,7 +315,7 @@ function ContribCard({ c, token }: { c: Contribution; token: string }) {
   )
 }
 
-// ── upi panel ─────────────────────────────────────────────────────────────────
+// ── upi panel ─────────────────────────────────────────────────────────────────────────────
 
 function UpiPanel({ upiId }: { upiId: string }) {
   const [copied, setCopied] = useState(false)
@@ -367,7 +367,7 @@ function UpiPanel({ upiId }: { upiId: string }) {
   )
 }
 
-// ── submit modal ──────────────────────────────────────────────────────────────
+// ── submit modal ────────────────────────────────────────────────────────────────────────────
 
 function SubmitModal({ token, onClose, onSuccess }: {
   token: string
@@ -377,6 +377,7 @@ function SubmitModal({ token, onClose, onSuccess }: {
   const [info, setInfo] = useState<PaymentInfo | null>(null)
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [eventId, setEventId] = useState<string>('')
+  const [slipNumber, setSlipNumber] = useState<string | null>(null)
   const [method, setMethod] = useState<Method>('upi')
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
@@ -396,9 +397,11 @@ function SubmitModal({ token, onClose, onSuccess }: {
       .then(json => { if (json?.data) setInfo(json.data) })
       .catch(() => {})
 
-    // Fetch public events and keep only ongoing/upcoming ones
+    // Fetch org-scoped events (authenticated) and keep only ongoing/upcoming ones
     const today = new Date().toISOString().slice(0, 10)
-    fetch(`${BASE}${apiConfig.endpoints.public.events}?perPage=50`)
+    fetch(`${BASE}${apiConfig.endpoints.events.memberList}?perPage=50`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then(r => r.ok ? r.json() : null)
       .then(json => {
         const all: PublicEvent[] = json?.data?.events ?? []
@@ -445,6 +448,7 @@ function SubmitModal({ token, onClose, onSuccess }: {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.message ?? 'Submission failed')
+      setSlipNumber(json.data?.slipNumber ?? null)
       setDone(true)
     } catch (err) {
       toast.error((err as ApiError).message ?? 'Submission failed')
@@ -499,6 +503,9 @@ function SubmitModal({ token, onClose, onSuccess }: {
                 <p className="text-sm text-muted-foreground mt-1 max-w-xs">
                   Your contribution is pending admin approval. You'll see it in your history once reviewed.
                 </p>
+                {slipNumber && (
+                  <p className="mt-2 text-xs text-muted-foreground">Slip <span className="font-mono font-semibold text-brand-orange">{slipNumber}</span> generated.</p>
+                )}
               </div>
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => { setDone(false); setAmount(''); setNote(''); clearFile() }}>
