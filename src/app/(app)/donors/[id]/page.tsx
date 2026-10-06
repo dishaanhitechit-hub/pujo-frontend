@@ -80,7 +80,7 @@ function DonorDetailContent({ params }: { params: Promise<{ id: string }> }) {
                   <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/20">
                     <td className="px-5 py-3">
                       {p.receiptNo ? (
-                        <a href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id)}?from=dashboard`} target="_blank" rel="noopener noreferrer"
+                        <a href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id, p.receiptToken, 'dashboard')}`} target="_blank" rel="noopener noreferrer"
                           className="text-xs text-brand-orange hover:underline font-medium">{p.receiptNo}</a>
                       ) : <span className="text-muted-foreground/50 text-xs">—</span>}
                     </td>

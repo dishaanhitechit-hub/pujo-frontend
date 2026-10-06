@@ -317,7 +317,7 @@ function AllPaymentsTab({ eventId }: { eventId: string }) {
                     <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{(p.receivedDate ?? p.createdAt ?? '').slice(0, 10)}</td>
                     <td className="px-4 py-3">
                       {p.receiptNo
-                        ? <a href={`${BASE}/pay/receipt/${p.id}?from=dashboard`} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-brand-orange hover:underline">{p.receiptNo}</a>
+                        ? <a href={`${BASE}${apiConfig.backendPages.payReceipt(p.id, p.receiptToken, 'dashboard')}`} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-brand-orange hover:underline">{p.receiptNo}</a>
                         : <span className="text-muted-foreground/40 text-xs">—</span>}
                     </td>
                   </tr>
@@ -385,8 +385,8 @@ function ReviewDialog({ target, canReview, onOpenChange, onDone }: {
             {target.source === 'collected' && (
               <p className="text-xs text-muted-foreground">Collected from this member via a contribution slip — recorded automatically, no review needed.</p>
             )}
-            {target.source === 'collected' && target.receiptNo && (
-              <a href={`${BASE}/pay/receipt/${target.id}?from=detail`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-brand-orange hover:underline">
+            {target.source === 'collected' && target.receiptNo && target.receiptToken && (
+              <a href={`${BASE}${apiConfig.backendPages.payReceipt(target.id, target.receiptToken, 'detail')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-brand-orange hover:underline">
                 <Receipt className="size-4" /> View receipt {target.receiptNo}
               </a>
             )}

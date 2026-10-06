@@ -404,6 +404,7 @@ export interface Payment {
   confirmedAt?: string | null
   cancelledAt?: string | null
   receiptPdfPath?: string | null
+  receiptToken: string
   createdAt: string
 }
 
@@ -1100,6 +1101,7 @@ export interface Contribution {
   // Collected-via-slip entries only:
   slipNumber?: string | null
   receiptNo?: string | null
+  receiptToken?: string | null
   collector?: { id: number; name: string } | null
   createdAt: string
 }

@@ -125,7 +125,7 @@ export function PaymentDetailDialog({ payment, open, onOpenChange }: PaymentDeta
           {hasReceiptUrl && (
             <Button asChild variant="outline" size="sm">
               <a
-                href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(payment.id)}?from=detail`}
+                href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(payment.id, payment.receiptToken, 'detail')}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >

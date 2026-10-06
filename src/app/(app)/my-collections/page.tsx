@@ -341,7 +341,7 @@ function PaymentsView() {
                   <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
                     <td className="px-4 py-3">
                       {p.receiptNo ? (
-                        <a href={`${apiConfig.baseUrl}/pay/receipt/${p.id}?from=my-collections`} target="_blank" rel="noopener noreferrer"
+                        <a href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id, p.receiptToken, 'my-collections')}`} target="_blank" rel="noopener noreferrer"
                           className="font-mono text-xs text-brand-orange hover:underline">{p.receiptNo}</a>
                       ) : <span className="text-muted-foreground/40 text-xs">—</span>}
                     </td>

@@ -189,7 +189,7 @@ function SlipDetail({ slipId }: { slipId: number }) {
                   </p>
                 </div>
                 {p.status !== 'pending' && (
-                  <a href={`${apiConfig.baseUrl}/pay/receipt/${p.id}?from=my-collections`} target="_blank" rel="noopener noreferrer"
+                  <a href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id, p.receiptToken, 'my-collections')}`} target="_blank" rel="noopener noreferrer"
                     className="text-xs text-brand-orange hover:underline shrink-0">Receipt</a>
                 )}
               </div>

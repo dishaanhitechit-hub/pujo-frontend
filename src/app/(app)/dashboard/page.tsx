@@ -1125,7 +1125,7 @@ function DashboardPaymentsSection({ collectors, selectedEventId, eventLabel }: D
                     <td className="px-5 py-3"><StatusBadge status={p.status} /></td>
                     <td className="px-5 py-3">
                       {p.receiptNo ? (
-                        <a href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id)}?from=dashboard`} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-orange hover:underline font-medium">
+                        <a href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id, p.receiptToken, 'dashboard')}`} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-orange hover:underline font-medium">
                           {p.receiptNo}
                         </a>
                       ) : <span className="text-muted-foreground/50">—</span>}

@@ -223,7 +223,8 @@ export const apiConfig = {
     payQr: (paymentId: number) => `/pay/qr/${paymentId}`,
     payCash: (paymentId: number) => `/pay/cash/${paymentId}`,
     payCheque: (paymentId: number) => `/pay/cheque/${paymentId}`,
-    payReceipt: (paymentId: number) => `/pay/receipt/${paymentId}`,
+    payReceipt: (paymentId: number, token: string, from: string) =>
+      `/pay/receipt/${paymentId}?t=${encodeURIComponent(token)}&from=${from}`,
     receipt: (receiptNo: string) => `/receipt/${receiptNo}`,
     tokenView: (tokenNo: string) => `/token/${tokenNo}`,
     tokenPrint: (tokenNo: string) => `/token/print/${tokenNo}`,
