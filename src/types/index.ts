@@ -19,7 +19,7 @@ export type CommitteeRole =
   | 'president'
   | 'vice_president'
   | 'secretary'
-  | 'junior_secretary'
+  | 'joint_secretary'
   | 'treasurer'
   | 'accountant'
   | 'advisory_member'
@@ -49,6 +49,7 @@ export interface YearAssignmentsResponse {
 
 export interface EventAssignmentMember extends YearAssignmentMember {
   canCollect: boolean
+  canCashier: boolean
 }
 
 export interface EventAssignmentsResponse {

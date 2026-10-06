@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   Loader2, ArrowLeft, IndianRupee, QrCode, PlusCircle, CheckCircle2, XCircle,
-  RotateCcw, CalendarDays, Receipt,
+  RotateCcw, CalendarDays, Receipt, RefreshCw, Ban, Clock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,6 +20,7 @@ import { apiConfig } from '@/config/api'
 import {
   getSlip, addSlipPayment, closeSlip, reopenSlip, cancelSlip, initiateSlipPayment,
 } from '@/lib/api/slips'
+import { cancelPendingPayment, retryPendingPayment } from '@/lib/api/payments'
 import { cn } from '@/lib/utils'
 import type { ApiError, ContributionSlip, PaymentMethod } from '@/types'
 
@@ -53,6 +54,7 @@ function SlipDetail({ slipId }: { slipId: number }) {
   const [onlineOpen, setOnlineOpen] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [pendingBusy, setPendingBusy] = useState<Record<number, boolean>>({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -80,6 +82,30 @@ function SlipDetail({ slipId }: { slipId: number }) {
     try { setSlip(await cancelSlip(slipId)); toast.success('Slip cancelled.'); setConfirmCancel(false) }
     catch (e) { toast.error((e as ApiError).message ?? 'Failed.') }
     finally { setBusy(false) }
+  }
+
+  async function doCancelPayment(paymentId: number) {
+    setPendingBusy(prev => ({ ...prev, [paymentId]: true }))
+    try {
+      await cancelPendingPayment(paymentId)
+      toast.success('Pending payment cancelled.')
+      await load()
+    } catch (e) {
+      toast.error((e as ApiError).message ?? 'Failed to cancel payment.')
+    } finally {
+      setPendingBusy(prev => ({ ...prev, [paymentId]: false }))
+    }
+  }
+
+  async function doRetryPayment(paymentId: number) {
+    setPendingBusy(prev => ({ ...prev, [paymentId]: true }))
+    try {
+      const r = await retryPendingPayment(paymentId)
+      window.location.href = `${apiConfig.baseUrl}${r.nextUrl}`
+    } catch (e) {
+      toast.error((e as ApiError).message ?? 'Failed to retry payment.')
+      setPendingBusy(prev => ({ ...prev, [paymentId]: false }))
+    }
   }
 
   if (loading) return <div className="p-4 sm:p-6 lg:p-8 max-w-3xl"><Skeleton className="h-64 rounded-xl" /></div>
@@ -176,24 +202,58 @@ function SlipDetail({ slipId }: { slipId: number }) {
           <p className="p-8 text-center text-sm text-muted-foreground">No payments recorded yet.</p>
         ) : (
           <div className="divide-y divide-border">
-            {slip.payments!.map((p) => (
-              <div key={p.id} className="flex items-center gap-3 px-5 py-3">
-                <div className="size-9 rounded-full bg-green-50 border border-green-200 flex items-center justify-center shrink-0">
-                  <IndianRupee className="size-4 text-green-600" />
+            {slip.payments!.map((p) => {
+              const isPending = p.status === 'pending'
+              const isBusy = !!pendingBusy[p.id]
+              return (
+                <div key={p.id} className={cn('flex items-center gap-3 px-5 py-3', isPending && 'bg-amber-50/60')}>
+                  <div className={cn('size-9 rounded-full flex items-center justify-center shrink-0 border',
+                    isPending ? 'bg-amber-50 border-amber-200' :
+                    p.status === 'completed' ? 'bg-green-50 border-green-200' :
+                    'bg-slate-50 border-slate-200'
+                  )}>
+                    {isPending ? <Clock className="size-4 text-amber-500" /> :
+                     p.status === 'completed' ? <IndianRupee className="size-4 text-green-600" /> :
+                     <XCircle className="size-4 text-slate-400" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium tabular-nums">
+                      {fmt(p.amount)} <span className="uppercase text-xs text-muted-foreground font-normal">{p.method}</span>
+                      {isPending && <span className="ml-1.5 text-xs font-normal text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full">Pending</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {p.receiptNo ? `${p.receiptNo} · ` : ''}{fmtDate(p.receivedDate ?? p.createdAt)}
+                    </p>
+                  </div>
+                  {isPending ? (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => doRetryPayment(p.id)}
+                        disabled={isBusy}
+                        className="inline-flex items-center gap-1 text-xs text-brand-orange hover:text-brand-orange/80 font-medium disabled:opacity-50"
+                      >
+                        {isBusy ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
+                        Resume
+                      </button>
+                      <span className="text-muted-foreground/30 select-none">·</span>
+                      <button
+                        onClick={() => doCancelPayment(p.id)}
+                        disabled={isBusy}
+                        className="inline-flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 font-medium disabled:opacity-50"
+                      >
+                        {isBusy ? <Loader2 className="size-3 animate-spin" /> : <Ban className="size-3" />}
+                        Discard
+                      </button>
+                    </div>
+                  ) : p.status === 'completed' ? (
+                    <a href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id, p.receiptToken, 'my-collections')}`} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-brand-orange hover:underline shrink-0">Receipt</a>
+                  ) : (
+                    <span className="text-xs text-muted-foreground/60 shrink-0 capitalize">{p.status}</span>
+                  )}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium tabular-nums">{fmt(p.amount)} <span className="uppercase text-xs text-muted-foreground font-normal">{p.method}</span></p>
-                  <p className="text-xs text-muted-foreground">
-                    {p.receiptNo ? `${p.receiptNo} · ` : ''}{fmtDate(p.receivedDate ?? p.createdAt)}
-                    {p.status === 'pending' ? ' · pending' : ''}
-                  </p>
-                </div>
-                {p.status !== 'pending' && (
-                  <a href={`${apiConfig.baseUrl}${apiConfig.backendPages.payReceipt(p.id, p.receiptToken, 'my-collections')}`} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-brand-orange hover:underline shrink-0">Receipt</a>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
