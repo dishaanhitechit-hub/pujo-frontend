@@ -155,7 +155,7 @@ export function buildDashboardNav(role: Role, canCollect?: boolean, perms?: stri
     }
 
     if (paymentItems.length > 0) {
-      groups.push({ id: 'payments', label: 'Payments', iconName: 'IndianRupee', items: paymentItems })
+      groups.push({ id: 'payments', label: 'Donations', iconName: 'IndianRupee', items: paymentItems })
     }
   }
 

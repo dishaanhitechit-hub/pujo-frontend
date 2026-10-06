@@ -93,9 +93,10 @@ export async function getEventAssignments(eventId: number): Promise<EventAssignm
 }
 
 export async function setEventAssignment(
-  eventId: number, userId: number, role: CommitteeRole, canCollect: boolean, isPublic: boolean,
+  eventId: number, userId: number, role: CommitteeRole,
+  canCollect: boolean, isPublic: boolean, canCashier: boolean = false,
 ): Promise<void> {
-  await apiClient.put(ep.eventAssignments(eventId), { userId, role, canCollect, isPublic })
+  await apiClient.put(ep.eventAssignments(eventId), { userId, role, canCollect, isPublic, canCashier })
 }
 
 export async function clearEventAssignment(eventId: number, userId: number): Promise<void> {

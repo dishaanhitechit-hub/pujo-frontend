@@ -31,6 +31,8 @@ export const apiConfig = {
       initiate: '/api/payment/initiate',
       receipt: (id: number) => `/api/payment/receipt/${id}`,
       byReceiptNo: (receiptNo: string) => `/api/payment/by-receipt/${receiptNo}`,
+      cancelPending: (id: number) => `/api/payment/${id}/cancel`,
+      retry: (id: number) => `/api/payment/${id}/retry`,
     },
     collector: {
       summary: '/api/collector/summary',

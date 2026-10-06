@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   Plus, Search, X, CalendarDays, CalendarClock, Loader2, Eye, EyeOff, IndianRupee,
-  ChevronUp, ChevronDown,
+  ChevronUp, ChevronDown, Landmark,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -382,9 +382,9 @@ function EventRolesTab() {
     try {
       if (role === '') {
         await clearEventAssignment(selectedEventId, m.id)
-        setMembers((p) => p.map((x) => (x.id === m.id ? { ...x, role: null, canCollect: false } : x)))
+        setMembers((p) => p.map((x) => (x.id === m.id ? { ...x, role: null, canCollect: false, canCashier: false } : x)))
       } else {
-        await setEventAssignment(selectedEventId, m.id, role, m.canCollect, m.isPublic)
+        await setEventAssignment(selectedEventId, m.id, role, m.canCollect, m.isPublic, m.canCashier)
         setMembers((p) => p.map((x) => (x.id === m.id ? { ...x, role } : x)))
       }
     } catch (err) {
@@ -394,7 +394,7 @@ function EventRolesTab() {
     }
   }
 
-  async function handleToggle(m: EventAssignmentMember, field: 'isPublic' | 'canCollect') {
+  async function handleToggle(m: EventAssignmentMember, field: 'isPublic' | 'canCollect' | 'canCashier') {
     if (!selectedEventId || !m.role) return
     const next = !m[field]
     setSavingId(m.id)
@@ -403,6 +403,7 @@ function EventRolesTab() {
         selectedEventId, m.id, m.role,
         field === 'canCollect' ? next : m.canCollect,
         field === 'isPublic' ? next : m.isPublic,
+        field === 'canCashier' ? next : m.canCashier,
       )
       setMembers((p) => p.map((x) => (x.id === m.id ? { ...x, [field]: next } : x)))
     } catch {
@@ -479,6 +480,7 @@ function EventRolesTab() {
         legend={<Legend items={[
           { icon: <CalendarClock className="size-3.5" />, text: 'Pick a role to add the member to this event’s committee' },
           { icon: <IndianRupee className="size-3.5" />, text: 'Can collect = allowed to take payments for this event' },
+          { icon: <Landmark className="size-3.5" />, text: 'Cashier = approve/view payments & manage expenses, handovers for this event' },
           { icon: <Eye className="size-3.5" />, text: 'On website = shown in the public committee for this event' },
           { icon: <ChevronUp className="size-3.5" />, text: 'Use the arrows to set the display order (clear search first)' },
         ]} />}
@@ -494,6 +496,15 @@ function EventRolesTab() {
                 iconOff={<IndianRupee className="size-3.5" />}
                 label={em.canCollect ? 'Can collect' : 'No collect'}
                 activeClass="border-amber-200 bg-amber-50 text-amber-700"
+              />
+              <ToggleChip
+                on={em.canCashier}
+                disabled={!em.role}
+                onClick={() => handleToggle(em, 'canCashier')}
+                iconOn={<Landmark className="size-3.5" />}
+                iconOff={<Landmark className="size-3.5" />}
+                label={em.canCashier ? 'Cashier' : 'No cashier'}
+                activeClass="border-indigo-200 bg-indigo-50 text-indigo-700"
               />
               <ToggleChip
                 on={em.isPublic}
