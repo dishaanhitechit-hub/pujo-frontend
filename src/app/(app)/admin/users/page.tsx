@@ -14,14 +14,13 @@ import { PageHeader } from '@/components/dashboard/PageHeader'
 import { ActiveBadge } from '@/components/shared/StatusBadge'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { getUsers, createUser, updateUser, deactivateUser, getUserLoginQr, getNextMemberId } from '@/lib/api/users'
-import { getAdminConfig } from '@/lib/api/admin'
 import { MEMBER_CATEGORIES, MEMBER_CATEGORY_LABELS } from '@/config/members'
 import type { User, MemberCategory, ApiError, UpdateUserInput } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { cn } from '@/lib/utils'
-import { MembershipCardDialog } from './MembershipCard'
+import { MemberCardDialog } from '@/components/profile/MemberCard'
 
 // Regex: 10-digit Indian mobile starting with 6-9
 const IN_MOBILE_RE = /^[6-9]\d{9}$/
@@ -173,7 +172,6 @@ function UsersContent() {
   const [pendingDeactivate, setPendingDeactivate] = useState<User | null>(null)
   const [qrUser, setQrUser] = useState<User | null>(null)
   const [cardUser, setCardUser] = useState<User | null>(null)
-  const [clubConfig, setClubConfig] = useState<Record<string, string> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
@@ -193,16 +191,8 @@ function UsersContent() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadUsers() }, [])
 
-  async function openCard(u: User) {
+  function openCard(u: User) {
     setCardUser(u)
-    if (!clubConfig) {
-      try {
-        const cfg = await getAdminConfig()
-        setClubConfig(cfg.config)
-      } catch {
-        // card still renders without config
-      }
-    }
   }
 
   async function confirmDeactivate() {
@@ -384,13 +374,11 @@ function UsersContent() {
         <LoginQrModal user={qrUser} onClose={() => setQrUser(null)} />
       )}
 
-      {cardUser && clubConfig && (
-        <MembershipCardDialog
+      {cardUser && (
+        <MemberCardDialog
           user={cardUser}
-          config={clubConfig}
           open={!!cardUser}
           onOpenChange={(o) => { if (!o) setCardUser(null) }}
-          apiBase={process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}
         />
       )}
 

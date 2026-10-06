@@ -5,6 +5,7 @@ import { toPng } from 'html-to-image'
 import { Source_Sans_3, Marcellus } from 'next/font/google'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { MEMBER_CATEGORY_LABELS } from '@/config/members'
 import type { User } from '@/types'
 
@@ -14,18 +15,17 @@ const marcellus  = Marcellus({ subsets: ['latin'], weight: ['400'], display: 'sw
 const CARD_W = 1536
 const CARD_H = 1024
 
-// Positions measured from the 1536×1024 blank template (y = vertical centre of each text row)
+// Positions measured from the 1536×1024 template (y = vertical centre of each text row)
 const ROWS = {
-  name:     { x: 663, y: 539, size: 36.7, color: 'rgb(1,8,88)',   weight: 700 },
-  address:  { x: 663, y: 593, size: 26.0, color: 'rgb(1,8,88)',   weight: 600 },
-  mobile:   { x: 662, y: 642, size: 27.3, color: 'rgb(1,8,88)',   weight: 600 },
-  category: { x: 664, y: 695, size: 35.2, color: 'rgb(215,8,9)',  weight: 600 },
-  memberid: { x: 663, y: 749, size: 32.4, color: 'rgb(1,8,88)',   weight: 600 },
-  since:    { x: 664, y: 806, size: 31.4, color: 'rgb(1,8,88)',   weight: 600 },
+  name:     { x: 663, y: 578, size: 36.7, color: 'rgb(215,8,9)', weight: 700 },
+  address:  { x: 663, y: 635, size: 26.0, color: 'rgb(1,8,88)',  weight: 600 },
+  mobile:   { x: 662, y: 692, size: 27.3, color: 'rgb(1,8,88)',  weight: 600 },
+  memberid: { x: 663, y: 750, size: 32.4, color: 'rgb(1,8,88)',  weight: 600 },
+  since:    { x: 664, y: 808, size: 31.4, color: 'rgb(1,8,88)',  weight: 600 },
 }
 
-// Seal area centre: x≈1306, two lines at y≈631 and y≈657 (Marcellus 400, ~14px)
-const SEAL = { cx: 1306, y1: 631, y2: 657, size: 14 }
+// Seal area centre in t7 template: cx=1324, single line y=661, two lines y=648/674
+const SEAL = { cx: 1324, y1: 648, y2: 674, size: 15 }
 
 function formatSince(v: string | null | undefined): string {
   if (!v) return '—'
@@ -66,6 +66,7 @@ export function MemberCard({ user }: Props) {
     return () => ro.disconnect()
   }, [measure])
 
+  const isGeneral = user.memberCategory === 'general'
   const catLabel = user.memberCategory ? (MEMBER_CATEGORY_LABELS[user.memberCategory] ?? '') : ''
   const [seal1, seal2] = sealLines(catLabel || 'MEMBER')
 
@@ -154,7 +155,7 @@ export function MemberCard({ user }: Props) {
             {/* Template background */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/assets/member-card/template.jpg"
+              src={isGeneral ? '/assets/member-card/template-general.png' : '/assets/member-card/template.png'}
               alt=""
               crossOrigin="anonymous"
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'block' }}
@@ -173,10 +174,6 @@ export function MemberCard({ user }: Props) {
               {user.phone ?? '—'}
             </span>
 
-            <span style={txt(ROWS.category)}>
-              {catLabel}
-            </span>
-
             <span style={txt(ROWS.memberid)}>
               {user.memberId ?? '—'}
             </span>
@@ -185,42 +182,71 @@ export function MemberCard({ user }: Props) {
               {formatSince(user.memberSince ?? user.createdAt)}
             </span>
 
-            {/* Seal text — two lines, centred over the seal stamp */}
-            <span style={{
-              position: 'absolute',
-              left: SEAL.cx,
-              top: SEAL.y1,
-              transform: 'translate(-50%, -50%)',
-              fontFamily: mc,
-              fontSize: SEAL.size,
-              fontWeight: 400,
-              color: 'rgb(1,8,88)',
-              letterSpacing: 1,
-              lineHeight: 1,
-              whiteSpace: 'nowrap',
-              textAlign: 'center',
-            }}>
-              {seal1}
-            </span>
-            <span style={{
-              position: 'absolute',
-              left: SEAL.cx,
-              top: SEAL.y2,
-              transform: 'translate(-50%, -50%)',
-              fontFamily: mc,
-              fontSize: SEAL.size,
-              fontWeight: 400,
-              color: 'rgb(1,8,88)',
-              letterSpacing: 1,
-              lineHeight: 1,
-              whiteSpace: 'nowrap',
-              textAlign: 'center',
-            }}>
-              {seal2}
-            </span>
+            {/* Seal text */}
+            {isGeneral ? (
+              <span style={{
+                position: 'absolute',
+                left: SEAL.cx,
+                top: 661,
+                transform: 'translate(-50%, -50%)',
+                fontFamily: mc,
+                fontSize: SEAL.size,
+                fontWeight: 400,
+                color: 'rgb(1,8,88)',
+                letterSpacing: 1,
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+                textAlign: 'center',
+              }}>MEMBER</span>
+            ) : (
+              <>
+                <span style={{
+                  position: 'absolute',
+                  left: SEAL.cx,
+                  top: SEAL.y1,
+                  transform: 'translate(-50%, -50%)',
+                  fontFamily: mc,
+                  fontSize: SEAL.size,
+                  fontWeight: 400,
+                  color: 'rgb(1,8,88)',
+                  letterSpacing: 1,
+                  lineHeight: 1,
+                  whiteSpace: 'nowrap',
+                  textAlign: 'center',
+                }}>{seal1}</span>
+                <span style={{
+                  position: 'absolute',
+                  left: SEAL.cx,
+                  top: SEAL.y2,
+                  transform: 'translate(-50%, -50%)',
+                  fontFamily: mc,
+                  fontSize: SEAL.size,
+                  fontWeight: 400,
+                  color: 'rgb(1,8,88)',
+                  letterSpacing: 1,
+                  lineHeight: 1,
+                  whiteSpace: 'nowrap',
+                  textAlign: 'center',
+                }}>{seal2}</span>
+              </>
+            )}
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+export function MemberCardDialog({ user, open, onOpenChange }: {
+  user: User
+  open: boolean
+  onOpenChange: (v: boolean) => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[900px] w-[calc(100vw-32px)] p-0 gap-0 overflow-hidden">
+        <MemberCard user={user} />
+      </DialogContent>
+    </Dialog>
   )
 }
