@@ -147,8 +147,8 @@ export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCar
             height: CARD_H * scale,
             maxWidth: '100%',
             overflow: 'hidden',
-            borderRadius: 8,
-            boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+            borderRadius: 10,
+            boxShadow: '0 8px 48px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.3)',
           }}
         >
           {/* Inner card — always CARD_W × CARD_H, scaled via CSS transform */}
