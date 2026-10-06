@@ -183,8 +183,10 @@ export const apiConfig = {
       years:            '/api/role-assignments/years',
       setCurrentYear:   (yearId: number) => `/api/role-assignments/years/${yearId}/current`,
       yearAssignments:  (yearId: number) => `/api/role-assignments/years/${yearId}/assignments`,
+      yearAssignmentsOrder: (yearId: number) => `/api/role-assignments/years/${yearId}/assignments/order`,
       yearAssignment:   (yearId: number, userId: number) => `/api/role-assignments/years/${yearId}/assignments/${userId}`,
       eventAssignments: (eventId: number) => `/api/role-assignments/events/${eventId}/assignments`,
+      eventAssignmentsOrder: (eventId: number) => `/api/role-assignments/events/${eventId}/assignments/order`,
       eventAssignment:  (eventId: number, userId: number) => `/api/role-assignments/events/${eventId}/assignments/${userId}`,
     },
     meetings: {
