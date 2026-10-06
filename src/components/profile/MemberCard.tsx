@@ -112,25 +112,35 @@ export function MemberCard({ user }: Props) {
 
   return (
     <div className="rounded-2xl bg-white border border-border/60 overflow-hidden shadow-[0_1px_3px_0_rgb(0,0,0,0.04)]">
-      {/* Header */}
-      <div className="px-5 py-4 border-b border-border/60 flex items-center justify-between">
-        <div>
-          <p className="font-heading font-bold text-sm text-brand-navy">Membership Card</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Your official club membership card</p>
+      {/* Header — navy banner matching identity card style */}
+      <div className="relative bg-brand-navy overflow-hidden">
+        <div className="absolute top-0 right-0 w-0 h-0"
+          style={{ borderLeft: '140px solid transparent', borderTop: '80px solid rgba(249,115,22,0.12)' }} />
+        <div className="absolute bottom-0 right-20 size-20 rounded-full bg-white/[0.04]" />
+        <div className="relative flex items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="size-9 rounded-xl bg-brand-orange/20 ring-1 ring-brand-orange/30 flex items-center justify-center shrink-0">
+              <Download className="size-4 text-brand-orange" />
+            </div>
+            <div>
+              <p className="font-heading font-bold text-white text-sm leading-snug">Membership Card</p>
+              <p className="text-white/50 text-[11px] mt-0.5">Official club membership card</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={download}
+            disabled={busy}
+            className="gap-1.5 text-xs bg-brand-orange hover:bg-brand-orange/90 text-white shrink-0"
+          >
+            {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+            Download PNG
+          </Button>
         </div>
-        <Button
-          size="sm"
-          onClick={download}
-          disabled={busy}
-          className="gap-1.5 text-xs bg-brand-orange hover:bg-brand-orange/90 text-white"
-        >
-          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-          Download PNG
-        </Button>
       </div>
 
       {/* Card preview */}
-      <div ref={wrapRef} className="w-full p-4">
+      <div ref={wrapRef} className="w-full p-4 bg-slate-50/60">
         {/* Outer container — sized to scaled dimensions */}
         <div
           style={{
@@ -244,7 +254,7 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[900px] w-[calc(100vw-32px)] p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-[900px] w-[calc(100vw-32px)] p-0 gap-0 overflow-hidden rounded-2xl shadow-2xl">
         <MemberCard user={user} />
       </DialogContent>
     </Dialog>
