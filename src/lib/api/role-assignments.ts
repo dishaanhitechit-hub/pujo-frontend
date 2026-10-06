@@ -80,6 +80,11 @@ export async function clearYearAssignment(yearId: number, userId: number): Promi
   await apiClient.delete(ep.yearAssignment(yearId, userId))
 }
 
+/** Persist the manual member order for a club year (full ordered list of user ids). */
+export async function reorderYearAssignments(yearId: number, userIds: number[]): Promise<void> {
+  await apiClient.put(ep.yearAssignmentsOrder(yearId), { userIds })
+}
+
 // ── Event assignments ────────────────────────────────────────────────────────
 
 export async function getEventAssignments(eventId: number): Promise<EventAssignmentsResponse> {
@@ -95,4 +100,9 @@ export async function setEventAssignment(
 
 export async function clearEventAssignment(eventId: number, userId: number): Promise<void> {
   await apiClient.delete(ep.eventAssignment(eventId, userId))
+}
+
+/** Persist the manual member order for an event (full ordered list of user ids). */
+export async function reorderEventAssignments(eventId: number, userIds: number[]): Promise<void> {
+  await apiClient.put(ep.eventAssignmentsOrder(eventId), { userIds })
 }

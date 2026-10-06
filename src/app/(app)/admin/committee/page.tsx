@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   Plus, Search, X, CalendarDays, CalendarClock, Loader2, Eye, EyeOff, IndianRupee,
+  ChevronUp, ChevronDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,8 +17,8 @@ import { cn } from '@/lib/utils'
 import { COMMITTEE_ROLES, COMMITTEE_ROLE_LABELS } from '@/config/committee-roles'
 import {
   listClubYears, createClubYear, setCurrentClubYear,
-  getYearAssignments, setYearAssignment, clearYearAssignment,
-  getEventAssignments, setEventAssignment, clearEventAssignment,
+  getYearAssignments, setYearAssignment, clearYearAssignment, reorderYearAssignments,
+  getEventAssignments, setEventAssignment, clearEventAssignment, reorderEventAssignments,
 } from '@/lib/api/role-assignments'
 import { listEvents } from '@/lib/api/events'
 import type {
@@ -146,6 +147,7 @@ function YearlyRolesTab() {
   const [search, setSearch] = useState('')
   const [newYearOpen, setNewYearOpen] = useState(false)
   const [savingId, setSavingId] = useState<number | null>(null)
+  const [reordering, setReordering] = useState(false)
 
   const loadYears = useCallback(async () => {
     setLoading(true)
@@ -205,6 +207,26 @@ function YearlyRolesTab() {
       toast.error('Failed to save.')
     } finally {
       setSavingId(null)
+    }
+  }
+
+  async function handleMove(m: YearAssignmentMember, dir: 'up' | 'down') {
+    if (!selectedYearId) return
+    const idx = members.findIndex((x) => x.id === m.id)
+    const swap = dir === 'up' ? idx - 1 : idx + 1
+    if (idx < 0 || swap < 0 || swap >= members.length) return
+    const prev = members
+    const next = [...members]
+    ;[next[idx], next[swap]] = [next[swap], next[idx]]
+    setMembers(next)
+    setReordering(true)
+    try {
+      await reorderYearAssignments(selectedYearId, next.map((x) => x.id))
+    } catch {
+      toast.error('Failed to reorder.')
+      setMembers(prev)
+    } finally {
+      setReordering(false)
     }
   }
 
@@ -277,9 +299,13 @@ function YearlyRolesTab() {
             loading={membersLoading}
             members={filtered}
             savingId={savingId}
+            canReorder={!q}
+            reordering={reordering}
+            onMove={(m, dir) => handleMove(m as YearAssignmentMember, dir)}
             legend={<Legend items={[
               { icon: <CalendarDays className="size-3.5" />, text: 'Pick a role to add the member to this year’s committee' },
               { icon: <Eye className="size-3.5" />, text: 'On website = shown in the public committee list; Hidden = kept private' },
+              { icon: <ChevronUp className="size-3.5" />, text: 'Use the arrows to set the display order (clear search first)' },
             ]} />}
             renderExtra={(m) => (
               <ToggleChip
@@ -313,6 +339,7 @@ function EventRolesTab() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'' | 'draft' | 'published' | 'archived'>('')
   const [savingId, setSavingId] = useState<number | null>(null)
+  const [reordering, setReordering] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -385,6 +412,26 @@ function EventRolesTab() {
     }
   }
 
+  async function handleMove(m: EventAssignmentMember, dir: 'up' | 'down') {
+    if (!selectedEventId) return
+    const idx = members.findIndex((x) => x.id === m.id)
+    const swap = dir === 'up' ? idx - 1 : idx + 1
+    if (idx < 0 || swap < 0 || swap >= members.length) return
+    const prev = members
+    const next = [...members]
+    ;[next[idx], next[swap]] = [next[swap], next[idx]]
+    setMembers(next)
+    setReordering(true)
+    try {
+      await reorderEventAssignments(selectedEventId, next.map((x) => x.id))
+    } catch {
+      toast.error('Failed to reorder.')
+      setMembers(prev)
+    } finally {
+      setReordering(false)
+    }
+  }
+
   const q = search.trim().toLowerCase()
   const visibleEvents = statusFilter ? events.filter((e) => e.status === statusFilter) : events
   const filtered = q
@@ -426,10 +473,14 @@ function EventRolesTab() {
         loading={membersLoading}
         members={filtered}
         savingId={savingId}
+        canReorder={!q}
+        reordering={reordering}
+        onMove={(m, dir) => handleMove(m as EventAssignmentMember, dir)}
         legend={<Legend items={[
           { icon: <CalendarClock className="size-3.5" />, text: 'Pick a role to add the member to this event’s committee' },
           { icon: <IndianRupee className="size-3.5" />, text: 'Can collect = allowed to take payments for this event' },
           { icon: <Eye className="size-3.5" />, text: 'On website = shown in the public committee for this event' },
+          { icon: <ChevronUp className="size-3.5" />, text: 'Use the arrows to set the display order (clear search first)' },
         ]} />}
         renderExtra={(m) => {
           const em = m as EventAssignmentMember
@@ -466,13 +517,16 @@ function EventRolesTab() {
 
 type AnyMember = YearAssignmentMember | EventAssignmentMember
 
-function AssignmentList({ loading, members, savingId, renderExtra, onRole, legend }: {
+function AssignmentList({ loading, members, savingId, renderExtra, onRole, legend, canReorder, onMove, reordering }: {
   loading: boolean
   members: AnyMember[]
   savingId: number | null
   renderExtra: (m: AnyMember) => React.ReactNode
   onRole: (m: AnyMember, role: CommitteeRole | '') => void
   legend?: React.ReactNode
+  canReorder: boolean
+  onMove: (m: AnyMember, dir: 'up' | 'down') => void
+  reordering: boolean
 }) {
   if (loading) {
     return (
@@ -487,11 +541,19 @@ function AssignmentList({ loading, members, savingId, renderExtra, onRole, legen
   return (
     <div className="flex flex-col gap-2">
       {legend}
-      {members.map((m) => {
+      {members.map((m, i) => {
         const sub = [m.memberId, m.phone].filter(Boolean).join(' · ') || null
         return (
           <div key={m.id} className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 rounded-xl border border-border bg-card px-3 sm:px-4 py-2.5">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <ReorderArrows
+                canReorder={canReorder}
+                disabled={reordering}
+                isFirst={i === 0}
+                isLast={i === members.length - 1}
+                onUp={() => onMove(m, 'up')}
+                onDown={() => onMove(m, 'down')}
+              />
               <Avatar name={m.name} />
               <MemberInfo name={m.name} sub={sub} />
             </div>
@@ -503,6 +565,37 @@ function AssignmentList({ loading, members, savingId, renderExtra, onRole, legen
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/* Up/down reorder control — hidden while a search filter is active (can't
+   meaningfully reorder a filtered subset). */
+function ReorderArrows({ canReorder, disabled, isFirst, isLast, onUp, onDown }: {
+  canReorder: boolean; disabled: boolean; isFirst: boolean; isLast: boolean
+  onUp: () => void; onDown: () => void
+}) {
+  if (!canReorder) return null
+  return (
+    <div className="flex flex-col shrink-0 -my-1">
+      <button
+        type="button"
+        onClick={onUp}
+        disabled={disabled || isFirst}
+        aria-label="Move up"
+        className="text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+      >
+        <ChevronUp className="size-4" />
+      </button>
+      <button
+        type="button"
+        onClick={onDown}
+        disabled={disabled || isLast}
+        aria-label="Move down"
+        className="text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+      >
+        <ChevronDown className="size-4" />
+      </button>
     </div>
   )
 }
