@@ -140,15 +140,15 @@ export function MemberCard({ user }: Props) {
       </div>
 
       {/* Card preview */}
-      <div ref={wrapRef} className="w-full p-4 bg-slate-50/60">
+      <div ref={wrapRef} className="w-full px-5 py-6" style={{ background: 'linear-gradient(160deg,#0d1424 0%,#12203a 60%,#0d1424 100%)' }}>
         {/* Outer container — sized to scaled dimensions */}
         <div
           style={{
             width: CARD_W * scale,
             height: CARD_H * scale,
             overflow: 'hidden',
-            borderRadius: 8,
-            boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+            borderRadius: 10,
+            boxShadow: '0 8px 48px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.3)',
           }}
         >
           {/* Inner card — always CARD_W × CARD_H, scaled via CSS transform */}
@@ -254,7 +254,7 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[900px] w-[calc(100vw-32px)] p-0 gap-0 overflow-hidden rounded-2xl shadow-2xl">
+      <DialogContent className="max-w-[1200px] w-[calc(100vw-32px)] p-0 gap-0 overflow-hidden rounded-2xl shadow-2xl">
         <MemberCard user={user} />
       </DialogContent>
     </Dialog>
