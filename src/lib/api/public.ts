@@ -15,6 +15,11 @@ import type {
 const BASE = apiConfig.baseUrl
 const ORG_SLUG = process.env.NEXT_PUBLIC_ORG_SLUG ?? ''
 
+if (!ORG_SLUG) {
+  // Shows in `npm run build` / server logs. Without it every public page renders empty.
+  console.warn('[public-site] NEXT_PUBLIC_ORG_SLUG is not set — public pages will show no events, team or gallery.')
+}
+
 /**
  * Convert a relative media path (/media/...) returned by the public API
  * into a full absolute URL suitable for <img src> or next/image.
