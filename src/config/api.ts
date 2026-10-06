@@ -8,6 +8,9 @@ export const apiConfig = {
       logout: '/api/auth/logout',
       me: '/api/auth/me',
       firstSetup: '/api/auth/first-setup',
+      forgotPassword: '/api/auth/forgot-password',
+      resetPassword: '/api/auth/reset-password',
+      changePassword: '/api/auth/change-password',
     },
     users: {
       list: '/api/users/',

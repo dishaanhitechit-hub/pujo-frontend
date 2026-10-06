@@ -1,8 +1,7 @@
 'use client'
 
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -12,10 +11,11 @@ import { Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { AuthShell } from '@/components/shared/AuthShell'
+import { OrgCodeField, useOrgOptions } from '@/components/shared/OrgCodeField'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { getDefaultRoute } from '@/config/roles'
-import { firstSetup, getOrgsByEmail, type OrgOption } from '@/lib/api/auth'
-import { saveAuth } from '@/lib/storage'
+import { firstSetup } from '@/lib/api/auth'
 import type { ApiError } from '@/types'
 
 // ── Step 1: email + orgCode + password ───────────────────────────────────────
@@ -48,7 +48,7 @@ export default function LoginPage() {
 }
 
 function LoginContent() {
-  const { login, isAuthenticated, isLoading, user } = useAuth()
+  const { login, setSession, isAuthenticated, isLoading, user } = useAuth()
   const router      = useRouter()
   const searchParams = useSearchParams()
 
@@ -59,11 +59,7 @@ function LoginContent() {
   const [step, setStep]           = useState<'login' | 'setup'>('login')
   const [tempCreds, setTempCreds] = useState<{ email: string; password: string; orgCode: string } | null>(null)
 
-  // Org-code dropdown state
-  const [orgOptions, setOrgOptions]       = useState<OrgOption[]>([])
-  const [dropdownOpen, setDropdownOpen]   = useState(false)
-  const [fetchingOrgs, setFetchingOrgs]   = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const orgs = useOrgOptions()
 
   const loginForm = useForm<LoginData>({ resolver: zodResolver(loginSchema) })
   const setupForm = useForm<SetupData>({ resolver: zodResolver(setupSchema) })
@@ -76,41 +72,23 @@ function LoginContent() {
     }
   }, [isAuthenticated, isLoading, user, router, searchParams])
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
   if (isLoading || isAuthenticated) return null
 
   async function onEmailBlur() {
-    const email = loginForm.getValues('email').trim().toLowerCase()
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
-    setFetchingOrgs(true)
-    try {
-      const orgs = await getOrgsByEmail(email)
-      setOrgOptions(orgs)
-      if (orgs.length === 1) {
-        loginForm.setValue('orgCode', orgs[0].orgCode, { shouldValidate: true })
-      } else if (orgs.length > 1) {
-        setDropdownOpen(true)
-      }
-    } catch {
-      // silently ignore — user can type manually
-    } finally {
-      setFetchingOrgs(false)
+    const found = await orgs.lookup(loginForm.getValues('email'))
+    if (found.length === 1) {
+      loginForm.setValue('orgCode', found[0].orgCode, { shouldValidate: true })
     }
   }
 
-  function selectOrg(opt: OrgOption) {
-    loginForm.setValue('orgCode', opt.orgCode, { shouldValidate: true })
-    setDropdownOpen(false)
+  function forgotPasswordHref() {
+    const params = new URLSearchParams()
+    const email = loginForm.getValues('email')?.trim()
+    const orgCode = loginForm.getValues('orgCode')?.trim()
+    if (email) params.set('email', email)
+    if (orgCode) params.set('orgCode', orgCode)
+    const qs = params.toString()
+    return qs ? `/forgot-password?${qs}` : '/forgot-password'
   }
 
   async function onLoginSubmit(data: LoginData) {
@@ -142,7 +120,7 @@ function LoginContent() {
         otpCode:     data.otp,
         newPassword: data.newPassword,
       })
-      saveAuth(result.accessToken, result.user)
+      setSession(result.accessToken, result.user)
       toast.success('Account set up! Welcome.')
       const from = searchParams.get('from')
       const isValidFrom = from && from.startsWith('/') && from !== '/login'
@@ -153,49 +131,8 @@ function LoginContent() {
     }
   }
 
-  const ROLE_LABEL: Record<string, string> = {
-    admin: 'Admin', collector: 'Collector', member: 'Member',
-    managing_committee: 'Managing Committee', core_committee: 'Core Committee', cashier: 'Cashier',
-  }
-
   return (
-    <div className="min-h-screen flex">
-      {/* Left panel — branding */}
-      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-gradient-to-br from-brand-navy via-[oklch(0.25_0.09_264.5)] to-[oklch(0.2_0.08_264.5)] p-12 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none" aria-hidden>
-          <div className="absolute top-1/3 right-0 w-96 h-96 rounded-full bg-brand-orange/5 blur-3xl" />
-          <div className="absolute bottom-1/4 left-0 w-80 h-80 rounded-full bg-brand-pink/5 blur-3xl" />
-        </div>
-        <Link href="/" className="relative flex items-center gap-3">
-          <Image src="/assets/branding/club-logo.jpeg" alt="Logo" width={44} height={44} className="rounded-lg bg-white/5 p-0.5" />
-          <p className="font-bold text-white text-base tracking-wide">PujoPay</p>
-        </Link>
-        <div className="relative">
-          <p className="text-brand-orange/80 text-xs uppercase tracking-widest font-semibold mb-3">
-            PujoPay
-          </p>
-          <h1 className="font-heading font-bold text-4xl text-white leading-tight mb-4">
-            Member Portal
-          </h1>
-          <p className="text-white/60 text-base leading-relaxed">
-            One place for collectors, admins, and committee members — manage donations,
-            generate digital receipts, and keep the community's celebration running smoothly.
-          </p>
-        </div>
-        <p className="relative text-white/25 text-xs">
-          © {new Date().getFullYear()} PujoPay
-        </p>
-      </div>
-
-      {/* Right panel — form */}
-      <div className="flex flex-1 items-center justify-center p-6 sm:p-12 bg-white">
-        <div className="w-full max-w-md">
-          {/* Mobile logo */}
-          <Link href="/" className="lg:hidden flex items-center gap-2 mb-8">
-            <Image src="/assets/branding/club-logo.jpeg" alt="Logo" width={36} height={36} className="rounded-md" />
-            <p className="font-bold text-brand-navy">PujoPay</p>
-          </Link>
-
+    <AuthShell>
           {step === 'login' ? (
             <>
               <div className="mb-8">
@@ -221,69 +158,26 @@ function LoginContent() {
                   )}
                 </div>
 
-                {/* Org code + dropdown */}
-                <div className="flex flex-col gap-1.5" ref={dropdownRef}>
-                  <Label htmlFor="orgCode">
-                    Organisation code
-                    {fetchingOrgs && <span className="ml-2 text-xs text-muted-foreground animate-pulse">fetching…</span>}
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="orgCode"
-                      type="text"
-                      autoComplete="off"
-                      maxLength={20}
-                      placeholder="e.g. PUJA3847"
-                      className="font-mono uppercase tracking-widest pr-8"
-                      aria-invalid={!!loginForm.formState.errors.orgCode}
-                      {...loginForm.register('orgCode', {
-                        onChange: () => setDropdownOpen(false),
-                      })}
-                      onFocus={() => orgOptions.length > 1 && setDropdownOpen(true)}
-                    />
-                    {orgOptions.length > 1 && (
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        onClick={() => setDropdownOpen(v => !v)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
-                        aria-label="Show organisations"
-                      >
-                        ▾
-                      </button>
-                    )}
-
-                    {/* Dropdown */}
-                    {dropdownOpen && orgOptions.length > 0 && (
-                      <div className="absolute z-50 top-full mt-1 w-full rounded-md border border-border bg-white shadow-lg overflow-hidden">
-                        {orgOptions.map((opt) => (
-                          <button
-                            key={opt.orgCode}
-                            type="button"
-                            onClick={() => selectOrg(opt)}
-                            className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-muted transition-colors"
-                          >
-                            <div>
-                              <p className="text-sm font-medium text-foreground">{opt.orgName}</p>
-                              <p className="text-xs text-muted-foreground font-mono">{opt.orgCode}</p>
-                            </div>
-                            <span className="text-xs bg-muted text-muted-foreground rounded px-1.5 py-0.5 shrink-0">
-                              {ROLE_LABEL[opt.role] ?? opt.role}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {loginForm.formState.errors.orgCode && (
-                    <p className="text-xs text-destructive" role="alert">{loginForm.formState.errors.orgCode.message}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">Found in your welcome email. Enter your email above to auto-fill.</p>
-                </div>
+                <OrgCodeField
+                  registration={loginForm.register('orgCode')}
+                  options={orgs.options}
+                  fetching={orgs.fetching}
+                  onSelect={(code) => loginForm.setValue('orgCode', code, { shouldValidate: true })}
+                  error={loginForm.formState.errors.orgCode?.message}
+                />
 
                 {/* Password */}
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <button
+                      type="button"
+                      onClick={() => router.push(forgotPasswordHref())}
+                      className="text-xs font-medium text-brand-orange hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                   <div className="relative">
                     <Input
                       id="password"
@@ -442,8 +336,6 @@ function LoginContent() {
               </Link>
             </div>
           )}
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   )
 }

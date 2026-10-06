@@ -17,6 +17,8 @@ interface AuthContextValue extends AuthState {
   login: (input: LoginInput) => Promise<void>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
+  /** Adopt a token issued outside `login` (password reset / change). */
+  setSession: (token: string, user: User) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -70,10 +72,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(user)
   }, [])
 
+  const setSession = useCallback((token: string, user: User) => {
+    saveAuth(token, user)
+    setState({ user, isLoading: false, isAuthenticated: true })
+  }, [])
+
   const token = typeof window !== 'undefined' ? getStoredToken() : null
 
   return (
-    <AuthContext.Provider value={{ ...state, token, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ ...state, token, login, logout, refreshUser, setSession }}>
       {children}
     </AuthContext.Provider>
   )

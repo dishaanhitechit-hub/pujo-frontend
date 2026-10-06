@@ -14,6 +14,7 @@ import {
   MapPin, Hash, Users, ArrowUpRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ChangePasswordCard } from '@/components/profile/ChangePasswordCard'
 import type { ContributionStats, MyRoles } from '@/types'
 
 export default function ProfilePage() {
@@ -292,6 +293,8 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
+
+            <ChangePasswordCard />
           </div>
         </div>
       </div>

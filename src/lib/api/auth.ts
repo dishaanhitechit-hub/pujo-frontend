@@ -52,3 +52,25 @@ export async function firstSetup(input: FirstSetupInput): Promise<LoginResponse>
   const res = await apiClient.post<ApiResponse<LoginResponse>>(apiConfig.endpoints.auth.firstSetup, input)
   return res.data.data
 }
+
+export async function requestPasswordReset(input: { email: string; orgCode: string }): Promise<string> {
+  const res = await apiClient.post<ApiResponse<never>>(apiConfig.endpoints.auth.forgotPassword, input)
+  return res.data.message
+}
+
+export interface ResetPasswordInput {
+  email: string
+  orgCode: string
+  otpCode: string
+  newPassword: string
+}
+
+export async function resetPassword(input: ResetPasswordInput): Promise<LoginResponse> {
+  const res = await apiClient.post<ApiResponse<LoginResponse>>(apiConfig.endpoints.auth.resetPassword, input)
+  return res.data.data
+}
+
+export async function changePassword(input: { currentPassword: string; newPassword: string }): Promise<LoginResponse> {
+  const res = await apiClient.post<ApiResponse<LoginResponse>>(apiConfig.endpoints.auth.changePassword, input)
+  return res.data.data
+}
