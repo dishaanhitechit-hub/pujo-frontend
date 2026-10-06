@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ChangePasswordCard } from '@/components/profile/ChangePasswordCard'
+import { MemberCard } from '@/components/profile/MemberCard'
 import type { ContributionStats, MyRoles } from '@/types'
 
 export default function ProfilePage() {
@@ -297,6 +298,13 @@ export default function ProfilePage() {
             <ChangePasswordCard />
           </div>
         </div>
+
+        {/* Member card — full width, non-admin only */}
+        {!isAdmin && user.memberId && (
+          <div className="mt-5">
+            <MemberCard user={user} />
+          </div>
+        )}
       </div>
     </div>
   )
