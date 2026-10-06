@@ -111,7 +111,7 @@ export function MemberCard({ user }: Props) {
   })
 
   return (
-    <div className="rounded-2xl bg-white border border-border/60 overflow-hidden shadow-[0_1px_3px_0_rgb(0,0,0,0.04)]">
+    <div className="overflow-hidden" style={{ borderRadius: 16 }}>
       {/* Header — navy banner matching identity card style */}
       <div className="relative bg-brand-navy overflow-hidden">
         <div className="absolute top-0 right-0 w-0 h-0"
@@ -140,7 +140,7 @@ export function MemberCard({ user }: Props) {
       </div>
 
       {/* Card preview */}
-      <div ref={wrapRef} className="w-full px-5 py-6" style={{ background: 'linear-gradient(160deg,#0d1424 0%,#12203a 60%,#0d1424 100%)' }}>
+      <div ref={wrapRef} className="w-full px-2 py-3" style={{ background: 'linear-gradient(160deg,#0d1424 0%,#12203a 60%,#0d1424 100%)' }}>
         {/* Outer container — sized to scaled dimensions */}
         <div
           style={{
@@ -254,7 +254,7 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1200px] w-[calc(100vw-32px)] p-0 gap-0 overflow-hidden rounded-2xl shadow-2xl">
+      <DialogContent className="max-w-[1400px] w-[calc(100vw-24px)] p-0 gap-0 overflow-hidden rounded-2xl shadow-2xl mx-auto">
         <MemberCard user={user} />
       </DialogContent>
     </Dialog>
