@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 //remove letter
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://132.154.156.82:5999'
 
-// Parse the API base URL to xtract hostname/port for next/image remotePatterns.
+// Parse the API base URL to extract hostname/port for next/image remotePatterns.
 // Falls back to defaults if the URL is malformed.
 let apiHostname = '132.154.156.82'
 let apiPort = '5999'
