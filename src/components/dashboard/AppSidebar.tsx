@@ -109,7 +109,7 @@ export function AppSidebar() {
         <div className="min-w-0">
           <p className="text-sidebar-foreground font-semibold text-sm truncate">PujoPay</p>
           <p className="text-sidebar-foreground/40 text-[10px] truncate uppercase tracking-wider">
-            {process.env.NEXT_PUBLIC_ORG_SLUG ?? 'admin'}
+            {process.env.NEXT_PUBLIC_ORG_SLUG ?? 'SLUG'}
           </p>
         </div>
       </div>
