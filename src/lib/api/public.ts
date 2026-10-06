@@ -52,7 +52,7 @@ async function publicGet<T>(
 }
 
 export async function getFeaturedEvent(): Promise<PublicEventDetail | null> {
-  return publicGet<PublicEventDetail>(withOrg(apiConfig.endpoints.public.featuredEvent), 300)
+  return publicGet<PublicEventDetail>(withOrg(apiConfig.endpoints.public.featuredEvent), 60)
 }
 
 export async function listPublicEvents(
@@ -61,18 +61,18 @@ export async function listPublicEvents(
   includeDays = false,
 ): Promise<PublicEventsList | null> {
   const extra = `page=${page}&perPage=${perPage}${includeDays ? '&includeDays=true' : ''}`
-  return publicGet<PublicEventsList>(withOrg(apiConfig.endpoints.public.events, extra), 300)
+  return publicGet<PublicEventsList>(withOrg(apiConfig.endpoints.public.events, extra), 60)
 }
 
 export async function getPublicEventBySlug(slug: string): Promise<PublicEventDetail | null> {
-  return publicGet<PublicEventDetail>(withOrg(apiConfig.endpoints.public.eventBySlug(slug)), 300)
+  return publicGet<PublicEventDetail>(withOrg(apiConfig.endpoints.public.eventBySlug(slug)), 60)
 }
 
 export async function getPublicCommittee(eventId?: number): Promise<PublicCommitteeMember[]> {
   const extra = eventId ? `eventId=${eventId}` : undefined
   const data = await publicGet<PublicCommitteeMember[]>(
     withOrg(apiConfig.endpoints.public.committee, extra),
-    600,
+    300,
   )
   return data ?? []
 }
@@ -80,7 +80,7 @@ export async function getPublicCommittee(eventId?: number): Promise<PublicCommit
 export async function getPublicCommitteeFull(): Promise<PublicCommitteeFull> {
   const data = await publicGet<PublicCommitteeFull>(
     withOrg(apiConfig.endpoints.public.committeeFull),
-    600,
+    300,
   )
   return data ?? { yearCommittee: null, eventCommittees: [], legacyMembers: [] }
 }
@@ -89,13 +89,13 @@ export async function getPublicAnnouncements(eventId?: number): Promise<PublicAn
   const extra = eventId ? `eventId=${eventId}` : undefined
   const data = await publicGet<PublicAnnouncement[]>(
     withOrg(apiConfig.endpoints.public.announcements, extra),
-    300,
+    60,
   )
   return data ?? []
 }
 
 export async function getSiteConfig(): Promise<PublicSiteConfig | null> {
-  return publicGet<PublicSiteConfig>(withOrg(apiConfig.endpoints.public.siteConfig), 3600)
+  return publicGet<PublicSiteConfig>(withOrg(apiConfig.endpoints.public.siteConfig), 300)
 }
 
 export async function listPublicGallery(): Promise<PublicGalleryResponse | null> {
@@ -103,7 +103,7 @@ export async function listPublicGallery(): Promise<PublicGalleryResponse | null>
 }
 
 export async function getPublicStats(): Promise<PublicStats | null> {
-  return publicGet<PublicStats>(withOrg(apiConfig.endpoints.public.stats), 3600)
+  return publicGet<PublicStats>(withOrg(apiConfig.endpoints.public.stats), 300)
 }
 
 export interface OrgRequestInput {

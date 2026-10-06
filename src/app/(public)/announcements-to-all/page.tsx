@@ -5,7 +5,7 @@ import { Megaphone, Calendar, ArrowRight } from 'lucide-react'
 import type { PublicAnnouncement } from '@/types'
 
 export const metadata: Metadata = { title: 'Announcements' }
-export const revalidate = 300
+export const revalidate = 60
 
 function fmtDate(iso: string | null): string {
   if (!iso) return ''
