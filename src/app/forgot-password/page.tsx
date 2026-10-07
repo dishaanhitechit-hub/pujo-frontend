@@ -94,13 +94,11 @@ function ForgotPasswordContent() {
   const [expiresIn, startExpiry] = useCountdown()
   const [resendIn, startResend]  = useCountdown()
 
-  const fixedOrgCode = process.env.NEXT_PUBLIC_ORG_CODE ?? ''
-
   const requestForm = useForm<RequestData>({
     resolver: zodResolver(requestSchema),
     defaultValues: {
       email:   searchParams.get('email') ?? '',
-      orgCode: searchParams.get('orgCode') ?? fixedOrgCode,
+      orgCode: searchParams.get('orgCode') ?? '',
     },
   })
   const resetForm = useForm<ResetData>({ resolver: zodResolver(resetSchema) })
@@ -108,11 +106,11 @@ function ForgotPasswordContent() {
   // Arrived from the login page with an email but no org code — offer that email's orgs.
   useEffect(() => {
     const email = searchParams.get('email')
-    if (!email || searchParams.get('orgCode') || fixedOrgCode) return
+    if (!email || searchParams.get('orgCode')) return
     orgs.lookup(email).then((found) => {
       if (found.length === 1) requestForm.setValue('orgCode', found[0].orgCode)
     })
-  }, [searchParams, orgs.lookup, requestForm, fixedOrgCode])
+  }, [searchParams, orgs.lookup, requestForm])
 
   async function onEmailBlur() {
     const found = await orgs.lookup(requestForm.getValues('email'))
@@ -194,7 +192,6 @@ function ForgotPasswordContent() {
             fetching={orgs.fetching}
             onSelect={(code) => requestForm.setValue('orgCode', code, { shouldValidate: true })}
             error={errors.orgCode?.message}
-            currentValue={requestForm.watch('orgCode')}
           />
 
           <Button

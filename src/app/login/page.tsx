@@ -64,12 +64,6 @@ function LoginContent() {
   const loginForm = useForm<LoginData>({ resolver: zodResolver(loginSchema) })
   const setupForm = useForm<SetupData>({ resolver: zodResolver(setupSchema) })
 
-  // Pre-fill org code from env on mount
-  const fixedOrgCode = process.env.NEXT_PUBLIC_ORG_CODE ?? ''
-  useEffect(() => {
-    if (fixedOrgCode) loginForm.setValue('orgCode', fixedOrgCode, { shouldValidate: false })
-  }, [fixedOrgCode]) // eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => {
     if (!isLoading && isAuthenticated && user) {
       const from = searchParams.get('from')
@@ -170,7 +164,6 @@ function LoginContent() {
                   fetching={orgs.fetching}
                   onSelect={(code) => loginForm.setValue('orgCode', code, { shouldValidate: true })}
                   error={loginForm.formState.errors.orgCode?.message}
-                  currentValue={loginForm.watch('orgCode')}
                 />
 
                 {/* Password */}
