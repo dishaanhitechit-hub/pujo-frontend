@@ -240,7 +240,10 @@ function UsersContent() {
         ].some((v) => v?.toLowerCase().includes(q))
       })
     : users
-  ).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+  ).slice().sort((a, b) => {
+    if (a.isActive !== b.isActive) return a.isActive ? -1 : 1
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  })
 
   return (
     <div className="p-6 lg:p-8">
