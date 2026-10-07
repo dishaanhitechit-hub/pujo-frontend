@@ -74,7 +74,7 @@ export function OrgCodeField({ registration, options, fetching, onSelect, error 
           maxLength={20}
           placeholder="E.G.  PUJA3847"
           readOnly
-          className="font-mono uppercase tracking-widest pr-8 cursor-default bg-muted/40 select-none"
+          className="font-mono uppercase tracking-widest pr-8 cursor-not-allowed bg-muted text-muted-foreground border-border/50 select-none opacity-75"
           aria-invalid={!!error}
           {...registration}
           onFocus={() => options.length > 1 && setOpen(true)}
