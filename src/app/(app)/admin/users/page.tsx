@@ -322,25 +322,29 @@ function UsersContent() {
                         <QrCode className="size-3" />
                         QR
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openCard(u)}
-                        className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                        title="Membership card"
-                      >
-                        <CreditCard className="size-3" />
-                        Card
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingUser(u)}
-                        className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        <Pencil className="size-3" />
-                        Edit
-                      </Button>
+                      {u.isActive && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openCard(u)}
+                          className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                          title="Membership card"
+                        >
+                          <CreditCard className="size-3" />
+                          Card
+                        </Button>
+                      )}
+                      {u.isActive && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingUser(u)}
+                          className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          <Pencil className="size-3" />
+                          Edit
+                        </Button>
+                      )}
                       {u.id !== currentUser?.id && u.isActive && (
                         <Button
                           variant="ghost"
