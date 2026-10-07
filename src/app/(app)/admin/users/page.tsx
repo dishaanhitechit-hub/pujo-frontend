@@ -204,8 +204,8 @@ function UsersContent() {
     setDeactivating(u.id)
     try {
       await deactivateUser(u.id)
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, isActive: false } : x))
       toast.success(`${u.name} has been deactivated.`)
-      await loadUsers()
     } catch (err) {
       toast.error((err as ApiError).message ?? 'Failed to deactivate member.')
     } finally {
@@ -220,8 +220,8 @@ function UsersContent() {
     setDeleting(u.id)
     try {
       await softDeleteUser(u.id)
+      setUsers(prev => prev.filter(x => x.id !== u.id))
       toast.success(`${u.name} has been deleted.`)
-      await loadUsers()
     } catch (err) {
       toast.error((err as ApiError).message ?? 'Failed to delete member.')
     } finally {
