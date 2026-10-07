@@ -312,16 +312,18 @@ function UsersContent() {
                   <td className="px-5 py-3 text-muted-foreground">{u.phone ?? '—'}</td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setQrUser(u)}
-                        className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                        title="Show login QR"
-                      >
-                        <QrCode className="size-3" />
-                        QR
-                      </Button>
+                      {u.isActive && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setQrUser(u)}
+                          className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                          title="Show login QR"
+                        >
+                          <QrCode className="size-3" />
+                          QR
+                        </Button>
+                      )}
                       {u.isActive && (
                         <Button
                           variant="ghost"
