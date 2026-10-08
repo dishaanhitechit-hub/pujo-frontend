@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useRef, useState, useEffect, useCallback } from 'react'
+import React, { useRef, useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { toPng } from 'html-to-image'
 import { Source_Sans_3, Marcellus } from 'next/font/google'
-import { Download, Loader2 } from 'lucide-react'
+import { Download, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { MEMBER_CATEGORY_LABELS } from '@/config/members'
@@ -45,9 +45,16 @@ function sealLines(cat: string): [string, string] {
   return [words.slice(0, mid).join(' '), words.slice(mid).join(' ')]
 }
 
-interface Props { user: User }
+interface Props {
+  user: User
+  hideHeader?: boolean
+}
 
-export function MemberCard({ user }: Props) {
+export interface MemberCardHandle {
+  download: () => Promise<void>
+}
+
+export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCard({ user, hideHeader = false }, ref) {
   const captureRef = useRef<HTMLDivElement>(null)
   const wrapRef    = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
@@ -92,6 +99,8 @@ export function MemberCard({ user }: Props) {
     }
   }
 
+  useImperativeHandle(ref, () => ({ download }))
+
   const ss = sourceSans.style.fontFamily
   const mc = marcellus.style.fontFamily
 
@@ -111,41 +120,44 @@ export function MemberCard({ user }: Props) {
   })
 
   return (
-    <div className="overflow-hidden" style={{ borderRadius: 16 }}>
-      {/* Header — navy banner matching identity card style */}
-      <div className="relative bg-brand-navy overflow-hidden">
-        <div className="absolute top-0 right-0 w-0 h-0"
-          style={{ borderLeft: '140px solid transparent', borderTop: '80px solid rgba(249,115,22,0.12)' }} />
-        <div className="absolute bottom-0 right-20 size-20 rounded-full bg-white/[0.04]" />
-        <div className="relative flex items-center justify-between px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="size-9 rounded-xl bg-brand-orange/20 ring-1 ring-brand-orange/30 flex items-center justify-center shrink-0">
-              <Download className="size-4 text-brand-orange" />
+    <div className={hideHeader ? 'overflow-hidden w-full' : 'overflow-hidden'} style={hideHeader ? {} : { borderRadius: 16 }}>
+      {/* Header — only shown in standalone mode */}
+      {!hideHeader && (
+        <div className="relative bg-brand-navy overflow-hidden">
+          <div className="absolute top-0 right-0 w-0 h-0"
+            style={{ borderLeft: '140px solid transparent', borderTop: '80px solid rgba(249,115,22,0.12)' }} />
+          <div className="absolute bottom-0 right-20 size-20 rounded-full bg-white/[0.04]" />
+          <div className="relative flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="size-9 rounded-xl bg-brand-orange/20 ring-1 ring-brand-orange/30 flex items-center justify-center shrink-0">
+                <Download className="size-4 text-brand-orange" />
+              </div>
+              <div>
+                <p className="font-heading font-bold text-white text-sm leading-snug">Membership Card</p>
+                <p className="text-white/50 text-[11px] mt-0.5">Official club membership card</p>
+              </div>
             </div>
-            <div>
-              <p className="font-heading font-bold text-white text-sm leading-snug">Membership Card</p>
-              <p className="text-white/50 text-[11px] mt-0.5">Official club membership card</p>
-            </div>
+            <Button
+              size="sm"
+              onClick={download}
+              disabled={busy}
+              className="gap-1.5 text-xs bg-brand-orange hover:bg-brand-orange/90 text-white shrink-0"
+            >
+              {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+              Download PNG
+            </Button>
           </div>
-          <Button
-            size="sm"
-            onClick={download}
-            disabled={busy}
-            className="gap-1.5 text-xs bg-brand-orange hover:bg-brand-orange/90 text-white shrink-0"
-          >
-            {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-            Download PNG
-          </Button>
         </div>
-      </div>
+      )}
 
       {/* Card preview */}
-      <div ref={wrapRef} className="w-full px-2 py-3" style={{ background: 'linear-gradient(160deg,#0d1424 0%,#12203a 60%,#0d1424 100%)' }}>
+      <div ref={wrapRef} className="w-full px-2 py-3 overflow-hidden" style={{ background: 'linear-gradient(160deg,#0d1424 0%,#12203a 60%,#0d1424 100%)' }}>
         {/* Outer container — sized to scaled dimensions */}
         <div
           style={{
             width: CARD_W * scale,
             height: CARD_H * scale,
+            maxWidth: '100%',
             overflow: 'hidden',
             borderRadius: 10,
             boxShadow: '0 8px 48px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.3)',
@@ -245,17 +257,102 @@ export function MemberCard({ user }: Props) {
       </div>
     </div>
   )
-}
+})
 
 export function MemberCardDialog({ user, open, onOpenChange }: {
   user: User
   open: boolean
   onOpenChange: (v: boolean) => void
 }) {
+  const cardRef = useRef<MemberCardHandle>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function handleDownload() {
+    if (!cardRef.current) return
+    setBusy(true)
+    try {
+      await cardRef.current.download()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1400px] w-[calc(100vw-24px)] p-0 gap-0 overflow-hidden rounded-2xl shadow-2xl mx-auto">
-        <MemberCard user={user} />
+      <DialogContent
+        className="gap-0 p-0 overflow-hidden [&_[data-slot=dialog-close]]:text-white/60 [&_[data-slot=dialog-close]]:hover:text-white [&_[data-slot=dialog-close]]:hover:bg-white/10"
+        style={{
+          maxWidth: 680,
+          width: 'calc(100vw - 32px)',
+          background: 'rgba(7, 14, 30, 0.90)',
+          backdropFilter: 'blur(28px)',
+          WebkitBackdropFilter: 'blur(28px)',
+          border: '1px solid rgba(212,168,67,0.22)',
+          boxShadow: '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)',
+          borderRadius: 20,
+        }}
+      >
+        {/* Header */}
+        <div
+          className="px-6 pt-5 pb-4 flex items-start justify-between"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          <div>
+            <p className="text-base font-semibold text-white leading-snug">{user.name}</p>
+            <p className="text-xs mt-0.5 font-medium" style={{ color: 'rgba(212,168,67,0.85)' }}>
+              Membership Card
+            </p>
+          </div>
+        </div>
+
+        {/* Card preview area */}
+        <div className="px-4 pt-5 pb-4 overflow-hidden min-w-0">
+          <div
+            style={{
+              borderRadius: 12,
+              padding: '2px',
+              overflow: 'hidden',
+              minWidth: 0,
+              background: 'linear-gradient(135deg, rgba(212,168,67,0.35) 0%, rgba(212,168,67,0.08) 60%, rgba(212,168,67,0.18) 100%)',
+            }}
+          >
+            <div style={{ borderRadius: 10, overflow: 'hidden', background: 'rgba(7,14,30,0.5)', minWidth: 0 }}>
+              <MemberCard ref={cardRef} user={user} hideHeader />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div
+          className="px-6 py-4 flex items-center justify-between gap-3"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          <p className="text-xs hidden sm:block" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            Download to save your official membership card
+          </p>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="text-xs gap-1.5"
+              style={{ color: 'rgba(255,255,255,0.55)' }}
+            >
+              <X className="size-3.5" />
+              Close
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleDownload}
+              disabled={busy}
+              className="gap-1.5 text-xs text-white"
+              style={{ background: 'rgba(234,88,12,0.9)', border: '1px solid rgba(234,88,12,0.5)' }}
+            >
+              {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+              Download PNG
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   )
