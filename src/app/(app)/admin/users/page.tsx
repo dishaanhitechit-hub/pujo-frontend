@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Plus, UserX, Pencil, X, QrCode, Download, Printer, Check, Search, CreditCard, Trash2 } from 'lucide-react'
+import { Loader2, Plus, UserX, Pencil, X, QrCode, Download, Printer, Check, Search, CreditCard, Trash2, UserCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { ActiveBadge } from '@/components/shared/StatusBadge'
 import { RoleGuard } from '@/lib/auth/role-guard'
-import { getUsers, createUser, updateUser, deactivateUser, softDeleteUser, getUserLoginQr, getNextMemberId } from '@/lib/api/users'
+import { getUsers, createUser, updateUser, deactivateUser, reactivateUser, softDeleteUser, getUserLoginQr, getNextMemberId } from '@/lib/api/users'
 import { MEMBER_CATEGORIES, MEMBER_CATEGORY_LABELS } from '@/config/members'
 import type { User, MemberCategory, ApiError, UpdateUserInput } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -172,6 +172,7 @@ function UsersContent() {
   const [pendingDeactivate, setPendingDeactivate] = useState<User | null>(null)
   const [pendingDelete, setPendingDelete] = useState<User | null>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
+  const [reactivating, setReactivating] = useState<number | null>(null)
   const [qrUser, setQrUser] = useState<User | null>(null)
   const [cardUser, setCardUser] = useState<User | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -226,6 +227,19 @@ function UsersContent() {
       toast.error((err as ApiError).message ?? 'Failed to delete member.')
     } finally {
       setDeleting(null)
+    }
+  }
+
+  async function handleReactivate(u: User) {
+    setReactivating(u.id)
+    try {
+      const updated = await reactivateUser(u.id)
+      setUsers(prev => prev.map(x => x.id === u.id ? updated : x))
+      toast.success(`${u.name} has been reactivated.`)
+    } catch (err) {
+      toast.error((err as ApiError).message ?? 'Failed to reactivate member.')
+    } finally {
+      setReactivating(null)
     }
   }
 
@@ -360,6 +374,18 @@ function UsersContent() {
                         >
                           {deactivating === u.id ? <Loader2 className="size-3 animate-spin" /> : <UserX className="size-3" />}
                           Deactivate
+                        </Button>
+                      )}
+                      {!u.isActive && u.id !== currentUser?.id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReactivate(u)}
+                          disabled={reactivating === u.id}
+                          className="text-green-600 hover:text-green-700 hover:bg-green-50 h-7 px-2 gap-1 text-xs"
+                        >
+                          {reactivating === u.id ? <Loader2 className="size-3 animate-spin" /> : <UserCheck className="size-3" />}
+                          Reactivate
                         </Button>
                       )}
                       {u.id !== currentUser?.id && (

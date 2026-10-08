@@ -31,6 +31,11 @@ export async function deactivateUser(id: number): Promise<void> {
   await apiClient.delete(apiConfig.endpoints.users.deactivate(id))
 }
 
+export async function reactivateUser(id: number): Promise<User> {
+  const res = await apiClient.post<ApiResponse<User>>(apiConfig.endpoints.users.reactivate(id))
+  return res.data.data
+}
+
 export async function softDeleteUser(id: number): Promise<void> {
   await apiClient.post(apiConfig.endpoints.users.softDelete(id))
 }

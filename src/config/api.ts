@@ -19,6 +19,7 @@ export const apiConfig = {
       get: (id: number) => `/api/users/${id}`,
       update: (id: number) => `/api/users/${id}`,
       deactivate: (id: number) => `/api/users/${id}`,
+      reactivate: (id: number) => `/api/users/${id}/reactivate`,
       softDelete: (id: number) => `/api/users/${id}/soft-delete`,
       loginQr: (id: number) => `/api/users/${id}/login-qr`,
     },
