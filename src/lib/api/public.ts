@@ -95,7 +95,7 @@ export async function getPublicAnnouncements(eventId?: number): Promise<PublicAn
 }
 
 export async function getSiteConfig(): Promise<PublicSiteConfig | null> {
-  return publicGet<PublicSiteConfig>(withOrg(apiConfig.endpoints.public.siteConfig), 300)
+  return publicGet<PublicSiteConfig>(withOrg(apiConfig.endpoints.public.siteConfig), 30)
 }
 
 export async function listPublicGallery(): Promise<PublicGalleryResponse | null> {

@@ -116,6 +116,14 @@ const PALETTES: PaletteOption[] = [
   },
 ]
 
+// Match a loaded theme against palettes by comparing each value individually
+// (JSON.stringify order varies by backend, so don't rely on it)
+function findPaletteMatch(theme: ThemeColors): PaletteOption | undefined {
+  return PALETTES.find(p =>
+    (Object.keys(p.colors) as Array<keyof ThemeColors>).every(k => p.colors[k] === theme[k])
+  )
+}
+
 // Derive a full ThemeColors from 3 hex picks using CSS color-mix for variants
 function hexToThemeColors(primary: string, secondary: string, cream: string): ThemeColors {
   return {
@@ -242,7 +250,10 @@ function ThemePage() {
   const [saving,     setSaving]    = useState(false)
   const [preview,    setPreview]   = useState<ThemeColors>(DEFAULT_THEME)
 
-  const isDirty = JSON.stringify(selected) !== JSON.stringify(current ?? DEFAULT_THEME)
+  const effectiveCurrent = current ?? DEFAULT_THEME
+  const isDirty = (Object.keys(selected) as Array<keyof ThemeColors>).some(
+    k => selected[k] !== effectiveCurrent[k]
+  )
 
   useEffect(() => {
     getAdminTheme().then(theme => {
@@ -250,7 +261,7 @@ function ThemePage() {
       if (theme) {
         setSelected(theme)
         setPreview(theme)
-        const match = PALETTES.find(p => JSON.stringify(p.colors) === JSON.stringify(theme))
+        const match = findPaletteMatch(theme)
         const id = match?.id ?? 'custom'
         setSelectedId(id)
         setCurrentId(id)
@@ -283,7 +294,9 @@ function ThemePage() {
   const handleSave = useCallback(async () => {
     setSaving(true)
     // Save null when the default palette is selected — no override needed
-    const isDefault = JSON.stringify(selected) === JSON.stringify(DEFAULT_THEME)
+    const isDefault = (Object.keys(selected) as Array<keyof ThemeColors>).every(
+      k => selected[k] === DEFAULT_THEME[k]
+    )
     const toSave = isDefault ? null : selected
     try {
       await saveAdminTheme(toSave)
@@ -291,8 +304,8 @@ function ThemePage() {
       setCurrentId(isDefault ? 'navy-orange' : selectedId)
       toast.success(
         isDefault
-          ? 'Theme reset to default — public site updates within 5 minutes'
-          : 'Theme saved — public site updates within 5 minutes'
+          ? 'Theme reset to default — public site updates within 30 seconds'
+          : 'Theme saved — public site updates within 30 seconds'
       )
     } catch {
       toast.error('Failed to save theme')
@@ -311,7 +324,7 @@ function ThemePage() {
       setSelectedId('navy-orange')
       setPreview(DEFAULT_THEME)
       setCustomHex(DEFAULT_CUSTOM_HEX)
-      toast.success('Theme reset to default — public site updates within 5 minutes')
+      toast.success('Theme reset to default — public site updates within 30 seconds')
     } catch {
       toast.error('Failed to reset theme')
     } finally {

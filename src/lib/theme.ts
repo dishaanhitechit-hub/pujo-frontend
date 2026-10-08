@@ -12,18 +12,16 @@ export const DEFAULT_THEME: ThemeColors = {
 }
 
 /**
- * Build a CSS :root override for the PUBLIC site only.
+ * Build a full CSS :root override from a ThemeColors object.
  *
- * Overrides:
- *   - --brand-* tokens (used directly in public page components)
- *   - shadcn --primary / --secondary / --ring / --chart-1 / --chart-2
- *     (hardcoded literals in globals.css that shadcn components read)
+ * Applied to BOTH the public site (server-side <style> tag) and the
+ * member/admin portal (client-side ThemeProvider), so branding is
+ * consistent everywhere — just like editing globals.css directly was.
  *
  * Intentionally NOT overriding:
- *   - --background  → stays oklch(1 0 0) as in globals.css
- *   - --sidebar / --sidebar-* → admin-only, must never be touched here
- *   - --foreground / --muted / --border → neutral tokens, never change with theme
- *   - --brand-pink / --brand-green → fixed accent colours, not part of the brand pair
+ *   - --background  → stays white; page bg is set per-component via brand-cream
+ *   - --foreground / --muted / --border → neutral tokens, never part of theme
+ *   - --brand-pink / --brand-green → fixed accent colours, not the brand pair
  */
 export function buildThemeStyle(theme: ThemeColors | null): string | null {
   if (!theme) return null
@@ -38,7 +36,7 @@ export function buildThemeStyle(theme: ThemeColors | null): string | null {
   const secondaryLight = `color-mix(in oklch, ${secondary} 50%, white)`
 
   const vars = [
-    // brand tokens
+    // ── brand tokens ──────────────────────────────────────────────
     `  --brand-orange:       ${primary};`,
     `  --brand-orange-light: ${primaryLight};`,
     `  --brand-orange-mid:   ${primaryMid};`,
@@ -50,14 +48,23 @@ export function buildThemeStyle(theme: ThemeColors | null): string | null {
     `  --brand-navy-hero:    ${secondaryHero};`,
     `  --brand-cream:        ${cream};`,
 
-    // shadcn tokens used by shared components on the public site
+    // ── shadcn component tokens ────────────────────────────────────
     `  --primary:            ${primary};`,
     `  --primary-foreground: oklch(1 0 0);`,
     `  --secondary:          ${secondary};`,
     `  --secondary-foreground: oklch(1 0 0);`,
     `  --ring:               ${primary};`,
 
-    // charts
+    // ── sidebar (member portal) ────────────────────────────────────
+    `  --sidebar:            ${secondaryDeep};`,
+    `  --sidebar-primary:    ${primary};`,
+    `  --sidebar-primary-foreground: oklch(1 0 0);`,
+    `  --sidebar-accent:     ${secondaryMid};`,
+    `  --sidebar-accent-foreground: oklch(0.9 0.01 280);`,
+    `  --sidebar-border:     ${secondaryHero};`,
+    `  --sidebar-ring:       ${primary};`,
+
+    // ── charts ────────────────────────────────────────────────────
     `  --chart-1:            ${primary};`,
     `  --chart-2:            ${secondary};`,
   ].join('\n')
@@ -65,7 +72,7 @@ export function buildThemeStyle(theme: ThemeColors | null): string | null {
   return `:root {\n${vars}\n}`
 }
 
-/** Inject / update / remove the org theme override <style> on the public site. */
+/** Inject / update / remove the org theme override <style> on any page. */
 export function applyThemeToDocument(theme: ThemeColors | null): void {
   const ID = 'org-theme-override'
   let el = document.getElementById(ID) as HTMLStyleElement | null
