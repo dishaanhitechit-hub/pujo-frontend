@@ -102,12 +102,12 @@ export function HeroSection({
                        rounded-2xl px-7 py-8 sm:px-9 sm:py-10
                        opacity-0 animate-[hero-reveal_1.1s_cubic-bezier(0.16,1,0.3,1)_0.25s_forwards]"
             style={{
-              background: 'oklch(0.10 0.070 254 / 0.58)',
-              backdropFilter: 'blur(24px) saturate(1.5)',
-              WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
-              border: '1px solid oklch(1 0 0 / 0.08)',
+              background: 'oklch(1 0 0 / 0.04)',
+              backdropFilter: 'blur(32px) saturate(2)',
+              WebkitBackdropFilter: 'blur(32px) saturate(2)',
+              border: '1px solid oklch(1 0 0 / 0.12)',
               boxShadow:
-                '0 8px 48px oklch(0.06 0.055 252 / 0.55), inset 0 1px 0 oklch(1 0 0 / 0.07)',
+                '0 4px 32px oklch(0 0 0 / 0.10), inset 0 1px 0 oklch(1 0 0 / 0.10)',
             }}
           >
             {/* Club logo + location */}
