@@ -6,6 +6,7 @@ import { AuthProvider } from '@/lib/auth/auth-provider'
 import './globals.css'
 import { festivalConfig } from '@/config/festival'
 import { getSiteConfig } from '@/lib/api/public'
+import { buildThemeStyle } from '@/lib/theme'
 
 const geistSans = Geist({
   variable: '--font-sans',
@@ -67,13 +68,21 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cfg = await getSiteConfig()
+  const themeStyle = buildThemeStyle(cfg?.theme ?? null)
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} ${notoSansBengali.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {themeStyle && (
+          <style precedence="default" href="org-theme-override">
+            {themeStyle}
+          </style>
+        )}
         <AuthProvider>
           {children}
         </AuthProvider>
