@@ -50,7 +50,7 @@ export default async function OurTeamPage() {
   return (
     <>
       {/* Hero */}
-      <div className="pt-32 pb-16 bg-gradient-to-br from-brand-navy to-[oklch(0.28_0.1_264.5)] text-center px-4">
+      <div className="pt-32 pb-16 bg-gradient-to-br from-brand-navy to-brand-navy-hero text-center px-4">
         <p className="text-brand-orange/80 text-xs uppercase tracking-widest font-semibold mb-3">The People Behind It</p>
         <h1 className="font-heading font-bold text-4xl sm:text-5xl text-white">Our Team</h1>
         <p className="text-white/60 mt-4 max-w-xl mx-auto">
@@ -64,7 +64,7 @@ export default async function OurTeamPage() {
           {!hasAny && (
             <>
               <SectionHeading label="Our Team" title="Meet the Team" className="mb-12" />
-              <div className="bg-[oklch(0.985_0.01_90)] rounded-2xl border border-dashed border-brand-orange/20 p-12 text-center">
+              <div className="bg-brand-cream rounded-2xl border border-dashed border-brand-orange/20 p-12 text-center">
                 <div className="size-16 mx-auto rounded-full bg-brand-orange/10 flex items-center justify-center mb-4">
                   <User className="size-8 text-brand-orange/50" />
                 </div>

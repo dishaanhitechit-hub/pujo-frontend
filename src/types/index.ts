@@ -732,6 +732,17 @@ export interface PublicClubConfig {
   ogImageUrl: string | null
 }
 
+export interface ThemeColors {
+  primary: string
+  primaryMid: string
+  primaryDeep: string
+  secondary: string
+  secondaryMid: string
+  secondaryDeep: string
+  secondaryHero: string
+  cream: string
+}
+
 export interface PublicSiteConfig {
   upiId: string | null
   orgName: string | null
@@ -752,6 +763,7 @@ export interface PublicSiteConfig {
     youtube: string | null
   }
   club: PublicClubConfig
+  theme: ThemeColors | null
 }
 
 // ── Contact Queries ──────────────────────────────────────────────────

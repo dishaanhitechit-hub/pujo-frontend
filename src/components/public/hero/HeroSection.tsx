@@ -78,7 +78,7 @@ export function HeroSection({
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(135deg, oklch(0.12 0.09 252) 0%, oklch(0.16 0.08 258) 45%, oklch(0.10 0.07 265) 100%)',
+              'linear-gradient(135deg, var(--brand-navy-deep) 0%, var(--brand-navy-mid) 45%, var(--brand-navy) 100%)',
           }}
         />
       )}
@@ -88,7 +88,7 @@ export function HeroSection({
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'linear-gradient(108deg, oklch(0.09 0.065 252 / 0.92) 0%, oklch(0.10 0.070 254 / 0.68) 36%, oklch(0.09 0.060 250 / 0.40) 62%, oklch(0.07 0.048 248 / 0.18) 100%)',
+            'linear-gradient(108deg, color-mix(in oklch, var(--brand-navy-deep) 92%, transparent) 0%, color-mix(in oklch, var(--brand-navy) 68%, transparent) 36%, color-mix(in oklch, var(--brand-navy) 40%, transparent) 62%, color-mix(in oklch, var(--brand-navy-deep) 18%, transparent) 100%)',
         }}
       />
 
@@ -102,12 +102,12 @@ export function HeroSection({
                        rounded-2xl px-7 py-8 sm:px-9 sm:py-10
                        opacity-0 animate-[hero-reveal_1.1s_cubic-bezier(0.16,1,0.3,1)_0.25s_forwards]"
             style={{
-              background: 'oklch(0.10 0.070 254 / 0.58)',
-              backdropFilter: 'blur(24px) saturate(1.5)',
-              WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
-              border: '1px solid oklch(1 0 0 / 0.08)',
+              background: 'oklch(1 0 0 / 0.04)',
+              backdropFilter: 'blur(32px) saturate(2)',
+              WebkitBackdropFilter: 'blur(32px) saturate(2)',
+              border: '1px solid oklch(1 0 0 / 0.12)',
               boxShadow:
-                '0 8px 48px oklch(0.06 0.055 252 / 0.55), inset 0 1px 0 oklch(1 0 0 / 0.07)',
+                '0 4px 32px oklch(0 0 0 / 0.10), inset 0 1px 0 oklch(1 0 0 / 0.10)',
             }}
           >
             {/* Club logo + location */}
@@ -181,7 +181,7 @@ export function HeroSection({
                          bg-brand-orange text-white
                          px-6 py-3.5
                          text-[13px] font-semibold tracking-wide
-                         hover:bg-[oklch(0.62_0.19_38)] transition-colors duration-300"
+                         hover:bg-brand-orange-mid transition-colors duration-300"
             >
               <span>Upcoming Events</span>
               <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform duration-300" />

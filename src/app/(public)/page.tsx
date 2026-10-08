@@ -205,7 +205,7 @@ function CountdownSection({
 
   return (
     <section
-      className="py-20 bg-gradient-to-br from-brand-navy via-[oklch(0.25_0.09_264.5)] to-[oklch(0.2_0.08_264.5)] relative overflow-hidden"
+      className="py-20 bg-gradient-to-br from-brand-navy via-brand-navy-mid to-brand-navy-deep relative overflow-hidden"
       aria-label={`Countdown to ${festivalName} ${year}`}
     >
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
@@ -258,7 +258,7 @@ function PujaSection({ days }: { days: PublicEventDay[] | null }) {
   if (!highlights.length) return null
 
   return (
-    <section className="py-20 lg:py-28 bg-[oklch(0.985_0.01_90)]" aria-labelledby="puja-heading">
+    <section className="py-20 lg:py-28 bg-brand-cream" aria-labelledby="puja-heading">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
           label="The Celebration"
@@ -326,7 +326,7 @@ function EventsSection({ nameEn, city }: { nameEn: string; city: string }) {
             {programs.map(({ icon, title, desc }) => {
               const IconComp = typeof icon !== 'string' ? icon : null
               return (
-                <div key={title} className="group flex items-start gap-4 p-5 rounded-xl bg-[oklch(0.985_0.01_90)] border border-transparent hover:border-brand-orange/20 hover:bg-white transition-all">
+                <div key={title} className="group flex items-start gap-4 p-5 rounded-xl bg-brand-cream border border-transparent hover:border-brand-orange/20 hover:bg-white transition-all">
                   <div className="size-10 rounded-xl bg-brand-orange/10 flex items-center justify-center shrink-0">
                     {typeof icon === 'string'
                       ? <span className="text-xl">{icon}</span>
@@ -495,7 +495,7 @@ function ContributionCTA({ nameEn, tagline }: { nameEn: string; tagline: string 
   return (
     <section className="py-20 lg:py-28 bg-white" aria-label="Contribution call to action">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
-        <div className="rounded-3xl bg-gradient-to-br from-brand-orange via-[oklch(0.62_0.2_30)] to-[oklch(0.58_0.22_25)] p-10 sm:p-14 relative overflow-hidden">
+        <div className="rounded-3xl bg-gradient-to-br from-brand-orange via-brand-orange-mid to-brand-orange-deep p-10 sm:p-14 relative overflow-hidden">
           <div className="absolute inset-0 pointer-events-none" aria-hidden>
             <div className="absolute top-0 right-0 text-white/5 text-9xl pointer-events-none select-none rotate-12">🪷</div>
           </div>
@@ -555,7 +555,7 @@ function ContactSection({
   const displayAddress = address
 
   return (
-    <section className="py-20 bg-[oklch(0.985_0.01_90)]" aria-labelledby="contact-heading">
+    <section className="py-20 bg-brand-cream" aria-labelledby="contact-heading">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <SectionHeading
