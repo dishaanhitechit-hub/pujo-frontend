@@ -25,6 +25,7 @@ export const apiConfig = {
     admin: {
       config: '/api/admin/config',
       configMedia: '/api/admin/config/media',
+      theme: '/api/admin/theme',
       tokenConfig: '/api/admin/token-config',
       tokenConfigReset: '/api/admin/token-config/reset',
     },

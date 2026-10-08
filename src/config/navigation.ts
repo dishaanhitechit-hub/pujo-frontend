@@ -163,6 +163,7 @@ export function buildDashboardNav(role: Role, canCollect?: boolean, perms?: stri
   if (has('users.manage')) {
     const settingsItems: DashboardNavItem[] = [
       { label: 'Config',       href: '/admin/config',       iconName: 'Settings' },
+      { label: 'Theme',        href: '/admin/config/theme', iconName: 'Palette' },
       { label: 'Organisation', href: '/admin/org-settings', iconName: 'Building2' },
     ]
 

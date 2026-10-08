@@ -10,7 +10,7 @@ import {
   Users, Settings, User, LogOut, Menu, X, ChevronDown,
   Handshake, UserSearch, Ticket, SlidersHorizontal, Calendar, MessageSquare,
   Megaphone, Users2, Wallet, Receipt, CalendarCheck, HeartHandshake,
-  ScrollText, Building2, BookUser, HandCoins,
+  ScrollText, Building2, BookUser, HandCoins, Palette,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth/auth-provider'
 import { buildDashboardNav } from '@/config/navigation'
@@ -25,7 +25,7 @@ const ICON_MAP = {
   Users, Settings, User,
   Handshake, UserSearch, Ticket, SlidersHorizontal, Calendar, MessageSquare,
   Megaphone, Users2, Wallet, Receipt, CalendarCheck, HeartHandshake,
-  ScrollText, Building2, BookUser, HandCoins,
+  ScrollText, Building2, BookUser, HandCoins, Palette,
 } as const
 
 type IconName = keyof typeof ICON_MAP
@@ -46,6 +46,10 @@ export function AppSidebar() {
     ? buildDashboardNav(user.role, canCollect, user.permissions)
     : { standalone: [], groups: [] }
 
+  // Leaf nav items that have child routes — use exact match so the parent
+  // doesn't stay highlighted when navigating to a child page.
+  const EXACT_MATCH_HREFS = new Set(['/admin/config'])
+
   // Auto-open groups that contain the active route
   useEffect(() => {
     if (!user) return
@@ -53,7 +57,7 @@ export function AppSidebar() {
       const next = { ...prev }
       for (const g of groups) {
         const hasActive = g.items.some(
-          (item) => pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href)),
+          (item) => pathname === item.href || (!EXACT_MATCH_HREFS.has(item.href) && item.href !== '/dashboard' && pathname.startsWith(item.href)),
         )
         if (hasActive) next[g.id] = true
       }
@@ -86,6 +90,7 @@ export function AppSidebar() {
     : (user.memberCategory ? MEMBER_CATEGORY_LABELS[user.memberCategory] : 'Member')
 
   function isActive(href: string) {
+    if (EXACT_MATCH_HREFS.has(href)) return pathname === href
     return pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
   }
 

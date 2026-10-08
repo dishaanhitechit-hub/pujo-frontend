@@ -1,10 +1,12 @@
 import { SiteHeader } from '@/components/public/SiteHeader'
 import { SiteFooter } from '@/components/public/SiteFooter'
 import { getSiteConfig, mediaUrl } from '@/lib/api/public'
+import { buildThemeStyle } from '@/lib/theme'
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const cfg = await getSiteConfig()
   const club = cfg?.club
+  const themeStyle = buildThemeStyle(cfg?.theme ?? null)
 
   function resolveUrl(url: string | null | undefined): string | null {
     if (!url) return null
@@ -14,6 +16,7 @@ export default async function PublicLayout({ children }: { children: React.React
 
   return (
     <>
+      {themeStyle && <style dangerouslySetInnerHTML={{ __html: themeStyle }} />}
       <SiteHeader
         clubLogoUrl={resolveUrl(club?.logoUrl)}
         clubNameVernacular={club?.nameVernacular ?? null}

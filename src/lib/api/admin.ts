@@ -1,6 +1,6 @@
 import apiClient from './client'
 import { apiConfig } from '@/config/api'
-import type { ApiResponse, AdminConfig, AdminConfigResponse } from '@/types'
+import type { ApiResponse, AdminConfig, AdminConfigResponse, ThemeColors } from '@/types'
 
 export async function getAdminConfig(): Promise<AdminConfigResponse> {
   const res = await apiClient.get<ApiResponse<AdminConfigResponse>>(apiConfig.endpoints.admin.config)
@@ -10,6 +10,15 @@ export async function getAdminConfig(): Promise<AdminConfigResponse> {
 export async function updateAdminConfig(input: Partial<AdminConfig>): Promise<AdminConfig> {
   const res = await apiClient.post<ApiResponse<AdminConfig>>(apiConfig.endpoints.admin.config, input)
   return res.data.data
+}
+
+export async function getAdminTheme(): Promise<ThemeColors | null> {
+  const res = await apiClient.get<ApiResponse<{ theme: ThemeColors | null }>>(apiConfig.endpoints.admin.theme)
+  return res.data.data.theme
+}
+
+export async function saveAdminTheme(theme: ThemeColors | null): Promise<void> {
+  await apiClient.post(apiConfig.endpoints.admin.theme, { theme })
 }
 
 export async function uploadConfigMedia(file: File): Promise<{ url: string; id: number }> {
