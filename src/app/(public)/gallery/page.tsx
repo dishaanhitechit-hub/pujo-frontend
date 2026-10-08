@@ -35,7 +35,7 @@ export default async function GalleryPage() {
   return (
     <>
       {/* Hero */}
-      <div className="pt-32 pb-16 bg-gradient-to-br from-brand-navy to-[oklch(0.28_0.1_264.5)] text-center px-4">
+      <div className="pt-32 pb-16 bg-gradient-to-br from-brand-navy to-brand-navy-hero text-center px-4">
         <p className="text-brand-orange/80 text-xs uppercase tracking-widest font-semibold mb-3">Memories</p>
         <h1 className="font-heading font-bold text-4xl sm:text-5xl text-white">Gallery</h1>
         <p className="text-white/60 mt-4 max-w-xl mx-auto">
@@ -91,7 +91,7 @@ export default async function GalleryPage() {
 
       {/* ── Past event covers — Pinterest masonry ── */}
       {hasCovers && (
-        <section className={`py-20 ${hasGallery ? 'bg-[oklch(0.985_0.01_90)]' : 'bg-white'}`}>
+        <section className={`py-20 ${hasGallery ? 'bg-brand-cream' : 'bg-white'}`}>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionHeading label="Our Celebrations" title="Past Events" className="mb-12" />
             <div className="columns-2 sm:columns-3 lg:columns-4 gap-3">

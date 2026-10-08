@@ -44,8 +44,13 @@
   /* brand-specific tokens exposed as Tailwind utilities */
   --color-brand-orange: var(--brand-orange);
   --color-brand-orange-light: var(--brand-orange-light);
+  --color-brand-orange-mid: var(--brand-orange-mid);
+  --color-brand-orange-deep: var(--brand-orange-deep);
   --color-brand-navy: var(--brand-navy);
   --color-brand-navy-light: var(--brand-navy-light);
+  --color-brand-navy-mid: var(--brand-navy-mid);
+  --color-brand-navy-deep: var(--brand-navy-deep);
+  --color-brand-navy-hero: var(--brand-navy-hero);
   --color-brand-pink: var(--brand-pink);
   --color-brand-pink-light: var(--brand-pink-light);
   --color-brand-green: var(--brand-green);
@@ -66,14 +71,19 @@
 /* ── Light theme (default) ─────────────────────────────────────── */
 :root {
   /* brand tokens */
-  --brand-orange: oklch(0.638 0.211 35.2);        /* #F05A22 */
+  --brand-orange: oklch(0.638 0.211 35.2);        /* #F05A22 orange */
   --brand-orange-light: oklch(0.95 0.05 35.2);    /* pale orange tint */
-  --brand-navy: oklch(0.23 0.092 264.5);           /* #1B2A6B */
-  --brand-navy-light: oklch(0.35 0.082 264.5);     /* lighter navy */
-  --brand-pink: oklch(0.73 0.17 350);              /* #F075B2 lotus pink */
-  --brand-pink-light: oklch(0.95 0.04 350);        /* baby pink */
-  --brand-green: oklch(0.55 0.11 138);             /* #5E8733 leaf green */
-  --brand-cream: oklch(0.985 0.01 90);             /* warm cream white */
+  --brand-orange-mid: oklch(0.62 0.20 30);        /* mid orange (gradient via) */
+  --brand-orange-deep: oklch(0.58 0.22 25);       /* deep orange (gradient to) */
+  --brand-navy: oklch(0.23 0.092 264.5);          /* #1B2A6B deep navy */
+  --brand-navy-light: oklch(0.35 0.082 264.5);    /* lighter navy */
+  --brand-navy-mid: oklch(0.25 0.09 264.5);       /* mid navy (gradient via) */
+  --brand-navy-deep: oklch(0.20 0.08 264.5);      /* darkest navy (gradient to) */
+  --brand-navy-hero: oklch(0.28 0.10 264.5);      /* banner/hero lighter navy */
+  --brand-pink: oklch(0.73 0.17 350);             /* #F075B2 lotus pink */
+  --brand-pink-light: oklch(0.95 0.04 350);       /* baby pink */
+  --brand-green: oklch(0.55 0.11 138);            /* #5E8733 leaf green */
+  --brand-cream: oklch(0.985 0.01 90);            /* warm cream white */
 
   /* shadcn semantic tokens — mapped to brand */
   --background: oklch(1 0 0);
@@ -82,32 +92,32 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.638 0.211 35.2);              /* brand orange */
+  --primary: oklch(0.638 0.211 35.2);             /* brand orange */
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.23 0.092 264.5);            /* brand navy */
+  --secondary: oklch(0.23 0.092 264.5);           /* brand navy */
   --secondary-foreground: oklch(1 0 0);
   --muted: oklch(0.97 0.005 280);
   --muted-foreground: oklch(0.5 0.015 280);
-  --accent: oklch(0.95 0.04 350);                  /* baby pink */
-  --accent-foreground: oklch(0.23 0.092 264.5);    /* navy on pink */
+  --accent: oklch(0.95 0.04 350);                 /* baby pink */
+  --accent-foreground: oklch(0.23 0.092 264.5);   /* navy on pink */
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0.005 280);
   --input: oklch(0.945 0.005 280);
-  --ring: oklch(0.638 0.211 35.2);                 /* orange focus ring */
+  --ring: oklch(0.638 0.211 35.2);                /* orange focus ring */
 
   /* charts */
-  --chart-1: oklch(0.638 0.211 35.2);             /* orange */
-  --chart-2: oklch(0.23 0.092 264.5);             /* navy */
-  --chart-3: oklch(0.73 0.17 350);                /* pink */
-  --chart-4: oklch(0.55 0.11 138);                /* green */
-  --chart-5: oklch(0.80 0.13 60);                 /* gold */
+  --chart-1: oklch(0.638 0.211 35.2);            /* orange */
+  --chart-2: oklch(0.23 0.092 264.5);            /* navy */
+  --chart-3: oklch(0.73 0.17 350);               /* pink */
+  --chart-4: oklch(0.55 0.11 138);               /* green */
+  --chart-5: oklch(0.80 0.13 60);                /* gold */
 
   --radius: 0.625rem;
 
   /* sidebar */
-  --sidebar: oklch(0.18 0.085 264.5);             /* deep navy sidebar */
+  --sidebar: oklch(0.18 0.085 264.5);            /* deep navy sidebar */
   --sidebar-foreground: oklch(0.9 0.01 280);
-  --sidebar-primary: oklch(0.638 0.211 35.2);     /* orange active */
+  --sidebar-primary: oklch(0.638 0.211 35.2);    /* orange active */
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.25 0.09 264.5);
   --sidebar-accent-foreground: oklch(0.9 0.01 280);

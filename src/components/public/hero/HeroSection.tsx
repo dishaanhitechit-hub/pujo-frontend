@@ -78,7 +78,7 @@ export function HeroSection({
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(135deg, oklch(0.12 0.09 252) 0%, oklch(0.16 0.08 258) 45%, oklch(0.10 0.07 265) 100%)',
+              'linear-gradient(135deg, var(--brand-navy-deep) 0%, var(--brand-navy-mid) 45%, var(--brand-navy) 100%)',
           }}
         />
       )}
@@ -88,7 +88,7 @@ export function HeroSection({
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'linear-gradient(108deg, oklch(0.09 0.065 252 / 0.92) 0%, oklch(0.10 0.070 254 / 0.68) 36%, oklch(0.09 0.060 250 / 0.40) 62%, oklch(0.07 0.048 248 / 0.18) 100%)',
+            'linear-gradient(108deg, color-mix(in oklch, var(--brand-navy-deep) 92%, transparent) 0%, color-mix(in oklch, var(--brand-navy) 68%, transparent) 36%, color-mix(in oklch, var(--brand-navy) 40%, transparent) 62%, color-mix(in oklch, var(--brand-navy-deep) 18%, transparent) 100%)',
         }}
       />
 
@@ -181,7 +181,7 @@ export function HeroSection({
                          bg-brand-orange text-white
                          px-6 py-3.5
                          text-[13px] font-semibold tracking-wide
-                         hover:bg-[oklch(0.62_0.19_38)] transition-colors duration-300"
+                         hover:bg-brand-orange-mid transition-colors duration-300"
             >
               <span>Upcoming Events</span>
               <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform duration-300" />

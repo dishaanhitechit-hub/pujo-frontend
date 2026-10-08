@@ -45,7 +45,7 @@ export default async function AnnouncementsPage() {
   return (
     <>
       {/* Hero */}
-      <div className="pt-32 pb-16 bg-gradient-to-br from-brand-navy to-[oklch(0.28_0.1_264.5)] text-center px-4">
+      <div className="pt-32 pb-16 bg-gradient-to-br from-brand-navy to-brand-navy-hero text-center px-4">
         <p className="text-brand-orange/80 text-xs uppercase tracking-widest font-semibold mb-3">Stay Informed</p>
         <h1 className="font-heading font-bold text-4xl sm:text-5xl text-white">Announcements</h1>
         <p className="text-white/60 mt-4 max-w-xl mx-auto">

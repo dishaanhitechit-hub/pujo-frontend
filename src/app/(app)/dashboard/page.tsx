@@ -838,9 +838,9 @@ function CollectorDashboard() {
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
                   <Tooltip formatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
                   <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="UPI" fill="oklch(0.638 0.211 35.2)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Cash" fill="oklch(0.55 0.11 138)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Cheque" fill="oklch(0.55 0.14 260)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="UPI" fill="var(--brand-orange)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Cash" fill="var(--brand-green)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Cheque" fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}

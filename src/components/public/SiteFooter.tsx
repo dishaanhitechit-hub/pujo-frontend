@@ -37,7 +37,7 @@ export async function SiteFooter() {
       {/* Wave divider */}
       <div className="w-full overflow-hidden leading-none">
         <svg viewBox="0 0 1440 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full" aria-hidden>
-          <path d="M0 48V24C240 0 480 48 720 24C960 0 1200 48 1440 24V48H0Z" fill="oklch(0.23 0.092 264.5)" />
+          <path d="M0 48V24C240 0 480 48 720 24C960 0 1200 48 1440 24V48H0Z" fill="var(--brand-navy)" />
         </svg>
       </div>
 

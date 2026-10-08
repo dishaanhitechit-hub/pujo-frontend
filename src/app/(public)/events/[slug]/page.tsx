@@ -59,7 +59,7 @@ export default async function EventDetailPage({ params }: Props) {
   return (
     <>
       {/* Hero */}
-      <div className="relative pt-32 pb-16 bg-gradient-to-br from-brand-navy to-[oklch(0.28_0.1_264.5)] overflow-hidden">
+      <div className="relative pt-32 pb-16 bg-gradient-to-br from-brand-navy to-brand-navy-hero overflow-hidden">
         {cover && (
           <Image
             src={cover}
@@ -185,7 +185,7 @@ export default async function EventDetailPage({ params }: Props) {
 
       {/* Gallery */}
       {event.gallery.length > 0 && (
-        <section className="py-20 bg-[oklch(0.985_0.01_90)]">
+        <section className="py-20 bg-brand-cream">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionHeading label="Photos" title="Gallery" className="mb-12" />
 
@@ -254,7 +254,7 @@ export default async function EventDetailPage({ params }: Props) {
       )}
 
       {/* Back link */}
-      <div className="bg-[oklch(0.985_0.01_90)] py-10">
+      <div className="bg-brand-cream py-10">
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <Link
             href="/events"

@@ -37,7 +37,7 @@ export default async function UpcomingPage() {
   if (!event) {
     return (
       <>
-        <div className="pt-32 pb-16 bg-gradient-to-br from-brand-navy to-[oklch(0.28_0.1_264.5)] text-center px-4">
+        <div className="pt-32 pb-16 bg-gradient-to-br from-brand-navy to-brand-navy-hero text-center px-4">
           <h1 className="font-heading font-bold text-4xl sm:text-5xl text-white">Upcoming Event</h1>
           <p className="text-white/60 mt-4 max-w-xl mx-auto">Details will be published closer to the celebration.</p>
         </div>
@@ -66,7 +66,7 @@ export default async function UpcomingPage() {
   return (
     <>
       {/* Hero */}
-      <div className="relative pt-32 pb-16 bg-gradient-to-br from-brand-navy to-[oklch(0.28_0.1_264.5)] overflow-hidden">
+      <div className="relative pt-32 pb-16 bg-gradient-to-br from-brand-navy to-brand-navy-hero overflow-hidden">
         {cover && (
           <Image
             src={cover}
@@ -190,7 +190,7 @@ export default async function UpcomingPage() {
 
       {/* Gallery */}
       {event.gallery.length > 0 && (
-        <section className="py-20 bg-[oklch(0.985_0.01_90)]">
+        <section className="py-20 bg-brand-cream">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionHeading label="Photos" title="Gallery" className="mb-12" />
 
@@ -236,7 +236,7 @@ export default async function UpcomingPage() {
       )}
 
       {/* Back link */}
-      <div className="bg-[oklch(0.985_0.01_90)] py-10">
+      <div className="bg-brand-cream py-10">
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <Link
             href="/events"
