@@ -54,6 +54,7 @@ interface Props {
 
 export interface MemberCardHandle {
   download: () => Promise<void>
+  getDataUrl: () => Promise<string>
 }
 
 export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCard({ user, hideHeader = false }, ref) {
@@ -79,17 +80,24 @@ export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCar
   const catLabel = user.memberCategory ? (MEMBER_CATEGORY_LABELS[user.memberCategory] ?? '') : ''
   const [seal1, seal2] = sealLines(catLabel || 'MEMBER')
 
+  const captureOpts = {
+    width: CARD_W,
+    height: CARD_H,
+    pixelRatio: 2,
+    cacheBust: true,
+    style: { transform: 'none', transformOrigin: 'top left' },
+  }
+
+  async function getDataUrl(): Promise<string> {
+    if (!captureRef.current) throw new Error('Card not ready')
+    return toPng(captureRef.current, captureOpts)
+  }
+
   async function download() {
     if (!captureRef.current) return
     setBusy(true)
     try {
-      const url = await toPng(captureRef.current, {
-        width: CARD_W,
-        height: CARD_H,
-        pixelRatio: 2,
-        cacheBust: true,
-        style: { transform: 'none', transformOrigin: 'top left' },
-      })
+      const url = await getDataUrl()
       const a = document.createElement('a')
       a.download = `${user.name.replace(/\s+/g, '-').toLowerCase()}-member-card.png`
       a.href = url
@@ -101,7 +109,7 @@ export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCar
     }
   }
 
-  useImperativeHandle(ref, () => ({ download }))
+  useImperativeHandle(ref, () => ({ download, getDataUrl }))
 
   const ss = sourceSans.style.fontFamily
   const mc = marcellus.style.fontFamily
@@ -168,7 +176,6 @@ export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCar
           {/* Inner card — always CARD_W × CARD_H, scaled via CSS transform */}
           <div
             ref={captureRef}
-            data-member-card-capture
             style={{
               width: CARD_W,
               height: CARD_H,
@@ -267,9 +274,8 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
   open: boolean
   onOpenChange: (v: boolean) => void
 }) {
-  const cardRef    = useRef<MemberCardHandle>(null)
-  const captureRef = useRef<HTMLDivElement>(null)   // points into MemberCard internals via prop
-  const [busy,     setBusy]     = useState(false)
+  const cardRef = useRef<MemberCardHandle>(null)
+  const [busy,  setBusy]     = useState(false)
   const [waSending, setWaSending] = useState(false)
   const [waResult,  setWaResult]  = useState<string | null>(null)
   const [waError,   setWaError]   = useState<string | null>(null)
@@ -290,18 +296,7 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
     setWaResult(null)
     setWaError(null)
     try {
-      // Capture the card as PNG data URL
-      const { toPng } = await import('html-to-image')
-      // Access the internal captureRef via the card DOM
-      const cardEl = document.querySelector('[data-member-card-capture]') as HTMLElement | null
-      if (!cardEl) throw new Error('Card element not found')
-      const dataUrl = await toPng(cardEl, {
-        width: CARD_W,
-        height: CARD_H,
-        pixelRatio: 2,
-        cacheBust: true,
-        style: { transform: 'none', transformOrigin: 'top left' },
-      })
+      const dataUrl = await cardRef.current.getDataUrl()
       await waSendMembershipCard(user.id, dataUrl)
       setWaResult(`Sent to ${user.whatsappNo || user.phone || 'member'}`)
     } catch (err: unknown) {
