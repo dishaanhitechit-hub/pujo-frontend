@@ -344,6 +344,13 @@ function EventDetailContent({ params }: { params: Promise<{ id: string }> }) {
         variant={confirm.variant}
         onConfirm={() => { setConfirm((c) => ({ ...c, open: false })); confirm.onConfirm() }}
       />
+
+      <WaNotifyDialog
+        open={waEventOpen}
+        onOpenChange={setWaEventOpen}
+        title={`WhatsApp Notify — ${ev.name}`}
+        onSend={(payload) => waNotifyEvent(eventId, payload)}
+      />
     </div>
   )
 }
@@ -1295,13 +1302,6 @@ function MediaTab({ ev, eventId, onRefresh }: { ev: EventDetail; eventId: number
           setConfirmDelete({ open: false, mediaId: null })
           if (id != null) deleteMedia(id)
         }}
-      />
-
-      <WaNotifyDialog
-        open={waEventOpen}
-        onOpenChange={setWaEventOpen}
-        title={`WhatsApp Notify — ${ev.name}`}
-        onSend={(payload) => waNotifyEvent(eventId, payload)}
       />
     </div>
   )
