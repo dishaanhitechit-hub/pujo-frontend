@@ -54,7 +54,7 @@ interface Props {
 
 export interface MemberCardHandle {
   download: () => Promise<void>
-  getDataUrl: () => Promise<string>
+  getDataUrl: (pixelRatio?: number) => Promise<string>
 }
 
 export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCard({ user, hideHeader = false }, ref) {
@@ -80,17 +80,15 @@ export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCar
   const catLabel = user.memberCategory ? (MEMBER_CATEGORY_LABELS[user.memberCategory] ?? '') : ''
   const [seal1, seal2] = sealLines(catLabel || 'MEMBER')
 
-  const captureOpts = {
-    width: CARD_W,
-    height: CARD_H,
-    pixelRatio: 2,
-    cacheBust: true,
-    style: { transform: 'none', transformOrigin: 'top left' },
-  }
-
-  async function getDataUrl(): Promise<string> {
+  async function getDataUrl(pixelRatio = 2): Promise<string> {
     if (!captureRef.current) throw new Error('Card not ready')
-    return toPng(captureRef.current, captureOpts)
+    return toPng(captureRef.current, {
+      width: CARD_W,
+      height: CARD_H,
+      pixelRatio,
+      cacheBust: true,
+      style: { transform: 'none', transformOrigin: 'top left' },
+    })
   }
 
   async function download() {
@@ -109,7 +107,10 @@ export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCar
     }
   }
 
-  useImperativeHandle(ref, () => ({ download, getDataUrl }))
+  useImperativeHandle(ref, () => ({
+    download,
+    getDataUrl: (pixelRatio?: number) => getDataUrl(pixelRatio),
+  }))
 
   const ss = sourceSans.style.fontFamily
   const mc = marcellus.style.fontFamily
@@ -296,7 +297,7 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
     setWaResult(null)
     setWaError(null)
     try {
-      const dataUrl = await cardRef.current.getDataUrl()
+      const dataUrl = await cardRef.current.getDataUrl(1)
       await waSendMembershipCard(user.id, dataUrl)
       setWaResult(`Sent to ${user.whatsappNo || user.phone || 'member'}`)
     } catch (err: unknown) {
