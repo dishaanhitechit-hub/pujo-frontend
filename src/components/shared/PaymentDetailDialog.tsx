@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -9,9 +10,10 @@ import {
 } from '@/components/ui/dialog'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
-import { ExternalLink } from 'lucide-react'
-import type { Payment } from '@/types'
+import { ExternalLink, MessageCircle, Loader2 } from 'lucide-react'
+import type { Payment, ApiError } from '@/types'
 import { apiConfig } from '@/config/api'
+import { waSendPaymentReceipt } from '@/lib/api/whatsapp'
 
 interface PaymentDetailDialogProps {
   payment: Payment | null
@@ -64,10 +66,30 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export function PaymentDetailDialog({ payment, open, onOpenChange }: PaymentDetailDialogProps) {
+  const [waSending, setWaSending] = useState(false)
+  const [waResult,  setWaResult]  = useState<string | null>(null)
+  const [waError,   setWaError]   = useState<string | null>(null)
+
+  async function handleSendReceipt() {
+    if (!payment) return
+    setWaSending(true)
+    setWaResult(null)
+    setWaError(null)
+    try {
+      await waSendPaymentReceipt(payment.id)
+      setWaResult('Receipt sent via WhatsApp!')
+    } catch (err: unknown) {
+      setWaError((err as ApiError).message ?? 'WhatsApp send failed.')
+    } finally {
+      setWaSending(false)
+    }
+  }
+
   if (!payment) return null
 
   const { donor } = payment
   const hasReceiptUrl = !!payment.receiptNo
+  const hasPhone = !!donor.phone
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -121,7 +143,27 @@ export function PaymentDetailDialog({ payment, open, onOpenChange }: PaymentDeta
           </Section>
         </div>
 
+        {(waResult || waError) && (
+          <p className={`text-xs px-1 ${waResult ? 'text-green-600' : 'text-destructive'}`}>
+            {waResult ?? waError}
+          </p>
+        )}
+
         <DialogFooter showCloseButton>
+          {hasReceiptUrl && hasPhone && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSendReceipt}
+              disabled={waSending}
+              className="text-green-700 border-green-200 hover:bg-green-50"
+            >
+              {waSending
+                ? <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                : <MessageCircle className="size-3.5 mr-1.5" />}
+              Send Receipt via WhatsApp
+            </Button>
+          )}
           {hasReceiptUrl && (
             <Button asChild variant="outline" size="sm">
               <a
