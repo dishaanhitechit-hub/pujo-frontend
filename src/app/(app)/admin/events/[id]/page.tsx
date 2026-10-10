@@ -11,7 +11,7 @@ import {
   ArrowLeft, Loader2, Save, Star, StarOff, Archive, Globe, Ban,
   Plus, Trash2, Upload, X, Image as ImageIcon, Pencil,
   IndianRupee, Smartphone, Banknote, FileText, CheckCircle2, Clock, Users,
-  TrendingUp, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
+  TrendingUp, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, MessageCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,6 +30,8 @@ import {
 } from '@/lib/api/events'
 import { apiConfig } from '@/config/api'
 import type { Event, DashboardSummary, ApiError } from '@/types'
+import { WaNotifyDialog } from '@/components/shared/WaNotifyDialog'
+import { waNotifyEvent } from '@/lib/api/whatsapp'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,6 +107,8 @@ function EventDetailContent({ params }: { params: Promise<{ id: string }> }) {
     open: boolean; title: string; description: string; label: string
     variant?: 'destructive' | 'default'; onConfirm: () => void
   }>({ open: false, title: '', description: '', label: 'Confirm', onConfirm: () => {} })
+
+  const [waEventOpen, setWaEventOpen] = useState(false)
 
   // Used by MediaTab's onRefresh (user-triggered, not an effect — synchronous setState is fine here).
   const load = useCallback(async () => {
@@ -275,6 +279,11 @@ function EventDetailContent({ params }: { params: Promise<{ id: string }> }) {
             {busy ? <Loader2 className="size-3.5 animate-spin mr-1.5" /> : <StarOff className="size-3.5 mr-1.5" />}Unfeature
           </Button>
         )}
+
+        <Button variant="outline" size="sm" className="text-green-700 border-green-200 hover:bg-green-50"
+          onClick={() => setWaEventOpen(true)}>
+          <MessageCircle className="size-3.5 mr-1.5" />WhatsApp Notify
+        </Button>
       </div>
 
       {/* Tabs */}
@@ -1286,6 +1295,13 @@ function MediaTab({ ev, eventId, onRefresh }: { ev: EventDetail; eventId: number
           setConfirmDelete({ open: false, mediaId: null })
           if (id != null) deleteMedia(id)
         }}
+      />
+
+      <WaNotifyDialog
+        open={waEventOpen}
+        onOpenChange={setWaEventOpen}
+        title={`WhatsApp Notify — ${ev.name}`}
+        onSend={(payload) => waNotifyEvent(eventId, payload)}
       />
     </div>
   )

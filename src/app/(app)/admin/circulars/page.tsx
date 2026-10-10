@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import {
   Plus, Pencil, Globe, EyeOff, Trash2, Search, X,
-  ChevronLeft, ChevronRight, ScrollText,
+  ChevronLeft, ChevronRight, ScrollText, MessageCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +24,8 @@ import { adminListCirculars, adminCreateCircular, adminUpdateCircular, adminDele
 import { listActiveEvents } from '@/lib/api/events'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import type { Circular, EventSummary, ApiError } from '@/types'
+import { WaNotifyDialog } from '@/components/shared/WaNotifyDialog'
+import { waNotifyCircular } from '@/lib/api/whatsapp'
 
 export default function AdminCircularsPage() {
   return (
@@ -65,6 +67,7 @@ function CircularsContent() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing]       = useState<Circular | null>(null)
   const [deleting, setDeleting]     = useState<Circular | null>(null)
+  const [waCircular, setWaCircular] = useState<Circular | null>(null)
 
   const PER_PAGE = 20
 
@@ -263,6 +266,10 @@ function CircularsContent() {
                     onClick={() => setDeleting(item)}>
                     <Trash2 className="size-3.5 mr-1" />Delete
                   </Button>
+                  <Button variant="outline" size="sm" className="h-7 text-xs px-2 gap-1 text-green-700 border-green-200 hover:bg-green-50"
+                    onClick={() => setWaCircular(item)}>
+                    <MessageCircle className="size-3.5" />WA Notify
+                  </Button>
                 </div>
               </div>
             ))}
@@ -312,6 +319,11 @@ function CircularsContent() {
                           onClick={() => setDeleting(item)}>
                           <Trash2 className="size-3.5" />
                         </Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-700 hover:text-green-800 hover:bg-green-50"
+                          title="WhatsApp notify members"
+                          onClick={() => setWaCircular(item)}>
+                          <MessageCircle className="size-3.5" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -354,6 +366,13 @@ function CircularsContent() {
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={() => deleting && handleDelete(deleting)}
+      />
+
+      <WaNotifyDialog
+        open={!!waCircular}
+        onOpenChange={(o) => { if (!o) setWaCircular(null) }}
+        title={waCircular ? `WhatsApp Notify — ${waCircular.title}` : 'WhatsApp Notify'}
+        onSend={(payload) => waNotifyCircular(waCircular!.id, payload)}
       />
     </div>
   )
