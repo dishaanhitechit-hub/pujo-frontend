@@ -3,11 +3,13 @@
 import React, { useRef, useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { toPng } from 'html-to-image'
 import { Source_Sans_3, Marcellus } from 'next/font/google'
-import { Download, Loader2, X } from 'lucide-react'
+import { Download, Loader2, X, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { MEMBER_CATEGORY_LABELS } from '@/config/members'
 import type { User } from '@/types'
+import { waSendMembershipCard } from '@/lib/api/whatsapp'
+import type { ApiError } from '@/types'
 
 const sourceSans = Source_Sans_3({ subsets: ['latin'], weight: ['600', '700'], display: 'swap' })
 const marcellus  = Marcellus({ subsets: ['latin'], weight: ['400'], display: 'swap' })
@@ -166,6 +168,7 @@ export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCar
           {/* Inner card — always CARD_W × CARD_H, scaled via CSS transform */}
           <div
             ref={captureRef}
+            data-member-card-capture
             style={{
               width: CARD_W,
               height: CARD_H,
@@ -264,8 +267,12 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
   open: boolean
   onOpenChange: (v: boolean) => void
 }) {
-  const cardRef = useRef<MemberCardHandle>(null)
-  const [busy, setBusy] = useState(false)
+  const cardRef    = useRef<MemberCardHandle>(null)
+  const captureRef = useRef<HTMLDivElement>(null)   // points into MemberCard internals via prop
+  const [busy,     setBusy]     = useState(false)
+  const [waSending, setWaSending] = useState(false)
+  const [waResult,  setWaResult]  = useState<string | null>(null)
+  const [waError,   setWaError]   = useState<string | null>(null)
 
   async function handleDownload() {
     if (!cardRef.current) return
@@ -274,6 +281,33 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
       await cardRef.current.download()
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleSendWa() {
+    if (!cardRef.current) return
+    setWaSending(true)
+    setWaResult(null)
+    setWaError(null)
+    try {
+      // Capture the card as PNG data URL
+      const { toPng } = await import('html-to-image')
+      // Access the internal captureRef via the card DOM
+      const cardEl = document.querySelector('[data-member-card-capture]') as HTMLElement | null
+      if (!cardEl) throw new Error('Card element not found')
+      const dataUrl = await toPng(cardEl, {
+        width: CARD_W,
+        height: CARD_H,
+        pixelRatio: 2,
+        cacheBust: true,
+        style: { transform: 'none', transformOrigin: 'top left' },
+      })
+      await waSendMembershipCard(user.id, dataUrl)
+      setWaResult(`Sent to ${user.whatsappNo || user.phone || 'member'}`)
+    } catch (err: unknown) {
+      setWaError((err as ApiError).message ?? 'WhatsApp send failed.')
+    } finally {
+      setWaSending(false)
     }
   }
 
@@ -324,13 +358,16 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
 
         {/* Footer */}
         <div
-          className="px-6 py-4 flex items-center justify-between gap-3"
+          className="px-6 py-4 flex flex-col gap-2"
           style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
         >
-          <p className="text-xs hidden sm:block" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            Download to save your official membership card
-          </p>
-          <div className="flex items-center gap-2 ml-auto">
+          {waResult && (
+            <p className="text-xs text-green-400">✅ {waResult}</p>
+          )}
+          {waError && (
+            <p className="text-xs text-red-400">⚠ {waError}</p>
+          )}
+          <div className="flex items-center gap-2 justify-end">
             <Button
               variant="ghost"
               size="sm"
@@ -341,6 +378,18 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
               <X className="size-3.5" />
               Close
             </Button>
+            {(user.whatsappNo || user.phone) && (
+              <Button
+                size="sm"
+                onClick={handleSendWa}
+                disabled={waSending || busy}
+                className="gap-1.5 text-xs text-white"
+                style={{ background: 'rgba(22,163,74,0.9)', border: '1px solid rgba(22,163,74,0.5)' }}
+              >
+                {waSending ? <Loader2 className="size-3.5 animate-spin" /> : <MessageCircle className="size-3.5" />}
+                Send via WhatsApp
+              </Button>
+            )}
             <Button
               size="sm"
               onClick={handleDownload}

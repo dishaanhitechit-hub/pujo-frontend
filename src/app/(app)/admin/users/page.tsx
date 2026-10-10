@@ -14,7 +14,6 @@ import { PageHeader } from '@/components/dashboard/PageHeader'
 import { ActiveBadge } from '@/components/shared/StatusBadge'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { getUsers, createUser, updateUser, deactivateUser, reactivateUser, softDeleteUser, getUserLoginQr, getNextMemberId } from '@/lib/api/users'
-import { waSendMembershipCard } from '@/lib/api/whatsapp'
 import { MEMBER_CATEGORIES, MEMBER_CATEGORY_LABELS } from '@/config/members'
 import type { User, MemberCategory, ApiError, UpdateUserInput } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -176,7 +175,6 @@ function UsersContent() {
   const [reactivating, setReactivating] = useState<number | null>(null)
   const [qrUser, setQrUser] = useState<User | null>(null)
   const [cardUser, setCardUser] = useState<User | null>(null)
-  const [waSending, setWaSending] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
@@ -200,17 +198,6 @@ function UsersContent() {
     setCardUser(u)
   }
 
-  async function sendWaCard(u: User) {
-    setWaSending(u.id)
-    try {
-      await waSendMembershipCard(u.id)
-      toast.success(`Membership card sent to ${u.name} via WhatsApp!`)
-    } catch (err) {
-      toast.error((err as ApiError).message ?? 'WhatsApp send failed.')
-    } finally {
-      setWaSending(null)
-    }
-  }
 
   async function confirmDeactivate() {
     if (!pendingDeactivate) return
@@ -371,15 +358,11 @@ function UsersContent() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => sendWaCard(u)}
-                          disabled={waSending === u.id}
+                          onClick={() => openCard(u)}
                           className="h-7 px-2 gap-1 text-xs text-green-700 hover:text-green-800 hover:bg-green-50"
                           title="Send membership card via WhatsApp"
                         >
-                          {waSending === u.id
-                            ? <Loader2 className="size-3 animate-spin" />
-                            : <MessageCircle className="size-3" />
-                          }
+                          <MessageCircle className="size-3" />
                           WA
                         </Button>
                       )}

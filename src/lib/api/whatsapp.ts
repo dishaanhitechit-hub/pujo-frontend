@@ -6,8 +6,11 @@ export interface WaBulkResult {
   errors: { userId: number; name: string; error: string }[]
 }
 
-export async function waSendMembershipCard(userId: number): Promise<{ messageId: string; phone: string }> {
-  const { data } = await apiClient.post(`/api/whatsapp/send-membership-card/${userId}`)
+export async function waSendMembershipCard(
+  userId: number,
+  imageBase64: string,
+): Promise<{ messageId: string; phone: string }> {
+  const { data } = await apiClient.post(`/api/whatsapp/send-membership-card/${userId}`, { imageBase64 })
   return data.data
 }
 
