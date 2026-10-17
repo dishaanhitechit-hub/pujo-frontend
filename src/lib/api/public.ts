@@ -72,7 +72,7 @@ export async function getPublicCommittee(eventId?: number): Promise<PublicCommit
   const extra = eventId ? `eventId=${eventId}` : undefined
   const data = await publicGet<PublicCommitteeMember[]>(
     withOrg(apiConfig.endpoints.public.committee, extra),
-    300,
+    0,
   )
   return data ?? []
 }
@@ -80,7 +80,7 @@ export async function getPublicCommittee(eventId?: number): Promise<PublicCommit
 export async function getPublicCommitteeFull(): Promise<PublicCommitteeFull> {
   const data = await publicGet<PublicCommitteeFull>(
     withOrg(apiConfig.endpoints.public.committeeFull),
-    300,
+    0,
   )
   return data ?? { yearCommittee: null, eventCommittees: [], legacyMembers: [] }
 }
