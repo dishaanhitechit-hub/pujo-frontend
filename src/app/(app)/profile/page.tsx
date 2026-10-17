@@ -299,10 +299,12 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Member card — full width, non-admin only */}
+        {/* Member card — left-aligned, constrained width */}
         {!isAdmin && user.memberId && (
           <div className="mt-5">
-            <MemberCard user={user} />
+            <div style={{ width: '100%', maxWidth: 340 }}>
+              <MemberCard user={user} />
+            </div>
           </div>
         )}
       </div>

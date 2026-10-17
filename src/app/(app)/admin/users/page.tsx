@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Plus, UserX, Pencil, X, QrCode, Download, Printer, Check, Search, CreditCard, Trash2, UserCheck, MessageCircle } from 'lucide-react'
+import { Loader2, Plus, UserX, Pencil, X, QrCode, Download, Printer, Check, Search, CreditCard, Trash2, UserCheck, MessageCircle, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +14,8 @@ import { PageHeader } from '@/components/dashboard/PageHeader'
 import { ActiveBadge } from '@/components/shared/StatusBadge'
 import { RoleGuard } from '@/lib/auth/role-guard'
 import { getUsers, createUser, updateUser, deactivateUser, reactivateUser, softDeleteUser, getUserLoginQr, getNextMemberId } from '@/lib/api/users'
+import { uploadConfigMedia } from '@/lib/api/admin'
+import { mediaUrl } from '@/lib/api/public'
 import { MEMBER_CATEGORIES, MEMBER_CATEGORY_LABELS } from '@/config/members'
 import type { User, MemberCategory, ApiError, UpdateUserInput } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -150,6 +152,84 @@ function MemberCategorySelect({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+/** Profile photo upload field — shows a circular preview, uploads on file pick. */
+function PhotoUploadField({
+  value,
+  onChange,
+}: {
+  value: string | null
+  onChange: (url: string | null) => void
+}) {
+  const [uploading, setUploading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const { url } = await uploadConfigMedia(file)
+      onChange(url)
+    } catch {
+      toast.error('Failed to upload photo. Please try again.')
+    } finally {
+      setUploading(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  // Stored paths are relative (/media/...) — resolve to full URL for display
+  const displaySrc = value
+    ? (value.startsWith('/media/') ? mediaUrl(value) : value)
+    : null
+
+  return (
+    <div className="flex items-center gap-4">
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        className="relative size-20 rounded-full border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 flex items-center justify-center overflow-hidden transition-colors shrink-0"
+        title="Upload photo"
+      >
+        {uploading ? (
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        ) : displaySrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={displaySrc} alt="Profile" className="size-full object-cover" />
+        ) : (
+          <Camera className="size-6 text-muted-foreground" />
+        )}
+        {!uploading && (
+          <span className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors rounded-full" />
+        )}
+      </button>
+      <div className="flex flex-col gap-1">
+        <p className="text-sm text-muted-foreground">
+          {value ? 'Click to change photo' : 'Click to upload photo'}
+        </p>
+        <p className="text-xs text-muted-foreground">Optional · JPG or PNG recommended</p>
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="text-xs text-destructive hover:underline text-left"
+          >
+            Remove photo
+          </button>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+      />
     </div>
   )
 }
@@ -578,6 +658,7 @@ function LoginQrModal({ user, onClose }: { user: User; onClose: () => void }) {
 }
 
 function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
@@ -607,6 +688,7 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         whatsappNo:     data.whatsappNo || null,
         email:          data.email || null,
         address:        data.address || null,
+        photoUrl:       photoUrl || null,
         password:       data.password,
       })
       toast.success(`Member ${data.name} created successfully.`)
@@ -714,6 +796,12 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <Input id="c-memberSince" type="date" {...register('memberSince')} />
           </div>
 
+          {/* Profile Photo */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Profile Photo</Label>
+            <PhotoUploadField value={photoUrl} onChange={setPhotoUrl} />
+          </div>
+
           {/* Password */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="c-password">Password <span className="text-destructive">*</span></Label>
@@ -750,6 +838,7 @@ function EditUserModal({
   onSuccess: () => void
 }) {
   const isAdmin = user.role === 'admin'
+  const [photoUrl, setPhotoUrl] = useState<string | null>(user.photoUrl ?? null)
 
   const {
     register,
@@ -780,6 +869,7 @@ function EditUserModal({
       whatsappNo:     data.whatsappNo || null,
       email:          data.email || null,
       address:        data.address || null,
+      photoUrl:       photoUrl,
     }
     // Admin has no membership tier — never write a category for them.
     if (!isAdmin) input.memberCategory = data.memberCategory
@@ -901,6 +991,12 @@ function EditUserModal({
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="e-memberSince">Member Since</Label>
             <Input id="e-memberSince" type="date" {...register('memberSince')} />
+          </div>
+
+          {/* Profile Photo */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Profile Photo</Label>
+            <PhotoUploadField value={photoUrl} onChange={setPhotoUrl} />
           </div>
 
           {/* Password */}

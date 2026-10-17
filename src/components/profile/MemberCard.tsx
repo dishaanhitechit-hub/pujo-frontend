@@ -2,49 +2,50 @@
 
 import React, { useRef, useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { toPng } from 'html-to-image'
-import { Source_Sans_3, Marcellus } from 'next/font/google'
-import { Download, Loader2, X, MessageCircle } from 'lucide-react'
+import { Cinzel, Source_Sans_3 } from 'next/font/google'
+import { Download, Loader2, X, MessageCircle, User as UserIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { MEMBER_CATEGORY_LABELS } from '@/config/members'
 import type { User } from '@/types'
 import { waSendMembershipCard } from '@/lib/api/whatsapp'
+import { mediaUrl } from '@/lib/api/public'
 import type { ApiError } from '@/types'
 
+const cinzel     = Cinzel({ subsets: ['latin'], weight: ['700', '900'], display: 'swap' })
 const sourceSans = Source_Sans_3({ subsets: ['latin'], weight: ['600', '700'], display: 'swap' })
-const marcellus  = Marcellus({ subsets: ['latin'], weight: ['400'], display: 'swap' })
 
-const CARD_W = 1536
-const CARD_H = 1024
+// ── Portrait card dimensions (matches profilecard.png) ──────────────────────
+const CARD_W = 1024
+const CARD_H = 1536
 
-// Positions measured from the 1536×1024 template (y = vertical centre of each text row)
-const ROWS = {
-  name:     { x: 663, y: 578, size: 36.7, color: 'rgb(215,8,9)', weight: 700 },
-  address:  { x: 663, y: 635, size: 26.0, color: 'rgb(1,8,88)',  weight: 600 },
-  mobile:   { x: 662, y: 692, size: 27.3, color: 'rgb(1,8,88)',  weight: 600 },
-  memberid: { x: 663, y: 750, size: 32.4, color: 'rgb(1,8,88)',  weight: 600 },
-  since:    { x: 664, y: 808, size: 31.4, color: 'rgb(1,8,88)',  weight: 600 },
-}
+// Photo circle — fills the transparent hole in profilecard_ring.png
+// Hole traced per-pixel from actual ring white interior, ~343px effective radius
+// Photo circle r=355 covers the full hole with margin
+const PHOTO_CX = 512
+const PHOTO_CY = 706
+const PHOTO_R  = 355
 
-// Seal area centre in t7 template: cx=1324, single line y=661, two lines y=648/674
-const SEAL = { cx: 1324, y1: 648, y2: 674, size: 15 }
+// Category text — centred inside the dark navy banner
+// Pixel analysis: navy band y=1145–1215, center y=1180
+const BANNER_CX = 512
+const BANNER_CY = 1180
 
-function formatSince(v: string | null | undefined): string {
-  if (!v) return '—'
-  try {
-    const d = new Date(v.length === 10 ? v + 'T12:00:00' : v)
-    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-      .replace(/\s/g, ' - ')
-  } catch { return v }
-}
+// Name & address text values — after the colon in each label row
+// "Name    :" colon ends ~x=285; value starts at x=300 (past the colon+space)
+// "Address :" colon ends ~x=285 (template uses extra spaces to align both colons)
+// Y: sit slightly above each underline (Name underline y≈1346, Address y≈1416)
+const NAME_X    = 302
+const NAME_Y    = 1327
+const ADDR_X    = 302
+const ADDR_Y    = 1391
 
-// Split category label into two seal lines, max 2 words each line
-function sealLines(cat: string): [string, string] {
-  const words = cat.toUpperCase().split(' ')
-  if (words.length <= 2) return [words[0] ?? '', words.slice(1).join(' ')]
-  // e.g. "LIFETIME EXECUTIVE MEMBER" → "LIFETIME EXECUTIVE" / "MEMBER"
-  const mid = Math.ceil(words.length / 2)
-  return [words.slice(0, mid).join(' '), words.slice(mid).join(' ')]
+// ────────────────────────────────────────────────────────────────────────────
+
+function categoryLabel(cat: string | null | undefined): string {
+  if (!cat || cat === 'general') return 'MEMBER'
+  const label = MEMBER_CATEGORY_LABELS[cat as keyof typeof MEMBER_CATEGORY_LABELS] ?? cat
+  return label.toUpperCase()
 }
 
 interface Props {
@@ -57,13 +58,15 @@ export interface MemberCardHandle {
   getDataUrl: (pixelRatio?: number) => Promise<string>
 }
 
-export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCard({ user, hideHeader = false }, ref) {
+export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCard(
+  { user, hideHeader = false },
+  ref,
+) {
   const captureRef = useRef<HTMLDivElement>(null)
   const wrapRef    = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   const [busy,  setBusy]  = useState(false)
 
-  // Measure wrapper width and compute scale so the card fills it
   const measure = useCallback(() => {
     const w = wrapRef.current?.clientWidth ?? 0
     if (w > 0) setScale(Math.min(1, w / CARD_W))
@@ -75,10 +78,6 @@ export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCar
     if (wrapRef.current) ro.observe(wrapRef.current)
     return () => ro.disconnect()
   }, [measure])
-
-  const isGeneral = user.memberCategory === 'general'
-  const catLabel = user.memberCategory ? (MEMBER_CATEGORY_LABELS[user.memberCategory] ?? '') : ''
-  const [seal1, seal2] = sealLines(catLabel || 'MEMBER')
 
   async function getDataUrl(pixelRatio = 2): Promise<string> {
     if (!captureRef.current) throw new Error('Card not ready')
@@ -107,36 +106,22 @@ export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCar
     }
   }
 
-  useImperativeHandle(ref, () => ({
-    download,
-    getDataUrl: (pixelRatio?: number) => getDataUrl(pixelRatio),
-  }))
+  useImperativeHandle(ref, () => ({ download, getDataUrl: (pr?: number) => getDataUrl(pr) }))
 
+  const photoSrc = mediaUrl(user.photoUrl)
+  const catText  = categoryLabel(user.memberCategory)
+  const cz = cinzel.style.fontFamily
   const ss = sourceSans.style.fontFamily
-  const mc = marcellus.style.fontFamily
-
-  // Common text style factory
-  const txt = (r: typeof ROWS[keyof typeof ROWS], extra?: React.CSSProperties): React.CSSProperties => ({
-    position: 'absolute',
-    left: r.x,
-    top: r.y,
-    transform: 'translateY(-50%)',
-    fontFamily: ss,
-    fontSize: r.size,
-    fontWeight: r.weight,
-    color: r.color,
-    lineHeight: 1,
-    whiteSpace: 'nowrap',
-    ...extra,
-  })
 
   return (
     <div className={hideHeader ? 'overflow-hidden w-full' : 'overflow-hidden'} style={hideHeader ? {} : { borderRadius: 16 }}>
-      {/* Header — only shown in standalone mode */}
+      {/* Header — standalone mode only */}
       {!hideHeader && (
         <div className="relative bg-brand-navy overflow-hidden">
-          <div className="absolute top-0 right-0 w-0 h-0"
-            style={{ borderLeft: '140px solid transparent', borderTop: '80px solid rgba(249,115,22,0.12)' }} />
+          <div
+            className="absolute top-0 right-0 w-0 h-0"
+            style={{ borderLeft: '140px solid transparent', borderTop: '80px solid rgba(249,115,22,0.12)' }}
+          />
           <div className="absolute bottom-0 right-20 size-20 rounded-full bg-white/[0.04]" />
           <div className="relative flex items-center justify-between px-5 py-4">
             <div className="flex items-center gap-3">
@@ -162,8 +147,12 @@ export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCar
       )}
 
       {/* Card preview */}
-      <div ref={wrapRef} className="w-full px-2 py-3 overflow-hidden" style={{ background: 'linear-gradient(160deg,#0d1424 0%,#12203a 60%,#0d1424 100%)' }}>
-        {/* Outer container — sized to scaled dimensions */}
+      <div
+        ref={wrapRef}
+        className="w-full px-2 py-3 overflow-hidden"
+        style={{ background: 'linear-gradient(160deg,#0d1424 0%,#12203a 60%,#0d1424 100%)' }}
+      >
+        {/* Outer container — scaled to wrapper width */}
         <div
           style={{
             width: CARD_W * scale,
@@ -183,86 +172,113 @@ export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCar
               position: 'relative',
               transformOrigin: 'top left',
               transform: scale < 1 ? `scale(${scale})` : 'none',
+              background: '#fff',
             }}
           >
-            {/* Template background */}
+            {/* ── Profile photo — clipped into the ornamental ring ── */}
+            <div
+              style={{
+                position: 'absolute',
+                left: PHOTO_CX - PHOTO_R,
+                top: PHOTO_CY - PHOTO_R,
+                width: PHOTO_R * 2,
+                height: PHOTO_R * 2,
+                borderRadius: '50%',
+                overflow: 'hidden',
+                background: '#e8e4dc',
+              }}
+            >
+              {photoSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoSrc}
+                  alt={user.name}
+                  crossOrigin="anonymous"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+              ) : (
+                /* Placeholder when no photo is uploaded */
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'linear-gradient(135deg, #e8dcc8 0%, #d4c4a0 100%)',
+                  }}
+                >
+                  <UserIcon
+                    style={{ width: PHOTO_R * 0.7, height: PHOTO_R * 0.7, color: '#a89060', opacity: 0.5 }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* ── Template PNG — circle area is transparent so photo shows through ── */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={isGeneral ? '/assets/member-card/template-general.png' : '/assets/member-card/template.png'}
+              src="/assets/card/profilecard_ring.png"
               alt=""
               crossOrigin="anonymous"
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'block' }}
             />
 
-            {/* ── Text overlays ── */}
-            <span style={txt(ROWS.name)}>
+            {/* ── Category text — centred in the navy banner ── */}
+            <span
+              style={{
+                position: 'absolute',
+                left: BANNER_CX,
+                top: BANNER_CY,
+                transform: 'translate(-50%, -50%)',
+                fontFamily: cz,
+                fontSize: 44,
+                fontWeight: 700,
+                color: '#F5E4A0',
+                letterSpacing: 4,
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+                textShadow: '0 1px 6px rgba(0,0,0,0.5)',
+              }}
+            >
+              {catText}
+            </span>
+
+            {/* ── Name value ── */}
+            <span
+              style={{
+                position: 'absolute',
+                left: NAME_X,
+                top: NAME_Y,
+                transform: 'translateY(-50%)',
+                fontFamily: ss,
+                fontSize: 36,
+                fontWeight: 700,
+                color: 'rgb(215, 8, 9)',
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+              }}
+            >
               {user.name.toUpperCase()}
             </span>
 
-            <span style={txt(ROWS.address)}>
-              {user.address ?? '—'}
-            </span>
-
-            <span style={txt(ROWS.mobile)}>
-              {user.phone ?? '—'}
-            </span>
-
-            <span style={txt(ROWS.memberid)}>
-              {user.memberId ?? '—'}
-            </span>
-
-            <span style={txt(ROWS.since)}>
-              {formatSince(user.memberSince ?? user.createdAt)}
-            </span>
-
-            {/* Seal text */}
-            {isGeneral ? (
-              <span style={{
+            {/* ── Address value ── */}
+            <span
+              style={{
                 position: 'absolute',
-                left: SEAL.cx,
-                top: 661,
-                transform: 'translate(-50%, -50%)',
-                fontFamily: mc,
-                fontSize: SEAL.size,
-                fontWeight: 400,
-                color: 'rgb(1,8,88)',
-                letterSpacing: 1,
+                left: ADDR_X,
+                top: ADDR_Y,
+                transform: 'translateY(-50%)',
+                fontFamily: ss,
+                fontSize: 32,
+                fontWeight: 600,
+                color: 'rgb(1, 8, 88)',
                 lineHeight: 1,
                 whiteSpace: 'nowrap',
-                textAlign: 'center',
-              }}>MEMBER</span>
-            ) : (
-              <>
-                <span style={{
-                  position: 'absolute',
-                  left: SEAL.cx,
-                  top: SEAL.y1,
-                  transform: 'translate(-50%, -50%)',
-                  fontFamily: mc,
-                  fontSize: SEAL.size,
-                  fontWeight: 400,
-                  color: 'rgb(1,8,88)',
-                  letterSpacing: 1,
-                  lineHeight: 1,
-                  whiteSpace: 'nowrap',
-                  textAlign: 'center',
-                }}>{seal1}</span>
-                <span style={{
-                  position: 'absolute',
-                  left: SEAL.cx,
-                  top: SEAL.y2,
-                  transform: 'translate(-50%, -50%)',
-                  fontFamily: mc,
-                  fontSize: SEAL.size,
-                  fontWeight: 400,
-                  color: 'rgb(1,8,88)',
-                  letterSpacing: 1,
-                  lineHeight: 1,
-                  whiteSpace: 'nowrap',
-                  textAlign: 'center',
-                }}>{seal2}</span>
-              </>
-            )}
+              }}
+            >
+              {user.address ?? '—'}
+            </span>
           </div>
         </div>
       </div>
@@ -270,13 +286,19 @@ export const MemberCard = forwardRef<MemberCardHandle, Props>(function MemberCar
   )
 })
 
-export function MemberCardDialog({ user, open, onOpenChange }: {
+// ── Dialog wrapper ──────────────────────────────────────────────────────────
+
+export function MemberCardDialog({
+  user,
+  open,
+  onOpenChange,
+}: {
   user: User
   open: boolean
   onOpenChange: (v: boolean) => void
 }) {
   const cardRef = useRef<MemberCardHandle>(null)
-  const [busy,  setBusy]     = useState(false)
+  const [busy,      setBusy]     = useState(false)
   const [waSending, setWaSending] = useState(false)
   const [waResult,  setWaResult]  = useState<string | null>(null)
   const [waError,   setWaError]   = useState<string | null>(null)
@@ -284,11 +306,8 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
   async function handleDownload() {
     if (!cardRef.current) return
     setBusy(true)
-    try {
-      await cardRef.current.download()
-    } finally {
-      setBusy(false)
-    }
+    try { await cardRef.current.download() }
+    finally { setBusy(false) }
   }
 
   async function handleSendWa() {
@@ -312,7 +331,7 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
       <DialogContent
         className="gap-0 p-0 overflow-hidden [&_[data-slot=dialog-close]]:text-white/60 [&_[data-slot=dialog-close]]:hover:text-white [&_[data-slot=dialog-close]]:hover:bg-white/10"
         style={{
-          maxWidth: 680,
+          maxWidth: 380,
           width: 'calc(100vw - 32px)',
           background: 'rgba(7, 14, 30, 0.90)',
           backdropFilter: 'blur(28px)',
@@ -335,18 +354,19 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
           </div>
         </div>
 
-        {/* Card preview area */}
-        <div className="px-4 pt-5 pb-4 overflow-hidden min-w-0">
+        {/* Card preview — fixed small size so dialog stays compact */}
+        <div className="px-5 pt-4 pb-3 flex justify-center overflow-hidden">
           <div
             style={{
               borderRadius: 12,
               padding: '2px',
               overflow: 'hidden',
-              minWidth: 0,
+              width: 280,
+              flexShrink: 0,
               background: 'linear-gradient(135deg, rgba(212,168,67,0.35) 0%, rgba(212,168,67,0.08) 60%, rgba(212,168,67,0.18) 100%)',
             }}
           >
-            <div style={{ borderRadius: 10, overflow: 'hidden', background: 'rgba(7,14,30,0.5)', minWidth: 0 }}>
+            <div style={{ borderRadius: 10, overflow: 'hidden', background: 'rgba(7,14,30,0.5)', width: '100%' }}>
               <MemberCard ref={cardRef} user={user} hideHeader />
             </div>
           </div>
@@ -357,12 +377,8 @@ export function MemberCardDialog({ user, open, onOpenChange }: {
           className="px-6 py-4 flex flex-col gap-2"
           style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
         >
-          {waResult && (
-            <p className="text-xs text-green-400">✅ {waResult}</p>
-          )}
-          {waError && (
-            <p className="text-xs text-red-400">⚠ {waError}</p>
-          )}
+          {waResult && <p className="text-xs text-green-400">✅ {waResult}</p>}
+          {waError  && <p className="text-xs text-red-400">⚠ {waError}</p>}
           <div className="flex items-center gap-2 justify-end">
             <Button
               variant="ghost"

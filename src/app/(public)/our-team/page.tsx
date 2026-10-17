@@ -3,32 +3,52 @@ import Image from 'next/image'
 import { SectionHeading } from '@/components/public/SectionHeading'
 import { getPublicCommitteeFull, getSiteConfig, mediaUrl } from '@/lib/api/public'
 import type { PublicCommitteeMember } from '@/types'
-import { User } from 'lucide-react'
+import { User2 } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'Our Team' }
 
 function MemberCard({ member }: { member: PublicCommitteeMember }) {
   const photo = mediaUrl(member.photoUrl)
+  const initials = member.name
+    .split(' ')
+    .map((n) => n[0] ?? '')
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
   return (
-    <div className="group p-5 rounded-2xl border border-border bg-white hover:border-brand-orange/20 hover:shadow-md hover:shadow-brand-orange/5 transition-all flex items-start gap-4">
-      <div className="size-14 rounded-xl overflow-hidden bg-brand-orange/10 flex items-center justify-center shrink-0">
+    <div className="group flex flex-col items-center text-center p-5 rounded-2xl border border-border bg-white hover:border-brand-orange/30 hover:shadow-lg hover:shadow-brand-orange/5 transition-all">
+      {/* Avatar */}
+      <div className="size-24 rounded-full overflow-hidden bg-gradient-to-br from-brand-orange/10 to-brand-orange/20 flex items-center justify-center shrink-0 ring-2 ring-brand-orange/20 group-hover:ring-brand-orange/40 transition-all mb-4">
         {photo ? (
-          <Image src={photo} alt={member.name} width={56} height={56} className="w-full h-full object-cover" />
+          <Image
+            src={photo}
+            alt={member.name}
+            width={96}
+            height={96}
+            className="w-full h-full object-cover"
+          />
         ) : (
-          <User className="size-6 text-brand-orange/50" />
+          <span className="text-xl font-bold text-brand-orange/70 font-heading select-none">
+            {initials}
+          </span>
         )}
       </div>
-      <div className="flex-1 min-w-0">
-        <h3 className="font-heading font-bold text-brand-navy text-sm leading-snug">{member.name}</h3>
-        <p className="text-xs text-brand-orange font-medium mt-0.5">{member.roleTitle}</p>
-      </div>
+
+      {/* Info */}
+      <h3 className="font-heading font-bold text-brand-navy text-sm leading-snug">
+        {member.name}
+      </h3>
+      <p className="text-[11px] text-brand-orange font-semibold mt-1 uppercase tracking-wide">
+        {member.roleTitle}
+      </p>
     </div>
   )
 }
 
 function MemberGrid({ members }: { members: PublicCommitteeMember[] }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
       {members.map((m) => <MemberCard key={m.id} member={m} />)}
     </div>
   )
@@ -66,7 +86,7 @@ export default async function OurTeamPage() {
               <SectionHeading label="Our Team" title="Meet the Team" className="mb-12" />
               <div className="bg-brand-cream rounded-2xl border border-dashed border-brand-orange/20 p-12 text-center">
                 <div className="size-16 mx-auto rounded-full bg-brand-orange/10 flex items-center justify-center mb-4">
-                  <User className="size-8 text-brand-orange/50" />
+                  <User2 className="size-8 text-brand-orange/50" />
                 </div>
                 <h3 className="font-heading font-bold text-brand-navy text-lg mb-2">Team Details Coming Soon</h3>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">

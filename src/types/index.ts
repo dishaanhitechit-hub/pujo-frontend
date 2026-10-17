@@ -356,6 +356,7 @@ export interface User {
   memberCategory: MemberCategory | null
   memberSince: string | null
   memberId: string | null
+  photoUrl: string | null
   permissions?: string[]
   createdAt: string
 }
@@ -1071,6 +1072,7 @@ export interface CreateUserInput {
   whatsappNo?: string | null
   email?: string | null
   address?: string | null
+  photoUrl?: string | null
   password: string
   canCollect?: boolean
 }
@@ -1085,6 +1087,7 @@ export interface UpdateUserInput {
   whatsappNo?: string | null
   email?: string | null
   address?: string | null
+  photoUrl?: string | null
   password?: string
   isActive?: boolean
   canCollect?: boolean
