@@ -317,7 +317,7 @@ export function MemberCardDialog({
     setWaError(null)
     try {
       const dataUrl = await cardRef.current.getDataUrl(1)
-      await waSendMembershipCard(user.id, dataUrl)
+      await waSendMembershipCard(user.id, dataUrl, 'membership')
       setWaResult(`Sent to ${user.whatsappNo || user.phone || 'member'}`)
     } catch (err: unknown) {
       setWaError((err as ApiError).message ?? 'WhatsApp send failed.')
