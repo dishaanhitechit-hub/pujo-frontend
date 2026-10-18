@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Plus, UserX, Pencil, X, QrCode, Download, Printer, Check, Search, CreditCard, Trash2, UserCheck, MessageCircle, Camera } from 'lucide-react'
+import { Loader2, Plus, UserX, Pencil, X, QrCode, Download, Printer, Check, Search, CreditCard, Trash2, UserCheck, MessageCircle, Camera, BadgeCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,6 +23,7 @@ import { useAuth } from '@/lib/auth/auth-provider'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { cn } from '@/lib/utils'
 import { MemberCardDialog } from '@/components/profile/MemberCard'
+import { WelcomeCardDialog } from '@/components/profile/WelcomeCard'
 
 // Regex: 10-digit Indian mobile starting with 6-9
 const IN_MOBILE_RE = /^[6-9]\d{9}$/
@@ -255,6 +256,7 @@ function UsersContent() {
   const [reactivating, setReactivating] = useState<number | null>(null)
   const [qrUser, setQrUser] = useState<User | null>(null)
   const [cardUser, setCardUser] = useState<User | null>(null)
+  const [welcomeUser, setWelcomeUser] = useState<User | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
@@ -426,12 +428,24 @@ function UsersContent() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => openCard(u)}
+                          onClick={() => setWelcomeUser(u)}
                           className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                          title="Membership card"
+                          title="Welcome card"
                         >
                           <CreditCard className="size-3" />
                           Card
+                        </Button>
+                      )}
+                      {u.isActive && u.memberId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openCard(u)}
+                          className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                          title="Membership ID card"
+                        >
+                          <BadgeCheck className="size-3" />
+                          ID
                         </Button>
                       )}
                       {u.isActive && (u.whatsappNo || u.phone) && (
@@ -530,6 +544,14 @@ function UsersContent() {
 
       {qrUser && (
         <LoginQrModal user={qrUser} onClose={() => setQrUser(null)} />
+      )}
+
+      {welcomeUser && (
+        <WelcomeCardDialog
+          user={welcomeUser}
+          open={!!welcomeUser}
+          onOpenChange={(o) => { if (!o) setWelcomeUser(null) }}
+        />
       )}
 
       {cardUser && (

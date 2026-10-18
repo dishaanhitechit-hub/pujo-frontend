@@ -1,0 +1,312 @@
+'use client'
+
+import React, { useRef, useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
+import { toPng } from 'html-to-image'
+import { Source_Sans_3, Marcellus } from 'next/font/google'
+import { Download, Loader2, X, MessageCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { MEMBER_CATEGORY_LABELS } from '@/config/members'
+import type { User } from '@/types'
+import { waSendMembershipCard } from '@/lib/api/whatsapp'
+import type { ApiError } from '@/types'
+
+const sourceSans = Source_Sans_3({ subsets: ['latin'], weight: ['600', '700'], display: 'swap' })
+const marcellus  = Marcellus({ subsets: ['latin'], weight: ['400'], display: 'swap' })
+
+const CARD_W = 1536
+const CARD_H = 1024
+
+const ROWS = {
+  name:     { x: 663, y: 578, size: 36.7, color: 'rgb(215,8,9)', weight: 700 },
+  address:  { x: 663, y: 635, size: 26.0, color: 'rgb(1,8,88)',  weight: 600 },
+  mobile:   { x: 662, y: 692, size: 27.3, color: 'rgb(1,8,88)',  weight: 600 },
+  memberid: { x: 663, y: 750, size: 32.4, color: 'rgb(1,8,88)',  weight: 600 },
+  since:    { x: 664, y: 808, size: 31.4, color: 'rgb(1,8,88)',  weight: 600 },
+}
+
+const SEAL = { cx: 1324, y1: 648, y2: 674, size: 15 }
+
+function formatSince(v: string | null | undefined): string {
+  if (!v) return '—'
+  try {
+    const d = new Date(v.length === 10 ? v + 'T12:00:00' : v)
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+      .replace(/\s/g, ' - ')
+  } catch { return v }
+}
+
+function sealLines(cat: string): [string, string] {
+  const words = cat.toUpperCase().split(' ')
+  if (words.length <= 2) return [words[0] ?? '', words.slice(1).join(' ')]
+  const mid = Math.ceil(words.length / 2)
+  return [words.slice(0, mid).join(' '), words.slice(mid).join(' ')]
+}
+
+interface Props {
+  user: User
+  hideHeader?: boolean
+}
+
+export interface WelcomeCardHandle {
+  download: () => Promise<void>
+  getDataUrl: (pixelRatio?: number) => Promise<string>
+}
+
+export const WelcomeCard = forwardRef<WelcomeCardHandle, Props>(function WelcomeCard({ user, hideHeader = false }, ref) {
+  const captureRef = useRef<HTMLDivElement>(null)
+  const wrapRef    = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  const [busy,  setBusy]  = useState(false)
+
+  const measure = useCallback(() => {
+    const w = wrapRef.current?.clientWidth ?? 0
+    if (w > 0) setScale(Math.min(1, w / CARD_W))
+  }, [])
+
+  useEffect(() => {
+    measure()
+    const ro = new ResizeObserver(measure)
+    if (wrapRef.current) ro.observe(wrapRef.current)
+    return () => ro.disconnect()
+  }, [measure])
+
+  const isGeneral = user.memberCategory === 'general'
+  const catLabel = user.memberCategory ? (MEMBER_CATEGORY_LABELS[user.memberCategory] ?? '') : ''
+  const [seal1, seal2] = sealLines(catLabel || 'MEMBER')
+
+  async function getDataUrl(pixelRatio = 2): Promise<string> {
+    if (!captureRef.current) throw new Error('Card not ready')
+    return toPng(captureRef.current, {
+      width: CARD_W,
+      height: CARD_H,
+      pixelRatio,
+      cacheBust: true,
+      style: { transform: 'none', transformOrigin: 'top left' },
+    })
+  }
+
+  async function download() {
+    if (!captureRef.current) return
+    setBusy(true)
+    try {
+      const url = await getDataUrl()
+      const a = document.createElement('a')
+      a.download = `${user.name.replace(/\s+/g, '-').toLowerCase()}-welcome-card.png`
+      a.href = url
+      a.click()
+    } catch (e) {
+      console.error('Card download failed:', e)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  useImperativeHandle(ref, () => ({
+    download,
+    getDataUrl: (pixelRatio?: number) => getDataUrl(pixelRatio),
+  }))
+
+  const ss = sourceSans.style.fontFamily
+  const mc = marcellus.style.fontFamily
+
+  const txt = (r: typeof ROWS[keyof typeof ROWS], extra?: React.CSSProperties): React.CSSProperties => ({
+    position: 'absolute',
+    left: r.x,
+    top: r.y,
+    transform: 'translateY(-50%)',
+    fontFamily: ss,
+    fontSize: r.size,
+    fontWeight: r.weight,
+    color: r.color,
+    lineHeight: 1,
+    whiteSpace: 'nowrap',
+    ...extra,
+  })
+
+  return (
+    <div className={hideHeader ? 'overflow-hidden w-full' : 'overflow-hidden'} style={hideHeader ? {} : { borderRadius: 16 }}>
+      {!hideHeader && (
+        <div className="relative bg-brand-navy overflow-hidden">
+          <div className="absolute top-0 right-0 w-0 h-0"
+            style={{ borderLeft: '140px solid transparent', borderTop: '80px solid rgba(249,115,22,0.12)' }} />
+          <div className="absolute bottom-0 right-20 size-20 rounded-full bg-white/[0.04]" />
+          <div className="relative flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="size-9 rounded-xl bg-brand-orange/20 ring-1 ring-brand-orange/30 flex items-center justify-center shrink-0">
+                <Download className="size-4 text-brand-orange" />
+              </div>
+              <div>
+                <p className="font-heading font-bold text-white text-sm leading-snug">Welcome Card</p>
+                <p className="text-white/50 text-[11px] mt-0.5">Official club welcome card</p>
+              </div>
+            </div>
+            <Button size="sm" onClick={download} disabled={busy}
+              className="gap-1.5 text-xs bg-brand-orange hover:bg-brand-orange/90 text-white shrink-0">
+              {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+              Download PNG
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div ref={wrapRef} className="w-full px-2 py-3 overflow-hidden"
+        style={{ background: 'linear-gradient(160deg,#0d1424 0%,#12203a 60%,#0d1424 100%)' }}>
+        <div style={{
+          width: CARD_W * scale,
+          height: CARD_H * scale,
+          maxWidth: '100%',
+          overflow: 'hidden',
+          borderRadius: 10,
+          boxShadow: '0 8px 48px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.3)',
+        }}>
+          <div ref={captureRef} style={{
+            width: CARD_W,
+            height: CARD_H,
+            position: 'relative',
+            transformOrigin: 'top left',
+            transform: scale < 1 ? `scale(${scale})` : 'none',
+          }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={isGeneral ? '/assets/member-card/template-general.png' : '/assets/member-card/template.png'}
+              alt=""
+              crossOrigin="anonymous"
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'block' }}
+            />
+
+            <span style={txt(ROWS.name)}>{user.name.toUpperCase()}</span>
+            <span style={txt(ROWS.address)}>{user.address ?? '—'}</span>
+            <span style={txt(ROWS.mobile)}>{user.phone ?? '—'}</span>
+            <span style={txt(ROWS.memberid)}>{user.memberId ?? '—'}</span>
+            <span style={txt(ROWS.since)}>{formatSince(user.memberSince ?? user.createdAt)}</span>
+
+            {isGeneral ? (
+              <span style={{
+                position: 'absolute', left: SEAL.cx, top: 661,
+                transform: 'translate(-50%, -50%)',
+                fontFamily: mc, fontSize: SEAL.size, fontWeight: 400,
+                color: 'rgb(1,8,88)', letterSpacing: 1, lineHeight: 1,
+                whiteSpace: 'nowrap', textAlign: 'center',
+              }}>MEMBER</span>
+            ) : (
+              <>
+                <span style={{
+                  position: 'absolute', left: SEAL.cx, top: SEAL.y1,
+                  transform: 'translate(-50%, -50%)',
+                  fontFamily: mc, fontSize: SEAL.size, fontWeight: 400,
+                  color: 'rgb(1,8,88)', letterSpacing: 1, lineHeight: 1,
+                  whiteSpace: 'nowrap', textAlign: 'center',
+                }}>{seal1}</span>
+                <span style={{
+                  position: 'absolute', left: SEAL.cx, top: SEAL.y2,
+                  transform: 'translate(-50%, -50%)',
+                  fontFamily: mc, fontSize: SEAL.size, fontWeight: 400,
+                  color: 'rgb(1,8,88)', letterSpacing: 1, lineHeight: 1,
+                  whiteSpace: 'nowrap', textAlign: 'center',
+                }}>{seal2}</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+})
+
+export function WelcomeCardDialog({ user, open, onOpenChange }: {
+  user: User
+  open: boolean
+  onOpenChange: (v: boolean) => void
+}) {
+  const cardRef = useRef<WelcomeCardHandle>(null)
+  const [busy,      setBusy]     = useState(false)
+  const [waSending, setWaSending] = useState(false)
+  const [waResult,  setWaResult]  = useState<string | null>(null)
+  const [waError,   setWaError]   = useState<string | null>(null)
+
+  async function handleDownload() {
+    if (!cardRef.current) return
+    setBusy(true)
+    try { await cardRef.current.download() }
+    finally { setBusy(false) }
+  }
+
+  async function handleSendWa() {
+    if (!cardRef.current) return
+    setWaSending(true); setWaResult(null); setWaError(null)
+    try {
+      const dataUrl = await cardRef.current.getDataUrl(1)
+      await waSendMembershipCard(user.id, dataUrl)
+      setWaResult(`Sent to ${user.whatsappNo || user.phone || 'member'}`)
+    } catch (err: unknown) {
+      setWaError((err as ApiError).message ?? 'WhatsApp send failed.')
+    } finally {
+      setWaSending(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="gap-0 p-0 overflow-hidden [&_[data-slot=dialog-close]]:text-white/60 [&_[data-slot=dialog-close]]:hover:text-white [&_[data-slot=dialog-close]]:hover:bg-white/10"
+        style={{
+          maxWidth: 680,
+          width: 'calc(100vw - 32px)',
+          background: 'rgba(7, 14, 30, 0.90)',
+          backdropFilter: 'blur(28px)',
+          WebkitBackdropFilter: 'blur(28px)',
+          border: '1px solid rgba(212,168,67,0.22)',
+          boxShadow: '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)',
+          borderRadius: 20,
+        }}
+      >
+        <div className="px-6 pt-5 pb-4 flex items-start justify-between"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div>
+            <p className="text-base font-semibold text-white leading-snug">{user.name}</p>
+            <p className="text-xs mt-0.5 font-medium" style={{ color: 'rgba(212,168,67,0.85)' }}>Welcome Card</p>
+          </div>
+        </div>
+
+        <div className="px-4 pt-5 pb-4 overflow-hidden min-w-0">
+          <div style={{
+            borderRadius: 12, padding: '2px', overflow: 'hidden', minWidth: 0,
+            background: 'linear-gradient(135deg, rgba(212,168,67,0.35) 0%, rgba(212,168,67,0.08) 60%, rgba(212,168,67,0.18) 100%)',
+          }}>
+            <div style={{ borderRadius: 10, overflow: 'hidden', background: 'rgba(7,14,30,0.5)', minWidth: 0 }}>
+              <WelcomeCard ref={cardRef} user={user} hideHeader />
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 flex flex-col gap-2"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          {waResult && <p className="text-xs text-green-400">✅ {waResult}</p>}
+          {waError  && <p className="text-xs text-red-400">⚠ {waError}</p>}
+          <div className="flex items-center gap-2 justify-end">
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}
+              className="text-xs gap-1.5 hover:bg-white/10 hover:text-white/60"
+              style={{ color: 'rgba(255,255,255,0.55)' }}>
+              <X className="size-3.5" /> Close
+            </Button>
+            {(user.whatsappNo || user.phone) && (
+              <Button size="sm" onClick={handleSendWa} disabled={waSending || busy}
+                className="gap-1.5 text-xs text-white"
+                style={{ background: 'rgba(22,163,74,0.9)', border: '1px solid rgba(22,163,74,0.5)' }}>
+                {waSending ? <Loader2 className="size-3.5 animate-spin" /> : <MessageCircle className="size-3.5" />}
+                Send via WhatsApp
+              </Button>
+            )}
+            <Button size="sm" onClick={handleDownload} disabled={busy}
+              className="gap-1.5 text-xs text-white"
+              style={{ background: 'rgba(234,88,12,0.9)', border: '1px solid rgba(234,88,12,0.5)' }}>
+              {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+              Download PNG
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}

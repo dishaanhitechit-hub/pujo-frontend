@@ -11,11 +11,12 @@ import { getMyProfileExtras } from '@/lib/api/role-assignments'
 import {
   Loader2, Download, Printer, HeartHandshake, ChevronRight,
   QrCode, Mail, Phone, MessageCircle, Calendar, BadgeCheck,
-  MapPin, Hash, Users, ArrowUpRight,
+  MapPin, Hash, Users, ArrowUpRight, X, ZoomIn,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ChangePasswordCard } from '@/components/profile/ChangePasswordCard'
 import { MemberCard } from '@/components/profile/MemberCard'
+import { mediaUrl } from '@/lib/api/public'
 import type { ContributionStats, MyRoles } from '@/types'
 
 export default function ProfilePage() {
@@ -24,6 +25,7 @@ export default function ProfilePage() {
   const [qrLoading, setQrLoading] = useState(true)
   const [contribStats, setContribStats] = useState<ContributionStats | null>(null)
   const [myRoles, setMyRoles] = useState<MyRoles | null>(null)
+  const [photoOpen, setPhotoOpen] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -42,6 +44,13 @@ export default function ProfilePage() {
       .then((extras) => { setMyRoles(extras.roles); setContribStats(extras.contributionStats) })
       .catch(() => {})
   }, [user?.id])
+
+  useEffect(() => {
+    if (!photoOpen) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setPhotoOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [photoOpen])
 
   if (!user) return null
 
@@ -117,8 +126,21 @@ export default function ProfilePage() {
 
                 <div className="relative flex items-start sm:items-center gap-4 p-5 sm:p-6">
                   {/* Avatar */}
-                  <div className="shrink-0 size-16 sm:size-20 rounded-2xl bg-brand-orange/20 ring-2 ring-brand-orange/30 flex items-center justify-center">
-                    <span className="font-heading font-bold text-2xl sm:text-3xl text-white select-none">{initials}</span>
+                  <div
+                    className={`shrink-0 size-16 sm:size-20 rounded-2xl bg-brand-orange/20 ring-2 ring-brand-orange/30 overflow-hidden flex items-center justify-center relative group${user.photoUrl ? ' cursor-pointer' : ''}`}
+                    onClick={() => { if (user.photoUrl) setPhotoOpen(true) }}
+                  >
+                    {user.photoUrl ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={mediaUrl(user.photoUrl) ?? ''} alt={user.name} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <ZoomIn className="size-5 text-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <span className="font-heading font-bold text-2xl sm:text-3xl text-white select-none">{initials}</span>
+                    )}
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -308,6 +330,29 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Photo lightbox */}
+      {photoOpen && user.photoUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setPhotoOpen(false)}
+        >
+          <button
+            className="absolute top-4 right-4 size-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            onClick={() => setPhotoOpen(false)}
+            aria-label="Close"
+          >
+            <X className="size-5" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={mediaUrl(user.photoUrl) ?? ''}
+            alt={user.name}
+            className="max-w-sm sm:max-w-md w-full max-h-[80vh] rounded-2xl object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { CalendarDays, CalendarClock, Users2 } from 'lucide-react'
+import { mediaUrl } from '@/lib/api/public'
 import { PageHeader } from '@/components/dashboard/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/lib/auth/auth-provider'
@@ -132,14 +133,20 @@ function MemberList({ members, loading }: { members: CommitteeMemberEntry[]; loa
       {members.map((m) => {
         const isSelf = user?.id === m.userId
         const initials = m.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+        const photo = mediaUrl(m.photoUrl)
         return (
           <div key={m.userId} className={cn(
             'flex items-center gap-3 rounded-xl border px-3 sm:px-4 py-2.5',
             isSelf ? 'border-brand-orange bg-brand-orange/5' : 'border-border bg-card',
           )}>
-            <div className={cn('size-9 rounded-full border flex items-center justify-center shrink-0',
+            <div className={cn('size-9 rounded-full border overflow-hidden flex items-center justify-center shrink-0',
               isSelf ? 'bg-brand-orange/15 border-brand-orange/30' : 'bg-brand-orange/10 border-brand-orange/20')}>
-              <span className="text-xs font-semibold text-brand-orange">{initials}</span>
+              {photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={photo} alt={m.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xs font-semibold text-brand-orange">{initials}</span>
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate">

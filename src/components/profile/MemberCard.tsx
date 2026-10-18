@@ -379,40 +379,40 @@ export function MemberCardDialog({
         >
           {waResult && <p className="text-xs text-green-400">✅ {waResult}</p>}
           {waError  && <p className="text-xs text-red-400">⚠ {waError}</p>}
-          <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="text-xs gap-1.5"
-              style={{ color: 'rgba(255,255,255,0.55)' }}
-            >
-              <X className="size-3.5" />
-              Close
-            </Button>
+          {/* Action buttons — grid so they fill width evenly and never overflow */}
+          <div className="grid gap-2" style={{ gridTemplateColumns: (user.whatsappNo || user.phone) ? '1fr 1fr' : '1fr' }}>
             {(user.whatsappNo || user.phone) && (
               <Button
                 size="sm"
                 onClick={handleSendWa}
                 disabled={waSending || busy}
-                className="gap-1.5 text-xs text-white"
+                className="gap-1.5 text-xs text-white w-full"
                 style={{ background: 'rgba(22,163,74,0.9)', border: '1px solid rgba(22,163,74,0.5)' }}
               >
                 {waSending ? <Loader2 className="size-3.5 animate-spin" /> : <MessageCircle className="size-3.5" />}
-                Send via WhatsApp
+                WhatsApp
               </Button>
             )}
             <Button
               size="sm"
               onClick={handleDownload}
               disabled={busy}
-              className="gap-1.5 text-xs text-white"
+              className="gap-1.5 text-xs text-white w-full"
               style={{ background: 'rgba(234,88,12,0.9)', border: '1px solid rgba(234,88,12,0.5)' }}
             >
               {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
               Download PNG
             </Button>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="w-full text-xs gap-1.5 hover:bg-white/10 hover:text-white/50"
+            style={{ color: 'rgba(255,255,255,0.4)' }}
+          >
+            <X className="size-3.5" /> Close
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

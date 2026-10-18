@@ -69,6 +69,7 @@ export interface CommitteeMemberEntry {
   memberId: string | null
   memberCategory: MemberCategory | null
   role: CommitteeRole
+  photoUrl: string | null
 }
 
 export interface CommitteeYearView {
